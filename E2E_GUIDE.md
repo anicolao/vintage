@@ -165,6 +165,8 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:5195',
     trace: 'retain-on-failure',
+    actionTimeout: 2_000,
+    navigationTimeout: 2_000,
     serviceWorkers: 'block',
     reducedMotion: 'reduce',
     deviceScaleFactor: 1,
@@ -197,7 +199,7 @@ export default defineConfig({
     }
   ],
   expect: {
-    timeout: 5_000,
+    timeout: 2_000,
     toHaveScreenshot: {
       maxDiffPixels: 0,
       animations: 'disabled',
@@ -210,6 +212,58 @@ export default defineConfig({
 ```
 
 Every screenshot call repeats `maxDiffPixels: 0`, keeping the contract explicit at both levels.
+
+## Waiting policy: events only, 2,000 ms maximum
+
+**NEVER call `page.waitForTimeout()` or `frame.waitForTimeout()`. NEVER use `sleep`, shell `sleep`, timer promises, busy loops, or any other elapsed-time delay in an E2E test or E2E helper.** A passing test must be caused by an observable application event, never by hoping enough time has passed.
+
+Every in-test action, assertion, locator wait, navigation wait, polling interval, and custom event wait has a maximum timeout of **2,000 ms**. Playwright's `actionTimeout`, `navigationTimeout`, and `expect.timeout` are all `2_000`. An individual call may choose a shorter timeout and may NEVER override the limit with a value above `2_000`.
+
+Emulator and web-server process startup uses Playwright's `webServer.timeout` because it occurs before a test begins. Once the page is available, the 2,000 ms ceiling applies to every wait in the scenario.
+
+### Event-driven wait examples
+
+Wait for the exact observable condition that enables the next action:
+
+```ts
+// DOM state emitted after Firebase Auth resolves.
+await expect(page.getByTestId('signed-in-user')).toHaveText('Alex Seller');
+
+// Durable sync state emitted after Firestore acknowledges pending events.
+await expect(page.locator('[data-status]')).toHaveAttribute('data-status', 'synced');
+
+// Generation stage rendered from the event-stream subscription.
+await expect(page.getByRole('status')).toHaveText('Comparing the market');
+
+// Network response caused by the user action.
+const response = page.waitForResponse(
+  response => response.url().includes('generateListing') && response.ok(),
+  { timeout: 2_000 }
+);
+await page.getByRole('button', { name: 'Create my draft' }).click();
+await response;
+
+// Image readiness exposed by browser state.
+await expect
+  .poll(() => page.locator('[data-testid="item-photo"]').evaluate(
+    image => (image as HTMLImageElement).complete
+  ))
+  .toBe(true);
+```
+
+For state that has no visible representation, the application exposes a deterministic test seam such as an ARIA status, `data-status` attribute, repository subscription signal, or specific response. Adding that observable signal is part of implementing the feature.
+
+### Enforcement
+
+The E2E lint check rejects:
+
+- any `waitForTimeout` call;
+- any `sleep` command or sleep helper;
+- any timer used as a delay;
+- any explicit in-test timeout above `2_000`; and
+- Playwright configuration whose action, navigation, or assertion timeout exceeds `2_000`.
+
+Code review treats a forbidden wait as a correctness defect. Repeated timeout failures indicate a missing event or observable state; the fix is to expose and await that event.
 
 ## Unified step pattern
 
@@ -263,7 +317,7 @@ The helper owns counters and filenames. Scenario code supplies semantic step IDs
 - Seed stable Firestore IDs and timestamps.
 - Select the fixture AI provider in emulator Functions.
 - Disable animation during screenshot comparison.
-- Wait on UI state, Firestore sync state, or a specific event.
+- Wait on UI state, Firestore sync state, a specific response, or a specific event, with a maximum timeout of 2,000 ms.
 - Capture the full page at CSS scale with a one-times device scale factor.
 - Keep baselines per project and canonical platform.
 
