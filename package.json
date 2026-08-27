@@ -1,0 +1,30 @@
+{
+  "name": "vintage",
+  "version": "0.0.0",
+  "private": true,
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --host 127.0.0.1 --port 5195 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4195 --strictPort",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test:e2e": "firebase emulators:exec --project vintage-e2e --only auth,firestore \"playwright test\"",
+    "test:e2e:update-snapshots": "firebase emulators:exec --project vintage-e2e --only auth,firestore \"playwright test --update-snapshots\""
+  },
+  "dependencies": {
+    "@fontsource/atkinson-hyperlegible": "^5.2.8",
+    "firebase": "^12.18.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.70.3",
+    "@sveltejs/vite-plugin-svelte": "^7.3.0",
+    "firebase-tools": "^15.28.1",
+    "svelte": "^5.56.10",
+    "svelte-check": "^4.7.6",
+    "typescript": "^5.9.3",
+    "vite": "^8.2.2"
+  }
+}

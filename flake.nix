@@ -17,12 +17,15 @@
             git
             jdk
             nodejs_24
+            playwright-driver.browsers
           ];
 
           shellHook = ''
             # Keep Firebase emulator and Playwright browser artifacts stable
             # across separate Nix shell invocations and CI runs.
             export XDG_CACHE_HOME="$PWD/.cache"
+            export PLAYWRIGHT_BROWSERS_PATH="${pkgs.playwright-driver.browsers}"
+            export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
           '';
         };
       });
