@@ -45,7 +45,7 @@
       <h2 id="learn-title">What Vintage learns</h2>
       <ul>
         <li><span aria-hidden="true">♡</span>Your listing style</li>
-        <li><span aria-hidden="true">⌕</span>How you describe condition</li>
+        <li><span class="search-icon" aria-hidden="true"></span>How you describe condition</li>
         <li><span aria-hidden="true">◇</span>Your pricing approach</li>
       </ul>
     </section>
@@ -90,6 +90,9 @@
   li { min-height: 50px; display: flex; align-items: center; gap: 16px; border-top: 1px solid #e4ded3; font-size: 18px; }
   li:first-child { border-top: 0; }
   li span { width: 30px; color: #6d805b; font-size: 25px; text-align: center; }
+  .search-icon { position: relative; align-self: stretch; }
+  .search-icon::before { content: ''; position: absolute; top: 15px; left: 8px; width: 9px; height: 9px; border: 1px solid currentColor; border-radius: 50%; }
+  .search-icon::after { content: ''; position: absolute; top: 25px; left: 6px; width: 6px; border-top: 1px solid currentColor; transform: rotate(-45deg); transform-origin: right center; }
   .assurance { margin: -8px 0 0; display: flex; justify-content: center; align-items: center; gap: 10px; color: #4e4945; font-size: 16px; text-align: center; }
   .assurance span { color: #6d805b; }
   .backend { position: fixed; right: 12px; bottom: 10px; margin: 0; color: #77716b; font-size: 12px; }
