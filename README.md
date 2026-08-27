@@ -73,3 +73,7 @@ We will evaluate the product using:
 ## Project status
 
 The project is currently defining and validating the v0 experience. [VISION.md](./VISION.md) describes the enduring product vision and principles.
+
+## License
+
+Vintage is free software licensed under the [GNU General Public License version 3](./LICENSE).
