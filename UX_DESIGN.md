@@ -137,16 +137,19 @@ Approval resolves to a compact success state within the review screen. It shows 
 
 ## Visual language
 
-The interface uses glassmorphic surfaces in both light and dark appearances. Translucent, softly blurred cards sit over restrained plum and sage background gradients, with fine edge highlights and subtle shadows. Text, icons, photos, and essential controls remain crisp and opaque.
+The interface uses a terracotta and linen palette with glassmorphic surfaces in both light and dark appearances. Translucent, softly blurred cards sit over restrained terracotta and sand background gradients, with fine edge highlights and subtle shadows. Text, icons, photos, and essential controls remain crisp and opaque.
 
 | Element | Light appearance | Dark appearance |
 | --- | --- | --- |
-| Canvas | Warm ivory with pale plum and sage gradients | Deep charcoal/plum with muted plum and sage glows |
-| Glass surfaces | Frosted translucent white | Frosted translucent charcoal/plum |
-| Text | Deep charcoal | Warm off-white |
-| Primary actions | Deep plum with white text | Light plum with deep charcoal text |
+| Canvas | Linen `#F7F0E6` with pale sand and terracotta gradients | Warm charcoal `#211C19` with muted clay and umber glows |
+| Glass surfaces | Frosted translucent linen-white | Frosted translucent warm charcoal |
+| Text | Warm charcoal `#2B2521` | Linen `#F7F0E6` |
+| Primary actions | Rust `#984831` with white text | Soft apricot `#EDB59B` with warm charcoal text |
+| Price, selection, and progress accents | Rust `#984831` | Soft apricot `#EDB59B` |
 | Evidence and completion | Dark sage | Pale sage |
 | Inputs and boundaries | Defined neutral edges and light fills | Visible pale edges and dark fills |
+
+Sage remains a secondary colour for evidence and completion. Decorative glows use clay and sand; photographs retain their natural colours. Palette values are implementation targets, subject to contrast verification on the final composited surfaces.
 
 Both appearances use generous whitespace, an 8-pixel spacing grid, rounded surfaces, highly legible sans-serif type, and item photography whose colours remain unchanged by the theme.
 
