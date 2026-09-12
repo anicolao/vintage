@@ -1,88 +1,84 @@
-# Mockup generation prompts
+# Terracotta and linen mockup prompts
 
-Generated with the built-in image generation tool on 2026-09-12. Light variants use the original screen as an edit reference; dark variants use the matching generated light screen. These are visual concepts, not executable UI or accessibility measurements.
+Generated with the built-in image generation tool on 2026-09-12. Each edit used the corresponding glassmorphic mockup from commit 96df4fe as its reference. The eight outputs replace the previous palette at the same file paths. These are design concepts; final UI contrast must be verified in implementation.
 
 ## 01-sign-in-light.png
 
-Reference: 01-sign-in.png
-
 ```text
-Use case: ui-mockup / style-transfer.
-Regenerate the supplied Vintage mobile app screen as a polished glassmorphic UI design mockup. Preserve its exact screen purpose, all meaningful copy, values, information hierarchy and controls. Single flat full-screen portrait app screenshot, same approximately 393:852 aspect ratio as reference, no device frame, no perspective, no surrounding presentation, no extra labels or theme toggle. Follow system appearance automatically; no in-app theme setting. Keep Vintage branding, green vintage chore jacket photography where present, plum and sage accents, and clear sans-serif typography.
-Glass style: softly blurred atmospheric plum and sage gradients behind translucent frosted panels, delicate bright edge highlights, subtle layered shadows and rounded 20px cards. Deliberate restrained premium glass, not neon or excessive shine. Text and icons fully opaque, crisp and high contrast; inputs and primary actions clearly legible; retain generous spacing. Preserve photo colours, do not tint the item. Keep all content inside the canvas. Every screen belongs to the same coherent design system.
-Appearance: LIGHT. Warm ivory luminous background with diffuse pale sage and blush/plum colour clouds; milky translucent white glass surfaces, charcoal text, deep plum primary buttons with white text, muted dark sage evidence icons. Clearly visible frosted-glass layering while keeping an airy light appearance. Screen reference: 01-sign-in.
+Use case: style-transfer. Edit target: supplied Vintage 01-sign-in light glassmorphic mobile UI mockup.
+Change ONLY the UI colour palette to TERRACOTTA & LINEN. Preserve exact composition, layout, aspect ratio, all text verbatim, all prices and chart values, icons, typography, photos and control positions. Keep the frosted translucent glass panels, blurred atmospheric background, thin highlights and soft shadows. Do not add content, device frame, theme toggles, labels or settings.
+Remove ALL purple, plum, lavender, magenta and pink from the UI including gradients, buttons, brand wordmark, price, selection rings, chart markers, scan line, progress spinner, badges and decorative glows. Use warm earthy clay/rust, sand and linen instead. Keep muted sage only for existing semantic evidence/completion details; no green background glow. Preserve natural jacket and plant photography colours, no global orange filter, no sepia photo tint.
+LIGHT palette: warm linen #F7F0E6 canvas, softly blurred pale sand and muted terracotta clouds; milky linen-white frosted glass; warm charcoal #2B2521 text. Deep rust #984831 primary buttons with white labels, rust price and brand accents. Subtle warm clay scan light if present.
+Google button stays neutral frosted glass with readable contrasting text and unchanged multicolour G. Refined restrained tactile feel, no neon orange. Opaque high-contrast readable text on glass. Output one complete flat portrait screen matching the reference dimensions.
 ```
 
 ## 01-sign-in-dark.png
 
-Reference: 01-sign-in-light.png
-
 ```text
-Use case: style-transfer. Asset: Vintage mobile UI dark appearance mockup.
-Edit this LIGHT glassmorphic screen into its matching DARK system appearance. Preserve the exact layout, dimensions, typography, all text, controls, values, photo placement and image colours. Only change theme colours and surface lighting. Do not add or remove content, settings, labels or theme toggles. Single flat portrait app screenshot with no device frame.
-Dark palette: deep charcoal/plum background with softly blurred subdued plum and sage glows. Translucent dark charcoal/plum frosted-glass panels with fine pale edge highlights, soft shadows and subtle background blur. Fully opaque warm off-white primary text, legible pale neutral secondary text, pale sage evidence/check icons. Primary action buttons use a light muted plum fill with deep charcoal text. Google sign-in button uses dark frosted glass and warm white text with coloured G. Invert status-bar icons for dark background. Keep jacket photography natural and unchanged. If background contains photography, dim only that background for legibility. Restrained premium glass, no neon. Ensure text and controls are high contrast, never grey-on-grey. Exact same screen and content as reference; dark theme only.
+Use case: style-transfer. Edit target: supplied Vintage 01-sign-in dark glassmorphic mobile UI mockup.
+Change ONLY the UI colour palette to TERRACOTTA & LINEN. Preserve exact composition, layout, aspect ratio, all text verbatim, all prices and chart values, icons, typography, photos and control positions. Keep the frosted translucent glass panels, blurred atmospheric background, thin highlights and soft shadows. Do not add content, device frame, theme toggles, labels or settings.
+Remove ALL purple, plum, lavender, magenta and pink from the UI including gradients, buttons, brand wordmark, price, selection rings, chart markers, scan line, progress spinner, badges and decorative glows. Use warm earthy clay/rust, sand and linen instead. Keep muted sage only for existing semantic evidence/completion details; no green background glow. Preserve natural jacket and plant photography colours, no global orange filter, no sepia photo tint.
+DARK palette: deep warm charcoal #211C19 canvas, softly blurred muted burnt-clay and warm umber glows; translucent warm charcoal glass with pale linen edge highlights; linen #F7F0E6 text. Soft apricot #EDB59B primary buttons with warm charcoal #2B2521 labels, apricot price and accent details. Apricot scan light if present. No purple undertone anywhere.
+Google button stays neutral frosted glass with readable contrasting text and unchanged multicolour G. Refined restrained tactile feel, no neon orange. Opaque high-contrast readable text on glass. Output one complete flat portrait screen matching the reference dimensions.
 ```
 
 ## 02-add-photos-light.png
 
-Reference: 02-add-photos.png
-
 ```text
-Use case: ui-mockup / style-transfer.
-Regenerate the supplied Vintage mobile app screen as a polished glassmorphic UI design mockup. Preserve its exact screen purpose, all meaningful copy, values, information hierarchy and controls. Single flat full-screen portrait app screenshot, same approximately 393:852 aspect ratio as reference, no device frame, no perspective, no surrounding presentation, no extra labels or theme toggle. Follow system appearance automatically; no in-app theme setting. Keep Vintage branding, green vintage chore jacket photography where present, plum and sage accents, and clear sans-serif typography.
-Glass style: softly blurred atmospheric plum and sage gradients behind translucent frosted panels, delicate bright edge highlights, subtle layered shadows and rounded 20px cards. Deliberate restrained premium glass, not neon or excessive shine. Text and icons fully opaque, crisp and high contrast; inputs and primary actions clearly legible; retain generous spacing. Preserve photo colours, do not tint the item. Keep all content inside the canvas. Every screen belongs to the same coherent design system.
-Appearance: LIGHT. Warm ivory luminous background with diffuse pale sage and blush/plum colour clouds; milky translucent white glass surfaces, charcoal text, deep plum primary buttons with white text, muted dark sage evidence icons. Clearly visible frosted-glass layering while keeping an airy light appearance. Screen reference: 02-add-photos.
+Use case: style-transfer. Edit target: supplied Vintage 02-add-photos light glassmorphic mobile UI mockup.
+Change ONLY the UI colour palette to TERRACOTTA & LINEN. Preserve exact composition, layout, aspect ratio, all text verbatim, all prices and chart values, icons, typography, photos and control positions. Keep the frosted translucent glass panels, blurred atmospheric background, thin highlights and soft shadows. Do not add content, device frame, theme toggles, labels or settings.
+Remove ALL purple, plum, lavender, magenta and pink from the UI including gradients, buttons, brand wordmark, price, selection rings, chart markers, scan line, progress spinner, badges and decorative glows. Use warm earthy clay/rust, sand and linen instead. Keep muted sage only for existing semantic evidence/completion details; no green background glow. Preserve natural jacket and plant photography colours, no global orange filter, no sepia photo tint.
+LIGHT palette: warm linen #F7F0E6 canvas, softly blurred pale sand and muted terracotta clouds; milky linen-white frosted glass; warm charcoal #2B2521 text. Deep rust #984831 primary buttons with white labels, rust price and brand accents. Subtle warm clay scan light if present.
+Google button stays neutral frosted glass with readable contrasting text and unchanged multicolour G. Refined restrained tactile feel, no neon orange. Opaque high-contrast readable text on glass. Output one complete flat portrait screen matching the reference dimensions.
 ```
 
 ## 02-add-photos-dark.png
 
-Reference: 02-add-photos-light.png
-
 ```text
-Use case: style-transfer. Asset: Vintage mobile UI dark appearance mockup.
-Edit this LIGHT glassmorphic screen into its matching DARK system appearance. Preserve the exact layout, dimensions, typography, all text, controls, values, photo placement and image colours. Only change theme colours and surface lighting. Do not add or remove content, settings, labels or theme toggles. Single flat portrait app screenshot with no device frame.
-Dark palette: deep charcoal/plum background with softly blurred subdued plum and sage glows. Translucent dark charcoal/plum frosted-glass panels with fine pale edge highlights, soft shadows and subtle background blur. Fully opaque warm off-white primary text, legible pale neutral secondary text, pale sage evidence/check icons. Primary action buttons use a light muted plum fill with deep charcoal text. Google sign-in button uses dark frosted glass and warm white text with coloured G. Invert status-bar icons for dark background. Keep jacket photography natural and unchanged. If background contains photography, dim only that background for legibility. Restrained premium glass, no neon. Ensure text and controls are high contrast, never grey-on-grey. Exact same screen and content as reference; dark theme only.
+Use case: style-transfer. Edit target: supplied Vintage 02-add-photos dark glassmorphic mobile UI mockup.
+Change ONLY the UI colour palette to TERRACOTTA & LINEN. Preserve exact composition, layout, aspect ratio, all text verbatim, all prices and chart values, icons, typography, photos and control positions. Keep the frosted translucent glass panels, blurred atmospheric background, thin highlights and soft shadows. Do not add content, device frame, theme toggles, labels or settings.
+Remove ALL purple, plum, lavender, magenta and pink from the UI including gradients, buttons, brand wordmark, price, selection rings, chart markers, scan line, progress spinner, badges and decorative glows. Use warm earthy clay/rust, sand and linen instead. Keep muted sage only for existing semantic evidence/completion details; no green background glow. Preserve natural jacket and plant photography colours, no global orange filter, no sepia photo tint.
+DARK palette: deep warm charcoal #211C19 canvas, softly blurred muted burnt-clay and warm umber glows; translucent warm charcoal glass with pale linen edge highlights; linen #F7F0E6 text. Soft apricot #EDB59B primary buttons with warm charcoal #2B2521 labels, apricot price and accent details. Apricot scan light if present. No purple undertone anywhere.
+Google button stays neutral frosted glass with readable contrasting text and unchanged multicolour G. Refined restrained tactile feel, no neon orange. Opaque high-contrast readable text on glass. Output one complete flat portrait screen matching the reference dimensions.
 ```
 
 ## 03-building-draft-light.png
 
-Reference: 03-building-draft.png
-
 ```text
-Use case: ui-mockup / style-transfer.
-Regenerate the supplied Vintage mobile app screen as a polished glassmorphic UI design mockup. Preserve its exact screen purpose, all meaningful copy, values, information hierarchy and controls. Single flat full-screen portrait app screenshot, same approximately 393:852 aspect ratio as reference, no device frame, no perspective, no surrounding presentation, no extra labels or theme toggle. Follow system appearance automatically; no in-app theme setting. Keep Vintage branding, green vintage chore jacket photography where present, plum and sage accents, and clear sans-serif typography.
-Glass style: softly blurred atmospheric plum and sage gradients behind translucent frosted panels, delicate bright edge highlights, subtle layered shadows and rounded 20px cards. Deliberate restrained premium glass, not neon or excessive shine. Text and icons fully opaque, crisp and high contrast; inputs and primary actions clearly legible; retain generous spacing. Preserve photo colours, do not tint the item. Keep all content inside the canvas. Every screen belongs to the same coherent design system.
-Appearance: LIGHT. Warm ivory luminous background with diffuse pale sage and blush/plum colour clouds; milky translucent white glass surfaces, charcoal text, deep plum primary buttons with white text, muted dark sage evidence icons. Clearly visible frosted-glass layering while keeping an airy light appearance. Screen reference: 03-building-draft.
+Use case: style-transfer. Edit target: supplied Vintage 03-building-draft light glassmorphic mobile UI mockup.
+Change ONLY the UI colour palette to TERRACOTTA & LINEN. Preserve exact composition, layout, aspect ratio, all text verbatim, all prices and chart values, icons, typography, photos and control positions. Keep the frosted translucent glass panels, blurred atmospheric background, thin highlights and soft shadows. Do not add content, device frame, theme toggles, labels or settings.
+Remove ALL purple, plum, lavender, magenta and pink from the UI including gradients, buttons, brand wordmark, price, selection rings, chart markers, scan line, progress spinner, badges and decorative glows. Use warm earthy clay/rust, sand and linen instead. Keep muted sage only for existing semantic evidence/completion details; no green background glow. Preserve natural jacket and plant photography colours, no global orange filter, no sepia photo tint.
+LIGHT palette: warm linen #F7F0E6 canvas, softly blurred pale sand and muted terracotta clouds; milky linen-white frosted glass; warm charcoal #2B2521 text. Deep rust #984831 primary buttons with white labels, rust price and brand accents. Subtle warm clay scan light if present.
+Google button stays neutral frosted glass with readable contrasting text and unchanged multicolour G. Refined restrained tactile feel, no neon orange. Opaque high-contrast readable text on glass. Output one complete flat portrait screen matching the reference dimensions.
 ```
 
 ## 03-building-draft-dark.png
 
-Reference: 03-building-draft-light.png
-
 ```text
-Use case: style-transfer. Asset: Vintage mobile UI dark appearance mockup.
-Edit this LIGHT glassmorphic screen into its matching DARK system appearance. Preserve the exact layout, dimensions, typography, all text, controls, values, photo placement and image colours. Only change theme colours and surface lighting. Do not add or remove content, settings, labels or theme toggles. Single flat portrait app screenshot with no device frame.
-Dark palette: deep charcoal/plum background with softly blurred subdued plum and sage glows. Translucent dark charcoal/plum frosted-glass panels with fine pale edge highlights, soft shadows and subtle background blur. Fully opaque warm off-white primary text, legible pale neutral secondary text, pale sage evidence/check icons. Primary action buttons use a light muted plum fill with deep charcoal text. Google sign-in button uses dark frosted glass and warm white text with coloured G. Invert status-bar icons for dark background. Keep jacket photography natural and unchanged. If background contains photography, dim only that background for legibility. Restrained premium glass, no neon. Ensure text and controls are high contrast, never grey-on-grey. Exact same screen and content as reference; dark theme only.
+Use case: style-transfer. Edit target: supplied Vintage 03-building-draft dark glassmorphic mobile UI mockup.
+Change ONLY the UI colour palette to TERRACOTTA & LINEN. Preserve exact composition, layout, aspect ratio, all text verbatim, all prices and chart values, icons, typography, photos and control positions. Keep the frosted translucent glass panels, blurred atmospheric background, thin highlights and soft shadows. Do not add content, device frame, theme toggles, labels or settings.
+Remove ALL purple, plum, lavender, magenta and pink from the UI including gradients, buttons, brand wordmark, price, selection rings, chart markers, scan line, progress spinner, badges and decorative glows. Use warm earthy clay/rust, sand and linen instead. Keep muted sage only for existing semantic evidence/completion details; no green background glow. Preserve natural jacket and plant photography colours, no global orange filter, no sepia photo tint.
+DARK palette: deep warm charcoal #211C19 canvas, softly blurred muted burnt-clay and warm umber glows; translucent warm charcoal glass with pale linen edge highlights; linen #F7F0E6 text. Soft apricot #EDB59B primary buttons with warm charcoal #2B2521 labels, apricot price and accent details. Apricot scan light if present. No purple undertone anywhere.
+Google button stays neutral frosted glass with readable contrasting text and unchanged multicolour G. Refined restrained tactile feel, no neon orange. Opaque high-contrast readable text on glass. Output one complete flat portrait screen matching the reference dimensions.
 ```
 
 ## 04-review-light.png
 
-Reference: 04-review.png
-
 ```text
-Use case: ui-mockup / style-transfer.
-Regenerate the supplied Vintage mobile app screen as a polished glassmorphic UI design mockup. Preserve its exact screen purpose, all meaningful copy, values, information hierarchy and controls. Single flat full-screen portrait app screenshot, same approximately 393:852 aspect ratio as reference, no device frame, no perspective, no surrounding presentation, no extra labels or theme toggle. Follow system appearance automatically; no in-app theme setting. Keep Vintage branding, green vintage chore jacket photography where present, plum and sage accents, and clear sans-serif typography.
-Glass style: softly blurred atmospheric plum and sage gradients behind translucent frosted panels, delicate bright edge highlights, subtle layered shadows and rounded 20px cards. Deliberate restrained premium glass, not neon or excessive shine. Text and icons fully opaque, crisp and high contrast; inputs and primary actions clearly legible; retain generous spacing. Preserve photo colours, do not tint the item. Keep all content inside the canvas. Every screen belongs to the same coherent design system.
-Appearance: LIGHT. Warm ivory luminous background with diffuse pale sage and blush/plum colour clouds; milky translucent white glass surfaces, charcoal text, deep plum primary buttons with white text, muted dark sage evidence icons. Clearly visible frosted-glass layering while keeping an airy light appearance. Screen reference: 04-review.
+Use case: style-transfer. Edit target: supplied Vintage 04-review light glassmorphic mobile UI mockup.
+Change ONLY the UI colour palette to TERRACOTTA & LINEN. Preserve exact composition, layout, aspect ratio, all text verbatim, all prices and chart values, icons, typography, photos and control positions. Keep the frosted translucent glass panels, blurred atmospheric background, thin highlights and soft shadows. Do not add content, device frame, theme toggles, labels or settings.
+Remove ALL purple, plum, lavender, magenta and pink from the UI including gradients, buttons, brand wordmark, price, selection rings, chart markers, scan line, progress spinner, badges and decorative glows. Use warm earthy clay/rust, sand and linen instead. Keep muted sage only for existing semantic evidence/completion details; no green background glow. Preserve natural jacket and plant photography colours, no global orange filter, no sepia photo tint.
+LIGHT palette: warm linen #F7F0E6 canvas, softly blurred pale sand and muted terracotta clouds; milky linen-white frosted glass; warm charcoal #2B2521 text. Deep rust #984831 primary buttons with white labels, rust price and brand accents. Subtle warm clay scan light if present.
+Google button stays neutral frosted glass with readable contrasting text and unchanged multicolour G. Refined restrained tactile feel, no neon orange. Opaque high-contrast readable text on glass. Output one complete flat portrait screen matching the reference dimensions.
 ```
 
 ## 04-review-dark.png
 
-Reference: 04-review-light.png
-
 ```text
-Use case: style-transfer. Asset: Vintage mobile UI dark appearance mockup.
-Edit this LIGHT glassmorphic screen into its matching DARK system appearance. Preserve the exact layout, dimensions, typography, all text, controls, values, photo placement and image colours. Only change theme colours and surface lighting. Do not add or remove content, settings, labels or theme toggles. Single flat portrait app screenshot with no device frame.
-Dark palette: deep charcoal/plum background with softly blurred subdued plum and sage glows. Translucent dark charcoal/plum frosted-glass panels with fine pale edge highlights, soft shadows and subtle background blur. Fully opaque warm off-white primary text, legible pale neutral secondary text, pale sage evidence/check icons. Primary action buttons use a light muted plum fill with deep charcoal text. Google sign-in button uses dark frosted glass and warm white text with coloured G. Invert status-bar icons for dark background. Keep jacket photography natural and unchanged. If background contains photography, dim only that background for legibility. Restrained premium glass, no neon. Ensure text and controls are high contrast, never grey-on-grey. Exact same screen and content as reference; dark theme only.
+Use case: style-transfer. Edit target: supplied Vintage 04-review dark glassmorphic mobile UI mockup.
+Change ONLY the UI colour palette to TERRACOTTA & LINEN. Preserve exact composition, layout, aspect ratio, all text verbatim, all prices and chart values, icons, typography, photos and control positions. Keep the frosted translucent glass panels, blurred atmospheric background, thin highlights and soft shadows. Do not add content, device frame, theme toggles, labels or settings.
+Remove ALL purple, plum, lavender, magenta and pink from the UI including gradients, buttons, brand wordmark, price, selection rings, chart markers, scan line, progress spinner, badges and decorative glows. Use warm earthy clay/rust, sand and linen instead. Keep muted sage only for existing semantic evidence/completion details; no green background glow. Preserve natural jacket and plant photography colours, no global orange filter, no sepia photo tint.
+DARK palette: deep warm charcoal #211C19 canvas, softly blurred muted burnt-clay and warm umber glows; translucent warm charcoal glass with pale linen edge highlights; linen #F7F0E6 text. Soft apricot #EDB59B primary buttons with warm charcoal #2B2521 labels, apricot price and accent details. Apricot scan light if present. No purple undertone anywhere.
+Google button stays neutral frosted glass with readable contrasting text and unchanged multicolour G. Refined restrained tactile feel, no neon orange. Opaque high-contrast readable text on glass. Output one complete flat portrait screen matching the reference dimensions.
 ```
 
