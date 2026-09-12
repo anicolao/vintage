@@ -74,6 +74,16 @@ We will evaluate the product using:
 
 The project is currently defining and validating the v0 experience. [VISION.md](./VISION.md) describes the enduring product vision and principles.
 
+## Recording prompts
+
+`PROMPTS.md` records user prompts verbatim, in append-only order. Start each entry with `Prompt N: Three word summary`, using the next number and exactly three summary words, then a blank line and the prompt exactly as typed. Preserve typos and line breaks. For multiple commits answering the same request, append that request again under the next number for each commit.
+
+`npm install` and `npm ci` install the tracked pre-commit hook through the `prepare` script. For an existing checkout, run `npm run setup:hooks`. This sets this repository's `core.hooksPath` to `.githooks` (replacing any previous custom hooks-path setting).
+
+Every commit must stage a new prompt entry along with its changes. The hook compares the **Git index** with `HEAD`, rejects edits or deletion of earlier prompt bytes, and checks sequential numbering, three-word summaries and nonempty prompt text. An unstaged entry does not count. Run `npm run check:prompts` to check the index and `npm run test:hooks` to exercise the hook in temporary repositories.
+
+This is a local pre-commit check, not a server-side guarantee. It cannot establish that recorded text is authentic or semantically related to a change; preserving the exact user request remains the contributor's responsibility. The initial history covers the nine project prompts available in the recovery conversation, not unavailable earlier conversations. All work goes through a PR for review.
+
 ## License
 
 Vintage is free software licensed under the [GNU General Public License version 3](./LICENSE).
