@@ -1,3 +1,5 @@
+Milestones 1–2 extend current coverage to phone-light, phone-dark, desktop-light and desktop-dark. The draft scenarios exercise direct reload, account isolation, cross-tab identity allocation, retry idempotency and rejected-write recovery. `npm run test:domain` verifies pure replay and schema diagnostics. See [Draft foundation](./docs/DRAFT_FOUNDATION.md).
+
 # End-to-End Testing Guide
 
 ## Current milestone 0 coverage

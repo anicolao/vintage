@@ -52,7 +52,7 @@ export class TestStepHelper {
   }
 
   generateDocs() {
-    if (this.testInfo.project.name !== 'desktop') return;
+    if (this.testInfo.project.name !== 'desktop-light') return;
     let content = `# ${this.title}\n\n${this.description}\n\n`;
     for (const step of this.steps) {
       content += `## ${step.title}\n\n![${step.title}](${step.image})\n\n`;

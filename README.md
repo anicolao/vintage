@@ -87,3 +87,5 @@ This is a local pre-commit check, not a server-side guarantee. It cannot establi
 ## License
 
 Vintage is free software licensed under the [GNU General Public License version 3](./LICENSE).
+
+Milestones 1–2 add system-following terracotta/linen appearances and durable listing drafts. See [Draft foundation](./docs/DRAFT_FOUNDATION.md) for the event/version contract, recovery behavior and live review steps.

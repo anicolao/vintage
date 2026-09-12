@@ -7,6 +7,7 @@ test('Google session, workspace note and owned storage survive a real SDK flow',
   // The emulator widget's optional CDN fonts/styles must not gate authentication.
   await context.route(/https:\/\/(unpkg.com|fonts.googleapis.com|fonts.gstatic.com)\//, route => route.abort());
   await page.goto('/connection-check');
+  await expect(page.getByRole('button', { name: 'Continue with Google' })).toBeEnabled();
   const popupEvent = page.waitForEvent('popup', { timeout: 2_000 });
   await page.getByRole('button', { name: 'Continue with Google' }).click();
   const popup = await popupEvent;

@@ -4,7 +4,7 @@ Google popup authentication, a persistent workspace note and an owned Storage ro
 
 ## The restored account verifies persistent notes and file storage
 
-![The restored account verifies persistent notes and file storage](./screenshots/000-workspace-verified-desktop-linux.png)
+![The restored account verifies persistent notes and file storage](./screenshots/000-workspace-verified-desktop-light-linux.png)
 
 **Verifications:**
 

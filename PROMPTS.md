@@ -63,3 +63,7 @@ File uploaded, read back, and deleted successfully.
 Prompt 15: Resolve rebase conflicts
 
 the PR looks good but says it can't be rebased due to conflicts
+
+Prompt 16: Implement next milestones
+
+ok merged to main, let's do the next 2 milestones on a new PR

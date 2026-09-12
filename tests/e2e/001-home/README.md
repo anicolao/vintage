@@ -4,7 +4,7 @@ The SPA restores Firebase auth state and presents the AI-first seller propositio
 
 ## The home screen is connected and ready
 
-![The home screen is connected and ready](./screenshots/000-home-ready-desktop-linux.png)
+![The home screen is connected and ready](./screenshots/000-home-ready-desktop-light-linux.png)
 
 **Verifications:**
 

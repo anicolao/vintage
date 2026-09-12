@@ -34,8 +34,10 @@ export default defineConfig({
   },
   snapshotPathTemplate: '{testDir}/{testFileDir}/screenshots/{arg}{ext}',
   projects: [
-    { name: 'phone', use: { browserName: 'chromium', viewport: { width: 393, height: 852 } } },
-    { name: 'desktop', use: { browserName: 'chromium', viewport: { width: 1280, height: 1000 } } }
+    ...(['light', 'dark'] as const).flatMap(colorScheme => [
+      { name: `phone-${colorScheme}`, use: { browserName: 'chromium' as const, colorScheme, viewport: { width: 393, height: 852 } } },
+      { name: `desktop-${colorScheme}`, use: { browserName: 'chromium' as const, colorScheme, viewport: { width: 1280, height: 1000 } } }
+    ])
   ],
   webServer: {
     command: 'npm run build:e2e && npm run preview -- --port 5195',

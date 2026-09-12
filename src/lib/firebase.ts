@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { connectAuthEmulator, getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
+import { connectAuthEmulator, getAuth } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
 import { connectStorageEmulator, getStorage } from 'firebase/storage';
 import { firebaseSettings } from './firebase-config.mjs';
@@ -25,19 +25,4 @@ function initializeBackend() {
 
 export function getBackend() {
   return backend ??= initializeBackend();
-}
-
-export function observeUser(next: (user: User | null) => void, error: (error: Error) => void) {
-  return onAuthStateChanged(getBackend().auth, next, error);
-}
-
-export function login() {
-  // Invoke synchronously from the click to retain the browser's popup permission.
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
-  return signInWithPopup(getBackend().auth, provider);
-}
-
-export function logout() {
-  return signOut(getBackend().auth);
 }
