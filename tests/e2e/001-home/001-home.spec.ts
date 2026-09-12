@@ -5,7 +5,7 @@ test('home screen is ready to begin a listing', async ({ page }, testInfo) => {
   const steps = new TestStepHelper(page, testInfo);
   steps.setMetadata(
     'Vintage home screen',
-    'The SPA reaches the Firebase emulator and presents the AI-first seller proposition.'
+    'The SPA restores Firebase auth state and presents the AI-first seller proposition.'
   );
 
   await page.goto('/');
@@ -24,7 +24,7 @@ test('home screen is ready to begin a listing', async ({ page }, testInfo) => {
         }
       },
       {
-        spec: 'The Google sign-in action becomes available after the emulator responds',
+        spec: 'The Google sign-in action becomes available after auth state resolves',
         check: async () => expect(page.getByRole('button', { name: 'Continue with Google' })).toBeEnabled()
       },
       {
@@ -37,7 +37,7 @@ test('home screen is ready to begin a listing', async ({ page }, testInfo) => {
       },
       {
         spec: 'The backend readiness status is visible',
-        check: async () => expect(page.getByRole('status')).toHaveText('Prototype ready')
+        check: async () => expect(page.getByRole('status')).toHaveText('Ready')
       }
     ]
   });

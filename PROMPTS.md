@@ -33,3 +33,33 @@ that's a typo in the name it should be IMPLEMENTATION_PLAN and please put this (
 Prompt 9: Record Verbatim Prompts
 
 We missed a step at the start. We should be recording all of our prompts verbatim in an append only PROMPTS.md file with each prompt preceeded by Prompt N: Three word summary and then the prompt itself exactly as typed. Let's generate that file for all past prompts now, and add a precommit hook that verifies that every commit records the prompt that it goes with.
+
+Prompt 10: Require Live Firebase
+
+OK back to the implementation plan. We need each PR to work against a production firebase auth and store, not against an emulator. the plan seems to imply that we won't have that until milestone 8. that's not ok. other than that, it seems good.
+
+Prompt 11: Implement Firebase Foundation
+
+OK looks good let's do mileston 0 and add it to this PR so that we can commit.
+
+Prompt 12: Create Review Project
+
+> There’s no Vintage project in the Firebase account I can access. Which project should host the live PR previews?
+
+Create a new Vintage review project (recommended)
+
+Prompt 13: Choose Billing Account
+
+> The “Firebase Payment” billing account cannot accept another project because its linking quota is exceeded. How should I enable billing for vintage-review-anicolao so Cloud Storage can be provisioned?
+
+Use the existing “VMs” billing account
+
+Prompt 14: Confirm phone storage
+
+> The live preview is ready: https://vintage-review-anicolao--pr-3-889g4vrj.web.app . Please sign in with Google, save a note, reload to confirm it persists, and run “Verify file storage” under “Preview connection checks.” Does that work on your phone?
+
+File uploaded, read back, and deleted successfully.
+
+Prompt 15: Resolve rebase conflicts
+
+the PR looks good but says it can't be rebased due to conflicts

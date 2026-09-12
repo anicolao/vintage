@@ -43,7 +43,7 @@ export class TestStepHelper {
 
     const index = String(this.count++).padStart(3, '0');
     const filename = `${index}-${id}-${this.testInfo.project.name}-linux.png`;
-    await expect(this.page).toHaveScreenshot(filename, { maxDiffPixels: 0 });
+    await expect(this.page).toHaveScreenshot(filename, { maxDiffPixels: 0, fullPage: true });
     this.steps.push({
       title: options.description,
       image: `./screenshots/${filename}`,

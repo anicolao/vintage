@@ -13,14 +13,20 @@
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4195 --strictPort",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "test:e2e": "firebase emulators:exec --project vintage-e2e --only auth,firestore \"playwright test\"",
-    "test:e2e:update-snapshots": "firebase emulators:exec --project vintage-e2e --only auth,firestore \"playwright test --update-snapshots\""
+    "test:e2e": "firebase emulators:exec --project demo-vintage --only auth,firestore,storage \"node --test tests/rules/*.test.mjs && playwright test\"",
+    "test:e2e:update-snapshots": "firebase emulators:exec --project demo-vintage --only auth,firestore,storage \"node --test tests/rules/*.test.mjs && playwright test --update-snapshots\"",
+    "test:config": "node --test tests/config/*.test.mjs",
+    "test:rules": "firebase emulators:exec --project demo-vintage --only firestore,storage \"node --test tests/rules/*.test.mjs\"",
+    "build:e2e": "vite build --mode e2e",
+    "test:foundation": "npm run test:e2e",
+    "build:live": "node scripts/build-live.mjs"
   },
   "dependencies": {
     "@fontsource/atkinson-hyperlegible": "^5.2.8",
     "firebase": "^12.18.0"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@playwright/test": "1.61.1",
     "@sveltejs/adapter-static": "^3.0.10",
     "@sveltejs/kit": "^2.70.3",

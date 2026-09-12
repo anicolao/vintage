@@ -4,13 +4,65 @@
   },
   "hosting": {
     "public": "build",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [{ "source": "**", "destination": "/index.html" }]
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/index.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-store"
+          }
+        ]
+      },
+      {
+        "source": "/version.json",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-store"
+          }
+        ]
+      }
+    ]
   },
   "emulators": {
-    "auth": { "host": "127.0.0.1", "port": 9299 },
-    "firestore": { "host": "127.0.0.1", "port": 8280 },
-    "ui": { "enabled": false },
-    "singleProjectMode": true
+    "auth": {
+      "host": "127.0.0.1",
+      "port": 9299
+    },
+    "firestore": {
+      "host": "127.0.0.1",
+      "port": 8280
+    },
+    "ui": {
+      "enabled": false
+    },
+    "singleProjectMode": true,
+    "storage": {
+      "host": "127.0.0.1",
+      "port": 9290
+    }
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "auth": {
+    "providers": {
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Vintage",
+        "supportEmail": "alex@boardgamescafe.org"
+      }
+    }
   }
 }

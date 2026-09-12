@@ -1,6 +1,6 @@
 # Vintage home screen
 
-The SPA reaches the Firebase emulator and presents the AI-first seller proposition.
+The SPA restores Firebase auth state and presents the AI-first seller proposition.
 
 ## The home screen is connected and ready
 
@@ -10,6 +10,6 @@ The SPA reaches the Firebase emulator and presents the AI-first seller propositi
 
 - [x] The page exposes the stable Vintage title
 - [x] The product promise is visible
-- [x] The Google sign-in action becomes available after the emulator responds
+- [x] The Google sign-in action becomes available after auth state resolves
 - [x] The seller-learning promise is complete
 - [x] The backend readiness status is visible
