@@ -72,7 +72,7 @@ We will evaluate the product using:
 
 ## Project status
 
-The project is currently defining and validating the v0 experience. [VISION.md](./VISION.md) describes the enduring product vision and principles.
+Milestone 0 adds Google sign-in, a durable workspace note, an owned Storage check and live Firebase PR deployment. See [Firebase setup and review verification](./docs/FIREBASE_SETUP.md). The listing workflow and new system themes remain planned. [VISION.md](./VISION.md) describes the enduring product vision and principles.
 
 ## Recording prompts
 

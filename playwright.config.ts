@@ -38,17 +38,10 @@ export default defineConfig({
     { name: 'desktop', use: { browserName: 'chromium', viewport: { width: 1280, height: 1000 } } }
   ],
   webServer: {
-    command: 'npm run dev',
+    command: 'npm run build:e2e && npm run preview -- --port 5195',
     url: 'http://127.0.0.1:5195',
     reuseExistingServer: false,
-    timeout: 120_000,
-    env: {
-      VITE_USE_FIREBASE_EMULATORS: 'true',
-      VITE_FIREBASE_PROJECT_ID: 'vintage-e2e',
-      VITE_FIREBASE_API_KEY: 'e2e-api-key',
-      VITE_FIREBASE_AUTH_DOMAIN: 'vintage-e2e.firebaseapp.com',
-      VITE_FIREBASE_APP_ID: '1:123456789:web:e2e'
-    }
+    timeout: 120_000
   },
   timeout: 30_000,
   expect: {

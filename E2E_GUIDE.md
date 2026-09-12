@@ -1,5 +1,11 @@
 # End-to-End Testing Guide
 
+## Current milestone 0 coverage
+
+`npm run test:foundation` runs the Firestore/Storage owner-rule suite and phone/desktop browser scenarios against Auth, Firestore and Storage emulators using the non-production `demo-vintage` project. Playwright builds the static SPA in E2E mode before serving it. The browser signs in through the Auth emulator's Google popup using the same production SDK path, saves/reloads a workspace note, verifies Storage and signs out. No test-auth adapter is shipped in the app.
+
+PR review deployments use live Firebase, separately from this test command. See [live setup and smoke checks](./docs/FIREBASE_SETUP.md). Functions, listing events, AI fixtures and the full scenario catalogue below remain the target contract for later milestones. The current projects are phone/desktop light; dark mode is milestone 1.
+
 ## Contract
 
 Playwright E2E tests are the primary executable demonstration of the v0. Every user-visible state is verified semantically and compared with a committed screenshot at zero-pixel tolerance.

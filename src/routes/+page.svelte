@@ -2,18 +2,81 @@
   import '@fontsource/atkinson-hyperlegible/400.css';
   import '@fontsource/atkinson-hyperlegible/700.css';
   import { onMount } from 'svelte';
-  import { connectBackend } from '$lib/firebase';
+  import type { User } from 'firebase/auth';
+  import { login, logout, observeUser, settings } from '$lib/firebase';
+  import { loadWorkspace, saveNote, verifyStorage } from '$lib/repositories/workspace';
 
   let status: 'connecting' | 'ready' | 'error' = 'connecting';
+  let user: User | null = null;
+  let note = '';
+  let busy = false;
+  let message = '';
+  let error = '';
+  let session = 0;
 
-  onMount(async () => {
+  function explain(cause: unknown) {
+    const code = (cause as { code?: string })?.code;
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return 'Sign-in was cancelled. Try again when you’re ready.';
+    if (code === 'auth/popup-blocked') return 'Allow popups for Vintage, then try signing in again.';
+    if (code === 'auth/unauthorized-domain') return 'Sign-in is not configured for this preview address yet.';
+    return 'We couldn’t connect to your workspace. Check your connection and try again.';
+  }
+
+  async function openWorkspace(next: User | null) {
+    const current = ++session;
+    user = next;
+    note = '';
+    message = '';
+    error = '';
+    busy = false;
+    status = next ? 'connecting' : 'ready';
+    if (!next) return;
     try {
-      await connectBackend();
+      const workspace = await loadWorkspace(next.uid);
+      if (current !== session) return;
+      note = workspace.note;
       status = 'ready';
-    } catch {
+    } catch (cause) {
+      if (current !== session) return;
+      error = explain(cause);
       status = 'error';
     }
+  }
+
+  onMount(() => {
+    const unsubscribe = observeUser(openWorkspace, (cause) => { error = explain(cause); status = 'error'; });
+    return () => { session++; unsubscribe(); };
   });
+
+  async function signIn() {
+    busy = true;
+    error = '';
+    try { await login(); } catch (cause) { error = explain(cause); } finally { busy = false; }
+  }
+
+  async function signOut() {
+    busy = true;
+    error = '';
+    try { await logout(); } catch (cause) { error = explain(cause); } finally { busy = false; }
+  }
+
+  async function check(action: 'save' | 'storage') {
+    if (!user || busy) return;
+    const current = session;
+    const uid = user.uid;
+    busy = true;
+    error = '';
+    message = '';
+    try {
+      if (action === 'save') await saveNote(uid, note);
+      else await verifyStorage(uid);
+      if (current === session) message = action === 'save' ? 'Note saved and read back. It will be here after you reload.' : 'File uploaded, read back, and deleted successfully.';
+    } catch (cause) {
+      if (current === session) error = explain(cause);
+    } finally {
+      if (current === session) busy = false;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -26,7 +89,7 @@
 
 <main class="shell" data-e2e-layout data-status={status}>
   <section class="hero" aria-labelledby="page-title">
-    <a class="wordmark" href="/" aria-label="Vintage home">Vintage<span aria-hidden="true">✦</span></a>
+    <a class="wordmark" href="./" aria-label="Vintage home">Vintage<span aria-hidden="true">✦</span></a>
 
     <div class="pitch">
       <p class="eyebrow">Your AI listing partner</p>
@@ -36,10 +99,35 @@
       </p>
     </div>
 
-    <button class="google" type="button" disabled={status !== 'ready'}>
+    {#if !user}
+    <button class="google" type="button" onclick={signIn} disabled={status !== 'ready' || busy}>
       <span class="google-mark" aria-hidden="true">G</span>
-      <span>{status === 'connecting' ? 'Preparing Vintage…' : 'Continue with Google'}</span>
+      <span>{status === 'connecting' ? 'Preparing Vintage…' : busy ? 'Signing in…' : 'Continue with Google'}</span>
     </button>
+    {:else}
+    <section class="workspace" aria-labelledby="workspace-title">
+      <h2 id="workspace-title">Your workspace</h2>
+      <p>Signed in as <strong>{user.displayName || user.email || 'Google user'}</strong></p>
+      {#if status === 'ready'}
+        <label for="workspace-note">Workspace note</label>
+        <textarea id="workspace-note" bind:value={note} maxlength="500" disabled={busy} placeholder="Leave a note to verify that your workspace is saved."></textarea>
+        <button type="button" onclick={() => check('save')} disabled={busy}>Save note</button>
+        <details>
+          <summary>Preview connection checks</summary>
+          <p>This preview verifies account access and cloud storage. Listing creation comes next.</p>
+          <button type="button" onclick={() => check('storage')} disabled={busy}>Verify file storage</button>
+          <p class="technical">Project: {settings.config.projectId}<br />Workspace: {settings.workspace}<br />Revision: {settings.revision}</p>
+        </details>
+      {:else if status === 'error'}
+        <button type="button" onclick={() => openWorkspace(user)}>Retry workspace</button>
+      {:else}
+        <p>Opening your workspace…</p>
+      {/if}
+      <button type="button" onclick={signOut} disabled={busy}>Sign out</button>
+      <p role="status" class="feedback">{busy ? 'Working…' : message}</p>
+    </section>
+    {/if}
+    {#if error}<p role="alert">{error}</p>{/if}
 
     <section class="learn" aria-labelledby="learn-title">
       <h2 id="learn-title">What Vintage learns</h2>
@@ -54,7 +142,7 @@
   </section>
 
   <p class="backend" role="status">
-    {status === 'ready' ? 'Prototype ready' : status === 'error' ? 'Connection needs attention' : 'Connecting…'}
+    {status === 'ready' ? 'Ready' : status === 'error' ? 'Connection needs attention' : 'Connecting…'}
   </p>
 </main>
 
@@ -74,6 +162,14 @@
       #faf7f0;
   }
 
+  .workspace { padding: 24px; border: 1px solid #d8d1c6; border-radius: 18px; background: #fff; }
+  .workspace label { display: block; margin-top: 16px; }
+  .workspace textarea { width: 100%; min-height: 88px; margin: 8px 0; padding: 12px; font: inherit; }
+  .workspace button { min-height: 44px; margin: 8px 8px 8px 0; padding: 8px 16px; border: 1px solid #736a60; border-radius: 8px; background: #fff; color: #211d1d; }
+  .workspace summary { min-height: 44px; padding-top: 12px; cursor: pointer; }
+  .technical { font-size: 12px; overflow-wrap: anywhere; }
+  .feedback { min-height: 24px; }
+  :global(:focus-visible) { outline: 3px solid #984831; outline-offset: 3px; }
   .hero { width: min(100%, 560px); display: grid; gap: 30px; }
   .wordmark { justify-self: center; color: #58163f; font-size: 48px; font-weight: 700; text-decoration: none; letter-spacing: -2px; }
   .wordmark span { color: #6d805b; font-size: 18px; vertical-align: top; margin-left: 2px; }
@@ -99,7 +195,15 @@
 
   @media (max-width: 600px) {
     .shell { place-items: start center; padding: 24px 20px 18px; }
-    .hero { gap: 22px; }
+    .workspace { padding: 24px; border: 1px solid #d8d1c6; border-radius: 18px; background: #fff; }
+  .workspace label { display: block; margin-top: 16px; }
+  .workspace textarea { width: 100%; min-height: 88px; margin: 8px 0; padding: 12px; font: inherit; }
+  .workspace button { min-height: 44px; margin: 8px 8px 8px 0; padding: 8px 16px; border: 1px solid #736a60; border-radius: 8px; background: #fff; color: #211d1d; }
+  .workspace summary { min-height: 44px; padding-top: 12px; cursor: pointer; }
+  .technical { font-size: 12px; overflow-wrap: anywhere; }
+  .feedback { min-height: 24px; }
+  :global(:focus-visible) { outline: 3px solid #984831; outline-offset: 3px; }
+  .hero { gap: 22px; }
     .wordmark { font-size: 42px; }
     .pitch { padding-top: 4px; }
     h1 { font-size: 58px; }
