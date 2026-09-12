@@ -52,7 +52,7 @@
     {:else if projection.status === 'draft'}
       <section class="pitch"><span class="chip">Draft · Just for you</span><h1>{projection.title}</h1><p class="lede">A place for the details that make this piece yours.</p></section>
       <Card><form onsubmit={e => { e.preventDefault(); void save(); }}><label for="draft-context">What should we know?</label><p id="context-help">Add any details you want to remember: fit, condition, or a little history.</p><textarea id="draft-context" aria-describedby="context-help" bind:value={context} oninput={() => edited = true} maxlength="2000" disabled={saving || pending} placeholder="A lovely relaxed fit, worn just a handful of times…"></textarea><Button type="submit" disabled={saving || pending || context === projection.context}>Save details</Button></form>
-        <Status message={pending ? 'Waiting to save to the cloud…' : 'Saved to your account'} />
+        <Status message={saving ? 'Saving your change on this device…' : pending ? 'Waiting to save to the cloud…' : context !== projection.context ? 'Unsaved changes' : 'Saved to your account'} />
         <p class="fine-print">Photos and listing generation are coming next. For now, your draft and details are safely kept here.</p>
       </Card>
     {:else if pending}<Card><h1>Saving your new draft…</h1><p>Your draft is stored on this device while we connect to your account.</p></Card>

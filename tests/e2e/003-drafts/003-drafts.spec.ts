@@ -12,6 +12,8 @@ test('draft survives direct reload, follows appearance and clears on account cha
   await expect(page.getByRole('heading', { name: 'Favourite linen jacket' })).toBeVisible();
   const draftUrl = page.url();
   await page.getByLabel('What should we know?').fill('Relaxed fit. A tiny mark on the left cuff.');
+  await expect(page.getByText('Unsaved changes', { exact: true })).toBeVisible();
+  await expect(page.getByText('Saved to your account', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Save details', exact: true }).click();
   await expect(page.getByText('Saved to your account', { exact: true })).toBeVisible();
   await page.reload();
