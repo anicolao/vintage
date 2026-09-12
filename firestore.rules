@@ -18,5 +18,78 @@ service cloud.firestore {
         && request.resource.data.note is string && request.resource.data.note.size() <= 500
         && request.resource.data.updatedAt == request.time;
     }
+    // Domain streams are additive; milestone-zero workspace notes remain compatible.
+    match /workspaces/{workspace}/accounts/{uid} {
+      function streamPath(listingId) {
+        return /databases/$(database)/documents/workspaces/$(workspace)/accounts/$(uid)/listings/$(listingId);
+      }
+      function accountPath() {
+        return /databases/$(database)/documents/workspaces/$(workspace)/accounts/$(uid);
+      }
+      function descriptor(data) {
+        return data.keys().hasAll(['ownerUid', 'createdAt', 'updatedAt', 'version', 'lastEventId'])
+          && data.keys().hasOnly(['ownerUid', 'createdAt', 'updatedAt', 'version', 'lastEventId'])
+          && data.ownerUid == uid && data.version is int && data.version > 0
+          && data.lastEventId is string && data.lastEventId.size() <= 256
+          && data.updatedAt == request.time;
+      }
+      function linkedEvent(path, data, type) {
+        let event = getAfter(/$(path)/events/$(data.lastEventId)).data;
+        return event.streamVersion == data.version && event.createdAt == request.time
+          && event.type == type && event.actorUid == uid;
+      }
+      function envelope(event, eventId, streamId) {
+        return event.keys().hasAll(['id', 'streamId', 'type', 'payload', 'actorUid', 'deviceId', 'clientSeq', 'correlationId', 'causationId', 'createdAt', 'schemaVersion', 'reducerVersion', 'streamVersion'])
+          && event.keys().hasOnly(['id', 'streamId', 'type', 'payload', 'actorUid', 'deviceId', 'clientSeq', 'correlationId', 'causationId', 'createdAt', 'schemaVersion', 'reducerVersion', 'streamVersion'])
+          && event.id == eventId && eventId.size() <= 256 && event.streamId == streamId
+          && event.actorUid == uid && event.deviceId is string && event.deviceId.matches('^[a-zA-Z0-9-]{1,64}$')
+          && event.clientSeq is int && event.clientSeq > 0 && event.clientSeq <= 9007199254740991
+          && event.id == uid + '-' + event.deviceId + '-' + string(event.clientSeq)
+          && event.correlationId == eventId && event.causationId == null
+          && event.createdAt == request.time && event.schemaVersion == 2 && event.reducerVersion == 1
+          && event.streamVersion is int && event.streamVersion > 0 && event.payload is map;
+      }
+      function linkedDescriptor(path, event) {
+        let after = getAfter(path).data;
+        return after.lastEventId == event.id && after.version == event.streamVersion
+          && after.updatedAt == request.time && after.ownerUid == uid;
+      }
+      allow read: if owner(uid);
+      allow create: if owner(uid) && descriptor(request.resource.data)
+        && request.resource.data.createdAt == request.time && request.resource.data.version == 1
+        && linkedEvent(accountPath(), request.resource.data, 'account/created');
+      match /events/{eventId} {
+        allow read: if owner(uid);
+        allow create: if owner(uid) && envelope(request.resource.data, eventId, uid)
+          && request.resource.data.type == 'account/created' && request.resource.data.payload.keys().size() == 0
+          && request.resource.data.streamVersion == 1 && !exists(accountPath())
+          && linkedDescriptor(accountPath(), request.resource.data);
+      }
+      match /listings/{listingId} {
+        allow read: if owner(uid);
+        allow create: if owner(uid) && exists(accountPath())
+          && descriptor(request.resource.data) && request.resource.data.createdAt == request.time
+          && request.resource.data.version == 1 && listingId == request.resource.data.lastEventId
+          && linkedEvent(streamPath(listingId), request.resource.data, 'listing/created');
+        allow update: if owner(uid) && descriptor(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.version == resource.data.version + 1
+          && request.resource.data.lastEventId != resource.data.lastEventId
+          && linkedEvent(streamPath(listingId), request.resource.data, 'context/changed');
+        match /events/{eventId} {
+          allow read: if owner(uid);
+          allow create: if owner(uid) && envelope(request.resource.data, eventId, listingId)
+            && linkedDescriptor(streamPath(listingId), request.resource.data)
+            && ((request.resource.data.type == 'listing/created'
+              && !exists(streamPath(listingId)) && request.resource.data.streamVersion == 1
+              && request.resource.data.payload.keys().hasOnly(['title'])
+              && request.resource.data.payload.title is string && request.resource.data.payload.title.size() > 0 && request.resource.data.payload.title.size() <= 100)
+            || (request.resource.data.type == 'context/changed' && exists(streamPath(listingId))
+              && request.resource.data.streamVersion == get(streamPath(listingId)).data.version + 1
+              && request.resource.data.payload.keys().hasOnly(['context'])
+              && request.resource.data.payload.context is string && request.resource.data.payload.context.size() <= 2000));
+        }
+      }
+    }
   }
 }

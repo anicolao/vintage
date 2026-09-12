@@ -92,26 +92,30 @@ Implementation and cloud provisioning are included in [PR #3](https://github.com
 
 ## 1. System appearance and shared controls
 
-- [ ] Extract global layout and design tokens from `src/routes/+page.svelte` into shared styles and components.
-- [ ] Implement light/dark tokens using the system colour-scheme preference from first paint, including native controls. Respond to live system changes without reload or an in-app theme switch.
-- [ ] Use linen `#F7F0E6`, warm charcoal `#2B2521`, and rust `#984831` in light mode; warm charcoal `#211C19`, linen text, and apricot `#EDB59B` in dark mode. Keep sage for secondary evidence/completion details.
-- [ ] Build glass cards, buttons, inputs, chips and status treatments with readable opacity, restrained clay/sand glows, visible focus and solid-surface fallbacks. Cover unavailable blur, reduced transparency and reduced motion.
-- [ ] Keep item photography untinted. Use real UI elements and approved assets, not mockup screenshots as application backgrounds.
-- [ ] Extend Playwright to phone-light, phone-dark, desktop-light and desktop-dark projects; preserve the existing pinned renderer and zero-pixel threshold.
+- [x] Extract global layout and design tokens from `src/routes/+page.svelte` into shared styles and components.
+- [x] Implement light/dark tokens using the system colour-scheme preference from first paint, including native controls. Respond to live system changes without reload or an in-app theme switch.
+- [x] Use linen `#F7F0E6`, warm charcoal `#2B2521`, and rust `#984831` in light mode; warm charcoal `#211C19`, linen text, and apricot `#EDB59B` in dark mode. Keep sage for secondary evidence/completion details.
+- [x] Build glass cards, buttons, inputs, chips and status treatments with readable opacity, restrained clay/sand glows, visible focus and solid-surface fallbacks. Cover unavailable blur, reduced transparency and reduced motion.
+- [x] Keep item photography untinted. Use real UI elements and approved assets, not mockup screenshots as application backgrounds.
+- [x] Extend Playwright to phone-light, phone-dark, desktop-light and desktop-dark projects; preserve the existing pinned renderer and zero-pixel threshold.
+
+Implementation is present; automated acceptance and live phone review evidence are tracked in [Draft foundation](./docs/DRAFT_FOUNDATION.md).
 
 **Done when:** the live Firebase preview still passes sign-in and persistence checks, and the home screen matches the approved visual direction in all four projects; keyboard focus survives an appearance change; text, focus and controls meet the UX contrast/touch-target requirements; fallback surfaces remain usable. Review intentional screenshots before committing them.
 
 ## 2. Identity and durable draft foundation
 
-- [ ] Separate Firebase initialization, auth state, repositories, event contracts and projections under `src/lib/`; routes render projections and dispatch typed actions.
-- [ ] Extend the live Google authentication from milestone 0 with cancellation/retry and blocked-popup handling as appropriate. Resolve auth before selecting the sign-in or resume route; detach old subscriptions on account changes.
-- [ ] Add a deterministic emulator identity using the same auth-observer path. Reject test authentication unless the build is explicitly E2E and every backend endpoint is local.
-- [ ] Implement versioned event validation, ordering, deduplication, pure reducers and diagnostics. Test acknowledged versus pending timestamps, repeated IDs, unknown events, malformed payloads and schema upgrades.
-- [ ] Persist stable device identity and allocate client sequences safely across tabs. Make retry delivery idempotent and pending/rejected writes visible.
-- [ ] Create owner-scoped account and listing descriptors and event streams atomically where needed; add subscriptions and new/resume routes. Define the listing version used by later commands so it covers every relevant write.
-- [ ] Introduce owner/envelope/payload validation in Firestore rules. Deny cross-user access, event updates/deletes and client-authored privileged events. Add rules tests with both allowed and rejected operations.
-- [ ] Add the domain unit-test runner and extend milestone 0 rules tests and CI. Keep live review/production configuration separate from emulator tests; deploy new domain rules and indexes with this PR.
-- [ ] Extend milestone 0 routing to the live draft routes; a direct reload of `/listings/[id]` must serve the SPA and restore the cloud-backed draft.
+- [x] Separate Firebase initialization, auth state, repositories, event contracts and projections under `src/lib/`; routes render projections and dispatch typed actions.
+- [x] Extend the live Google authentication from milestone 0 with cancellation/retry and blocked-popup handling as appropriate. Resolve auth before selecting the sign-in or resume route; detach old subscriptions on account changes.
+- [x] Add a deterministic emulator identity using the same auth-observer path. Reject test authentication unless the build is explicitly E2E and every backend endpoint is local.
+- [x] Implement versioned event validation, ordering, deduplication, pure reducers and diagnostics. Test acknowledged versus pending timestamps, repeated IDs, unknown events, malformed payloads and schema upgrades.
+- [x] Persist stable device identity and allocate client sequences safely across tabs. Make retry delivery idempotent and pending/rejected writes visible.
+- [x] Create owner-scoped account and listing descriptors and event streams atomically where needed; add subscriptions and new/resume routes. Define the listing version used by later commands so it covers every relevant write.
+- [x] Introduce owner/envelope/payload validation in Firestore rules. Deny cross-user access, event updates/deletes and client-authored privileged events. Add rules tests with both allowed and rejected operations.
+- [x] Add the domain unit-test runner and extend milestone 0 rules tests and CI. Keep live review/production configuration separate from emulator tests; deploy new domain rules and indexes with this PR.
+- [x] Extend milestone 0 routing to the live draft routes; a direct reload of `/listings/[id]` must serve the SPA and restore the cloud-backed draft.
+
+Implementation is present; automated acceptance and live phone review evidence are tracked in [Draft foundation](./docs/DRAFT_FOUNDATION.md).
 
 **Done when:** a seller can sign in, create one durable draft, reload its direct URL and resume; repeated actions do not duplicate events; another user cannot read or alter it. Sign-out removes the previous user's state from the UI. Reducer and rule tests demonstrate the ownership and replay contract.
 

@@ -56,13 +56,15 @@ The project and Google provider were provisioned once using the authenticated Fi
 
 Firestore workspace documents live at `workspaces/{main|pr-N}/users/{uid}`. Storage verification objects live beneath the same scope at `checks/{uuid}.txt`. Scope separates each PR's own test data; authenticated ownership is enforced independently. Changing scope never permits access to another user's data. Auth accounts are shared across the review project's previews.
 
-Only a bounded note, immutable owner/creation fields and server update timestamps are allowed in Firestore. Only new text check files up to 1 KiB can be created; owners may read and delete them. Photos, domain events and other paths remain denied until their feature ships. The Storage check reads authenticated bytes and removes its own object; it does not generate a publicly shareable download-token URL. Bucket GET CORS permits browser downloads; authentication/rules still protect the bytes.
+Only a bounded note, immutable owner/creation fields and server update timestamps are allowed in Firestore. Only new text check files up to 1 KiB can be created; owners may read and delete them. Photos and other paths remain denied until their feature ships. Milestone 2 adds bounded account/listing event streams under `workspaces/{workspace}/accounts/{uid}`; see [Draft foundation](./DRAFT_FOUNDATION.md) for the additive rules and version contract. The Storage check reads authenticated bytes and removes its own object; it does not generate a publicly shareable download-token URL. Bucket GET CORS permits browser downloads; authentication/rules still protect the bytes.
 
 Hosting channels do not isolate backend rules or APIs. The workflow therefore refuses a rules digest that differs from the operator-approved live contract. A future incompatible schema/rule change needs a separate project, or an explicitly reviewed additive migration proven compatible with all active channels before updating the approved digest. Do not update the digest just to make a failing deploy pass. The stable milestone 0 contract must continue working while its previews exist.
 
 ## Live smoke check
 
-1. Open the PR URL on the phone. Confirm Continue with Google opens the real Google flow, complete sign-in, and check the displayed account.
+For draft creation and appearance checks, also follow the [milestones 1–2 checklist](./DRAFT_FOUNDATION.md#review-checklist).
+
+1. Open `/connection-check` on the PR URL on the phone. Confirm Continue with Google opens the real Google flow, complete sign-in, and check the displayed account.
 2. Save a distinctive workspace note. Confirm the read-back message, reload `/connection-check`, and confirm both the restored session and note.
 3. Open Preview connection checks and choose Verify file storage. Confirm upload, authenticated read and cleanup succeed. Record the project, workspace and revision shown there.
 4. Sign out, then sign in with a second Google account. Its workspace should be empty and independent. Emulator rules tests additionally assert that direct cross-user reads/writes/deletes fail.

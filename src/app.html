@@ -3,7 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#faf7f0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#F7F0E6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#211C19" media="(prefers-color-scheme: dark)" />
+    <style>html{background:#F7F0E6;color:#2B2521;color-scheme:light}@media(prefers-color-scheme:dark){html{background:#211C19;color:#F7F0E6;color-scheme:dark}}</style>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">

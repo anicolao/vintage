@@ -1,5 +1,4 @@
-<script lang="ts">
-  import Home from '../+page.svelte';
+<script>
+  import ConnectionCheck from "$lib/components/ConnectionCheck.svelte";
 </script>
-
-<Home />
+<ConnectionCheck />
