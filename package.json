@@ -5,6 +5,10 @@
   "license": "GPL-3.0-only",
   "type": "module",
   "scripts": {
+    "prepare": "npm run setup:hooks",
+    "setup:hooks": "git config core.hooksPath .githooks",
+    "check:prompts": "node scripts/check-prompts.mjs",
+    "test:hooks": "node --test tests/hooks/prompts.test.mjs",
     "dev": "vite dev --host 127.0.0.1 --port 5195 --strictPort",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4195 --strictPort",
