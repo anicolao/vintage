@@ -24,9 +24,11 @@ Approve listing
 
 Progress is preserved after every meaningful action. Returning to an in-progress listing resumes at the latest state reconstructed from its event stream.
 
+Mockups are shown at a compact width. Select any mockup to view the full-size image.
+
 ## Screen 1: sign in and learn the seller
 
-![Vintage sign-in screen](./docs/mockups/01-sign-in.png)
+<a href="./docs/mockups/01-sign-in.png"><img src="./docs/mockups/01-sign-in.png" alt="Vintage sign-in screen" width="320" /></a>
 
 Purpose: establish identity with Google and explain how the seller's listing history improves the result.
 
@@ -51,7 +53,7 @@ The first import has a visible progress state and finishes at the photo screen. 
 
 ## Screen 2: add photos
 
-![Add item photos screen](./docs/mockups/02-add-photos.png)
+<a href="./docs/mockups/02-add-photos.png"><img src="./docs/mockups/02-add-photos.png" alt="Add item photos screen" width="320" /></a>
 
 Purpose: gather enough visual evidence for a strong first proposal with minimal typing.
 
@@ -72,7 +74,7 @@ Upload progress appears on each tile. The CTA reports the aggregate state and ad
 
 ## Screen 3: build the draft
 
-![AI draft generation screen](./docs/mockups/03-building-draft.png)
+<a href="./docs/mockups/03-building-draft.png"><img src="./docs/mockups/03-building-draft.png" alt="AI draft generation screen" width="320" /></a>
 
 Purpose: make useful work and progress legible while Vintage produces the proposal.
 
@@ -89,7 +91,7 @@ The market message reinforces the pricing objective: determine the item's best m
 
 ## Screen 4: review, edit, and approve
 
-![Listing and pricing review screen](./docs/mockups/04-review.png)
+<a href="./docs/mockups/04-review.png"><img src="./docs/mockups/04-review.png" alt="Listing and pricing review screen" width="320" /></a>
 
 Purpose: let the seller evaluate one coherent proposal and approve it confidently.
 
