@@ -179,3 +179,11 @@ one thing I wanted to see in this design was what access we have to completed au
 Prompt 42: Rebase merge requests
 
 use a new work tree to rebase and merge PRs 6&7
+
+Prompt 43: Design Investigation Prototype
+
+Let's design a specific minimal price history/estimating process where a cloud function wakes up on some schedule, gathers the completed action info, and there's some backend-based webpage that can show us the status and conclusions of that for debugging. call it the EBAY_INVESTIGATION_PROTOTYPE.md and we'll revirew that design before implementing
+
+Prompt 44: Rebase merge requests
+
+use a new work tree to rebase and merge PRs 6&7
