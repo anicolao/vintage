@@ -9,6 +9,8 @@ test('home screen is ready to begin a listing', async ({ page }, testInfo) => {
   );
 
   await page.goto('/');
+  await expect(page.locator('.app-shell')).toHaveCSS('width', '393px');
+  await expect(page.getByText('Connection checks', {exact:true})).toHaveCount(0);
   await steps.step('home-ready', {
     description: 'The home screen is connected and ready',
     verifications: [
@@ -35,10 +37,7 @@ test('home screen is ready to begin a listing', async ({ page }, testInfo) => {
           await expect(page.getByText('Your pricing approach')).toBeVisible();
         }
       },
-      {
-        spec: 'The backend readiness status is visible',
-        check: async () => expect(page.getByRole('status')).toHaveText('Ready')
-      }
+
     ]
   });
 

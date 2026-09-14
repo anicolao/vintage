@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { connectAuthEmulator, getAuth } from 'firebase/auth';
-import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore';
+import { connectFirestoreEmulator, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { connectStorageEmulator, getStorage } from 'firebase/storage';
 import { firebaseSettings } from './firebase-config.mjs';
 
@@ -10,7 +10,7 @@ let backend: ReturnType<typeof initializeBackend> | undefined;
 function initializeBackend() {
   const app = initializeApp(settings.config);
   const auth = getAuth(app);
-  const db = getFirestore(app);
+  const db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
   const storage = getStorage(app);
   if (settings.emulator) {
     if (!['127.0.0.1', 'localhost'].includes(window.location.hostname)) {

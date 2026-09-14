@@ -72,7 +72,7 @@ We will evaluate the product using:
 
 ## Project status
 
-Milestone 0 adds Google sign-in, a durable workspace note, an owned Storage check and live Firebase PR deployment. See [Firebase setup and review verification](./docs/FIREBASE_SETUP.md). The listing workflow and new system themes remain planned. [VISION.md](./VISION.md) describes the enduring product vision and principles.
+The production UI now follows the approved sign-in and photo-entry design with system appearance, live Google authentication, owner-scoped photos and automatically saved context. See [Product UI and saved items](./docs/DRAFT_FOUNDATION.md) and [Firebase setup](./docs/FIREBASE_SETUP.md). Seller-history learning and AI generation remain planned.
 
 ## Recording prompts
 

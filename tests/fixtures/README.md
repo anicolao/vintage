@@ -1,0 +1,1 @@
+`sample.heic` is the 41 KiB `demo/1.heic` decoding fixture from [alexcorvi/heic2any](https://github.com/alexcorvi/heic2any), retained under its MIT license in `HEIC_LICENSE.md`. It verifies actual HEIC conversion and authenticated preview retrieval after reload.

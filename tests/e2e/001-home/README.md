@@ -12,4 +12,3 @@ The SPA restores Firebase auth state and presents the AI-first seller propositio
 - [x] The product promise is visible
 - [x] The Google sign-in action becomes available after auth state resolves
 - [x] The seller-learning promise is complete
-- [x] The backend readiness status is visible

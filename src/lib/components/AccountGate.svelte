@@ -1,11 +1,11 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { app } from '$lib/state/app';
-  import SignIn from './SignIn.svelte';
+  import SignInScreen from './SignInScreen.svelte';
   import Status from './Status.svelte';
   export let children: Snippet;
 </script>
-{#if !$app.resolved}<p role="status">Restoring your account…</p>
-{:else if !$app.user}<h1>Your drafts stay yours.</h1><p>Sign in to open your saved listings.</p><SignIn />
-{:else if !$app.ready}<p role="status">Opening your drafts…</p><Status message={$app.error} error />{#if $app.error}<button onclick={() => location.reload()}>Retry connection</button>{/if}
+{#if !$app.resolved}<main class="loading-screen"><p role="status">Restoring your account…</p></main>
+{:else if !$app.user}<SignInScreen />
+{:else if !$app.ready}<main class="loading-screen"><p role="status">Opening your item…</p><Status message={$app.error} error />{#if $app.error}<button onclick={() => location.reload()}>Try again</button>{/if}</main>
 {:else}{@render children()}{/if}

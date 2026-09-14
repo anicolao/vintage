@@ -1,4 +1,4 @@
-import { collection, doc, onSnapshot, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, onSnapshot, getDocFromCache, getDocFromServer, writeBatch, increment, serverTimestamp } from 'firebase/firestore';
 import { getBackend, settings } from '../firebase';
 import type { Command, Descriptor } from '../events/contracts';
 import { SCHEMA_VERSION } from '../events/listing.mjs';
@@ -6,32 +6,37 @@ export const accountPath = (uid: string) => `workspaces/${settings.workspace}/ac
 function descriptorPath(command: Command) {
   return command.type === 'account/created' ? accountPath(command.actorUid) : `${accountPath(command.actorUid)}/listings/${command.streamId}`;
 }
+export function eventFor(command: Command) {
+  return { id: command.id, actorUid: command.actorUid, deviceId: command.deviceId, clientSeq: command.clientSeq, streamId: command.streamId, type: command.type, payload: command.payload, correlationId: command.id, causationId: null, createdAt: null, schemaVersion: SCHEMA_VERSION, reducerVersion: 1 };
+}
+const canonical = (value: unknown) => JSON.stringify(value, (_, item) => item && typeof item === 'object' && !Array.isArray(item) ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b))) : item);
 export async function deliver(command: Command) {
   if (command.workspace !== settings.workspace || getBackend().auth.currentUser?.uid !== command.actorUid) throw new Error('Account changed. Sign in again to retry.');
   const db = getBackend().db;
   const descriptor = doc(db, descriptorPath(command));
   const target = doc(collection(descriptor, 'events'), command.id);
-  await runTransaction(db, async transaction => {
-    const [existing, stream] = await Promise.all([transaction.get(target), transaction.get(descriptor)]);
-    if (existing.exists()) {
-      const event = existing.data();
-      if (event.actorUid !== command.actorUid || event.type !== command.type || JSON.stringify(event.payload) !== JSON.stringify(command.payload)) throw new Error('Conflicting event identity.');
-      return;
-    }
-    if (command.type === 'account/created' && stream.exists()) return;
-    if (command.type === 'listing/created' && stream.exists()) throw new Error('Draft already exists.');
-    if (command.type === 'context/changed' && !stream.exists()) throw new Error('Draft no longer available.');
-    const version = (stream.data()?.version ?? 0) + 1;
-    const event = { id: command.id, actorUid: command.actorUid, deviceId: command.deviceId, clientSeq: command.clientSeq, streamId: command.streamId, type: command.type, payload: command.payload, correlationId: command.id, causationId: null, createdAt: serverTimestamp(), schemaVersion: SCHEMA_VERSION, reducerVersion: 1, streamVersion: version };
-    transaction.set(target, event);
-    const changes = { ownerUid: command.actorUid, version, lastEventId: command.id, updatedAt: serverTimestamp() };
-    if (stream.exists()) transaction.update(descriptor, changes);
-    else transaction.set(descriptor, { ...changes, createdAt: serverTimestamp() });
-  });
+  if (command.type === 'account/created') {
+    try { if ((await getDocFromCache(descriptor)).exists()) return; } catch { /* New account. */ }
+  }
+  const batch = writeBatch(db);
+  batch.set(target, { ...eventFor(command), createdAt: serverTimestamp() });
+  const changes = { ownerUid: command.actorUid, version: increment(1), lastEventId: command.id, updatedAt: serverTimestamp() };
+  if (['account/created', 'listing/created'].includes(command.type)) batch.set(descriptor, { ...changes, createdAt: serverTimestamp() });
+  else batch.update(descriptor, changes);
+  try { await batch.commit(); }
+  catch (cause) {
+    // A retained intent may already have reached the server before a tab closed.
+    // Immutable-event rules reject that repeated batch atomically, so the version
+    // cannot increment twice. Readback resolves only this acknowledgement ambiguity.
+    const existing = await getDocFromServer(target);
+    if (existing.exists() && existing.data()?.actorUid === command.actorUid && existing.data()?.type === command.type && canonical(existing.data()?.payload) === canonical(command.payload)) return;
+    if (command.type === 'account/created' && (await getDocFromServer(descriptor)).exists()) return;
+    throw cause;
+  }
 }
 export function watchDrafts(uid: string, next: (drafts: Descriptor[]) => void, error: (cause: Error) => void) {
   return onSnapshot(collection(getBackend().db, `${accountPath(uid)}/listings`), snapshot => {
-    next(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Descriptor)).sort((a, b) => a.id.localeCompare(b.id)));
+    next(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Descriptor)).sort((a, b) => (b.updatedAt?.seconds ?? 0) - (a.updatedAt?.seconds ?? 0) || (b.updatedAt?.nanoseconds ?? 0) - (a.updatedAt?.nanoseconds ?? 0) || a.id.localeCompare(b.id)));
   }, error);
 }
 export function watchListing(uid: string, id: string, next: (events: unknown[]) => void, error: (cause: Error) => void) {

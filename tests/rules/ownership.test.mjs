@@ -15,58 +15,10 @@ before(async () => {
   });
 });
 after(async () => environment?.cleanup());
-const data = (uid) => ({ ownerUid: uid, note: 'Saved note', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-const path = (uid) => `workspaces/pr-3/users/${uid}`;
-
-test('Firestore owner can create, read and update; cannot alter identity, schema or timestamps', async () => {
-  const alice = environment.authenticatedContext('alice').firestore();
-  const target = doc(alice, path('alice'));
-  await assertSucceeds(setDoc(target, data('alice')));
-  await assertSucceeds(getDoc(target));
-  await assertSucceeds(updateDoc(target, { note: 'Updated', updatedAt: serverTimestamp() }));
-  await assertFails(updateDoc(target, { ownerUid: 'bob', updatedAt: serverTimestamp() }));
-  await assertFails(updateDoc(target, { admin: true, updatedAt: serverTimestamp() }));
-  await assertFails(updateDoc(target, { createdAt: serverTimestamp(), updatedAt: serverTimestamp() }));
-  await assertFails(updateDoc(target, { note: 'a'.repeat(501), updatedAt: serverTimestamp() }));
-  await assertFails(deleteDoc(target));
-});
-test('Firestore denies anonymous and cross-user access in every workspace', async () => {
-  for (const context of [environment.unauthenticatedContext(), environment.authenticatedContext('bob')]) {
-    const target = doc(context.firestore(), path('alice'));
-    await assertFails(getDoc(target));
-    await assertFails(setDoc(target, data('alice')));
-    await assertFails(getDoc(doc(context.firestore(), 'workspaces/main/users/alice')));
-  }
-  const bob = environment.authenticatedContext('bob').firestore();
-  await assertFails(setDoc(doc(bob, path('bob')), data('alice')));
-  await assertFails(setDoc(doc(bob, path('bob')), { ...data('bob'), createdAt: new Date(0) }));
-  await assertFails(setDoc(doc(bob, `${path('bob')}/events/fake`), { type: 'generation/proposed' }));
-});
-test('Storage owner can round trip a bounded text check and remove it', async () => {
-  const storage = environment.authenticatedContext('alice').storage();
-  const target = ref(storage, `${path('alice')}/checks/valid.txt`);
-  await assertSucceeds(uploadBytes(target, new TextEncoder().encode('hello'), { contentType: 'text/plain' }));
-  await assertSucceeds(getBytes(target));
-  await assertFails(uploadBytes(target, new Uint8Array(4), { contentType: 'text/plain' }));
-  for (const context of [environment.unauthenticatedContext(), environment.authenticatedContext('bob')]) {
-    const forbidden = ref(context.storage(), target.fullPath);
-    await assertFails(getBytes(forbidden));
-    await assertFails(deleteObject(forbidden));
-    await assertFails(uploadBytes(ref(context.storage(), `${path('alice')}/checks/other.txt`), new Uint8Array(4), { contentType: 'text/plain' }));
-  }
-  await assertSucceeds(deleteObject(target));
-});
-test('Storage denies oversize, wrong type and paths outside the check area', async () => {
-  const storage = environment.authenticatedContext('alice').storage();
-  await assertFails(uploadBytes(ref(storage, `${path('alice')}/checks/large.txt`), new Uint8Array(1025), { contentType: 'text/plain' }));
-  await assertFails(uploadBytes(ref(storage, `${path('alice')}/checks/html.txt`), new Uint8Array(4), { contentType: 'text/html' }));
-  await assertFails(uploadBytes(ref(storage, `${path('alice')}/photo.png`), new Uint8Array(4), { contentType: 'image/png' }));
-});
-
 // Descriptor and event must advance together: every relevant write changes version.
 const account = uid => `workspaces/e2e/accounts/${uid}`;
 const draftId = uid => `${uid}-device-2`;
-const domainEvent = (uid, seq, streamId, type, payload, version) => ({ id:`${uid}-device-${seq}`, actorUid:uid, deviceId:'device', clientSeq:seq, streamId, type, payload, correlationId:`${uid}-device-${seq}`, causationId:null, createdAt:serverTimestamp(), schemaVersion:2, reducerVersion:1, streamVersion:version });
+const domainEvent = (uid, seq, streamId, type, payload, version) => ({ id:`${uid}-device-${seq}`, actorUid:uid, deviceId:'device', clientSeq:seq, streamId, type, payload, correlationId:`${uid}-device-${seq}`, causationId:null, createdAt:serverTimestamp(), schemaVersion:2, reducerVersion:1 });
 const descriptor = (uid, lastEventId, version) => ({ ownerUid:uid, createdAt:serverTimestamp(), updatedAt:serverTimestamp(), version, lastEventId });
 async function createStream(db, path, event) {
   const { writeBatch } = await import('firebase/firestore');
@@ -97,11 +49,46 @@ test('context advances version once; invalid envelopes, oversized payloads and p
   const { writeBatch }=await import('firebase/firestore');
   const uid='domain-alice'; const db=environment.authenticatedContext(uid).firestore(); const path=`${account(uid)}/listings/${draftId(uid)}`;
   const append= async event => {
-    const batch=writeBatch(db); batch.update(doc(db,path),{version:event.streamVersion,updatedAt:serverTimestamp(),lastEventId:event.id});batch.set(doc(db,`${path}/events/${event.id}`),event);return batch.commit();
+    const batch=writeBatch(db); batch.update(doc(db,path),{version:2,updatedAt:serverTimestamp(),lastEventId:event.id});batch.set(doc(db,`${path}/events/${event.id}`),event);return batch.commit();
   };
   const valid=domainEvent(uid,3,draftId(uid),'context/changed',{context:'Excellent condition'},2);
-  for (const patch of [{actorUid:'mallory'},{streamId:'elsewhere'},{schemaVersion:1},{reducerVersion:99},{createdAt:new Date(0)},{clientSeq:0},{deviceId:'wrong'},{streamVersion:7},{type:'generation/proposed',payload:{}},{payload:{context:'x'.repeat(2001)}},{payload:{context:'okay',admin:true}}]) await assertFails(append({...valid,...patch}));
+  for (const patch of [{actorUid:'mallory'},{streamId:'elsewhere'},{schemaVersion:1},{reducerVersion:99},{createdAt:new Date(0)},{clientSeq:0},{deviceId:'wrong'},{type:'generation/proposed',payload:{}},{payload:{context:'x'.repeat(2001)}},{payload:{context:'okay',admin:true}}]) await assertFails(append({...valid,...patch}));
   await assertSucceeds(append(valid));
   await assertFails(append(valid));
   assert.equal((await getDoc(doc(db,path))).data().version,2);
+});
+
+test('photo events validate owner paths and image metadata; retired note/check paths are denied', async () => {
+  const { writeBatch } = await import('firebase/firestore');
+  const uid='domain-alice'; const db=environment.authenticatedContext(uid).firestore();
+  const path=`${account(uid)}/listings/${draftId(uid)}`;
+  const photo={id:'photo-one',path:`${path}/photos/photo-one/original`,previewPath:`${path}/photos/photo-one/original`,type:'image/png',size:100,width:100,height:100,digest:'a'.repeat(64)};
+  const append=async payload => {const e=domainEvent(uid,4,draftId(uid),'photo/uploaded',payload,3);const b=writeBatch(db);b.update(doc(db,path),{version:3,updatedAt:serverTimestamp(),lastEventId:e.id});b.set(doc(db,`${path}/events/${e.id}`),e);return b.commit();};
+  await assertFails(append({photo:{...photo,path:'someone/else'}}));
+  await assertFails(append({photo:{...photo,size:10485761}}));
+  await assertSucceeds(append({photo}));
+  await assertFails(getDoc(doc(db,`workspaces/e2e/users/${uid}`)));
+  const storage=environment.authenticatedContext(uid).storage();
+  const target=ref(storage,photo.path);
+  await assertSucceeds(uploadBytes(target,new Uint8Array(100),{contentType:'image/png',customMetadata:{digest:photo.digest}}));
+  await assertSucceeds(getBytes(target));
+  await assertFails(uploadBytes(target,new Uint8Array(100),{contentType:'image/png',customMetadata:{digest:photo.digest}}));
+  await assertFails(getBytes(ref(environment.authenticatedContext('mallory').storage(),photo.path)));
+  await assertFails(uploadBytes(ref(storage,`${path}/photos/bad/original`),new Uint8Array(100),{contentType:'text/plain',customMetadata:{digest:photo.digest}}));
+  await assertFails(uploadBytes(ref(storage,`workspaces/e2e/users/${uid}/checks/test.txt`),new Uint8Array(2),{contentType:'text/plain'}));
+});
+
+test('eager batches increment atomically without a network read and retries cannot double count', async () => {
+  const { writeBatch, increment }=await import('firebase/firestore');
+  const uid='eager-owner';const db=environment.authenticatedContext(uid).firestore();
+  const path=`${account(uid)}/listings/${draftId(uid)}`;
+  await assertSucceeds(createStream(db,path,domainEvent(uid,2,draftId(uid),'listing/created',{title:'Item'})));
+  const append=(seq,version=increment(1))=>{
+    const event=domainEvent(uid,seq,draftId(uid),'context/changed',{context:`Edit ${seq}`});
+    const batch=writeBatch(db);batch.update(doc(db,path),{version,lastEventId:event.id,updatedAt:serverTimestamp()});batch.set(doc(db,`${path}/events/${event.id}`),event);return batch.commit();
+  };
+  await assertFails(append(3,7));
+  await Promise.all([assertSucceeds(append(3)),assertSucceeds(append(4))]);
+  await assertFails(append(3));
+  assert.equal((await getDoc(doc(db,path))).data().version,3);
 });

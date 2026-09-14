@@ -1,12 +1,20 @@
-# Durable listing drafts
+# Listings and photo entry
 
-Create and replay a private cloud-backed draft. The same Firebase auth observer handles the emulator Google identity and live Google accounts.
+Start a listing with photos and optional context, persisted to the backend.
 
-## A draft and its saved details survive a direct reload
+## Start a new listing without a name form
 
-![A draft and its saved details survive a direct reload](./screenshots/000-draft-restored-desktop-light-linux.png)
+![Start a new listing without a name form](./screenshots/000-listings-desktop-light-linux.png)
 
 **Verifications:**
 
-- [x] The title is reconstructed from its creation event
-- [x] Details are replayed from acknowledged events
+- [x] New listing opens the photo flow
+
+## Photo and context restored after reload
+
+![Photo and context restored after reload](./screenshots/001-photo-entry-desktop-light-linux.png)
+
+**Verifications:**
+
+- [x] The approved step header is visible
+- [x] The photo opens for inspection
