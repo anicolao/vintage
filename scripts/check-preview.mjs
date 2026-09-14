@@ -4,8 +4,9 @@ const response = await fetch(`${expected.url}/version.json`, { signal: AbortSign
 if (!response.ok) throw new Error('Preview metadata is unavailable.');
 const actual = await response.json();
 for (const key of ['projectId', 'workspace', 'revision', 'backend']) if (actual[key] !== expected[key]) throw new Error(`Preview ${key} does not match this build.`);
-for (const path of ['/', '/listings/new', '/listings/route-check']) {
+for (const path of ['/', '/index.html', '/listings/new', '/listings/route-check']) {
   const route = await fetch(`${expected.url}${path}`, { signal: AbortSignal.timeout(30_000) });
+  if (!/(?:^|,)\s*(?:no-cache|no-store)(?:\s|,|$)/i.test(route.headers.get('cache-control') ?? '')) throw new Error(`Hosting must revalidate the app shell at ${path}.`);
   if (!route.ok || !(await route.text()).includes('<html')) throw new Error(`Hosting must serve the SPA at ${path}.`);
 }
 console.log(`Verified deployed revision and SPA rewrite: ${expected.url}`);

@@ -87,3 +87,7 @@ Prompt 20: Preserve optimistic flow
 > The approved signed-in screen is photo entry; my named-draft form was the wrong flow. Should this correction include working photo capture/upload (the next milestone), or should I restrict it to correcting milestones 1–2 and leave photo functionality for the next PR?
 
 let's continue to have the intermediate screen that lets the user start a new listing, but the new listing shoudl begin with the photo, and not with a name for the listing. let's make the flow go right to the photo screen adn support taking a photo and filling in "anything else..." under the photo. Also, we should never have the UI wait for the network; firestore should be eagerly responding to all of our writes and the UI shoudl update optimistically to keep it fast.
+
+Prompt 21: Diagnose stale previews
+
+we're having an issue where on some browsers this preview link is still serving the old UI, and on others we are seeing the new UI. why would that be?
