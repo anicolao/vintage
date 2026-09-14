@@ -73,3 +73,9 @@ Hosting channel expiry does not delete item data or Auth accounts. Cleanup must 
 Frontend rollback uses a reviewed revision compatible with the current product schema. Do not restore superseded diagnostic rules. Production rule changes and cleanup require explicit scope and owner-rule verification.
 
 References: [Google popup authentication](https://firebase.google.com/docs/auth/web/google-signin), [Hosting preview deployments](https://firebase.google.com/docs/hosting/test-preview-deploy), and [authenticated Storage downloads and CORS](https://firebase.google.com/docs/storage/web/download-files).
+
+### Browser updates
+
+Hosting requires revalidation (`Cache-Control: no-cache`) on all paths, including `/` and rewritten listing URLs. Only content-hashed `/_app/immutable/` assets receive long-lived immutable caching; `/version.json` is not stored. Deployment smoke checks inspect the actual app-route response headers, as a rule matching `/index.html` alone does not cover the incoming route URLs.
+
+A tab already running the app keeps its loaded JavaScript until a document reload. Previously cached HTML can also remain fresh under its earlier headers; a hard reload or a new query string on the preview URL fetches the new document without clearing locally retained drafts or photos.
