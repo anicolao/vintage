@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { style, enqueue, pipelineIntents, connection, type Example } from '$lib/state/pipeline';
+  import { style, enqueue, pipelineSaving, pipelineIntents, connection, type Example } from '$lib/state/pipeline';
   import AccountGate from '$lib/components/AccountGate.svelte';
   import AccountMenu from '$lib/components/AccountMenu.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -20,7 +20,7 @@
   async function remove(index:number) {removed={example:rows[index],index};rows=rows.filter((_,i)=>i!==index);await save();}
 </script>
 <svelte:head><title>Your listing style — Vintage</title></svelte:head>
-<AccountGate><main class="flow-screen" data-status="ready" data-e2e-layout>
+<AccountGate><main class="flow-screen" data-status="ready" data-sync={$pipelineSaving || $pipelineIntents.length ? 'pending' : 'synced'} data-e2e-layout>
 <header class="step-header glass"><a class="icon-button" href={returnUrl} aria-label={destination?'Back to photos':'Back to account'}><Icon name="back"/></a><span>Your listing style</span><AccountMenu/></header>
 {#if learning}
   <h1>{$style.status==='ready'?'Your examples are ready':'Learning your style'}</h1>

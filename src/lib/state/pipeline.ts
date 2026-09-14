@@ -29,6 +29,7 @@ const cloudStyle=writable<Style>(emptyStyle());
 const cloudWorkflows=writable<Record<string,Workflow>>({});
 export const pipelineIntents=writable<Intent[]>([]);
 export const pipelineError=writable('');
+export const pipelineSaving=writable(0);
 export const connection=writable(true);
 let uid=''; let epoch=0; let sending=false; let persisting=Promise.resolve();
 let database:Promise<IDBDatabase>;
@@ -83,6 +84,7 @@ export const workflows=derived([cloudWorkflows,pipelineIntents],([$cloud,$intent
 });
 export async function enqueue(request:Request) {
   const owner=uid; const current=epoch;if (!owner) throw new Error('Sign in to continue.');
+  pipelineSaving.update(n=>n+1);
   // Serialize device persistence, but never await a network acknowledgement.
   const work=persisting.then(async()=>{
     const intents=await changeQueue(owner, previous=>{
@@ -105,7 +107,7 @@ export async function enqueue(request:Request) {
     pipelineIntents.set(intents);pipelineError.set('');void flush();
   });
   persisting=work.catch(()=>{});
-  try {await work;} catch {pipelineError.set('Not saved on this phone. Free some space and try again.');throw new Error('Device storage unavailable');}
+  try {await work;} catch {pipelineError.set('Not saved on this phone. Free some space and try again.');throw new Error('Device storage unavailable');}finally{pipelineSaving.update(n=>n-1);}
 }
 export const locallyPersisted = () => persisting;
 let inFlightId='';
@@ -184,6 +186,8 @@ export function startPipeline() {
   });
   const stopPhotos=photoJobs.subscribe(()=>void flush());
   const online=()=>{connection.set(navigator.onLine);void flush();};online();
+  const leaving=(event:BeforeUnloadEvent)=>{if(get(pipelineSaving)>0){event.preventDefault();event.returnValue='';}};
+  window.addEventListener('beforeunload',leaving);
   window.addEventListener('online',online);window.addEventListener('offline',online);
-  return ()=>{channel?.close();channel=undefined;stop();stopStyle();stopPhotos();uid='';epoch++;window.removeEventListener('online',online);window.removeEventListener('offline',online);};
+  return ()=>{channel?.close();channel=undefined;stop();stopStyle();stopPhotos();uid='';epoch++;window.removeEventListener('beforeunload',leaving);window.removeEventListener('online',online);window.removeEventListener('offline',online);};
 }

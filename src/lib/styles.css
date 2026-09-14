@@ -224,3 +224,5 @@ dialog::backdrop { background: rgb(33 28 25 / 25%); backdrop-filter: blur(5px); 
 .approved-item .approved-price { font-size: 24px; margin: 10px 0 0; }
 .approved-description { white-space: pre-wrap; }
 .copy-text { width: 100%; font-size: 14px; }
+
+.progress-local-photo { width: 180px; max-height: 220px; align-self: center; object-fit: contain; border-radius: 20px; }

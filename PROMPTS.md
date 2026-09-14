@@ -131,3 +131,7 @@ the button at the bottom of the main page has rounded corners but the transparen
 Prompt 31: Complete sixth milestone
 
 good, implement up to milestone 6 on a new PR
+
+Prompt 32: Complete sixth milestone
+
+good, implement up to milestone 6 on a new PR

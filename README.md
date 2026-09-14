@@ -74,7 +74,7 @@ We will evaluate the product using:
 
 ## Project status
 
-The production UI now follows the approved sign-in and photo-entry design with system appearance, live Google authentication, owner-scoped photos and automatically saved context. See [Product UI and saved items](./docs/DRAFT_FOUNDATION.md) and [Firebase setup](./docs/FIREBASE_SETUP.md). Seller-history learning and AI generation remain planned.
+The production UI follows the approved photo-first design through pasted examples, durable sample generation, review, exact approval and copying. It uses system appearance, live Google authentication, owner-scoped Firebase data and optimistic device persistence. See [Pipeline implementation](./docs/PIPELINE.md), [Product UI and saved items](./docs/DRAFT_FOUNDATION.md) and [Firebase setup](./docs/FIREBASE_SETUP.md). Real AI personalization and market pricing remain milestone 7; the review preview labels sample output explicitly.
 
 ## Recording prompts
 

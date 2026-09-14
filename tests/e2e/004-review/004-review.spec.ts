@@ -17,7 +17,7 @@ test('examples, sample generation, evidence, exact approval and copy survive rel
   await page.getByLabel('Title',{exact:true}).fill('Oatmeal wool jumper');
   await page.getByLabel('Description',{exact:true}).fill('Lovely soft knit with a relaxed fit. A little bobbling at the cuffs, shown in the photos.');
   await page.getByLabel('Description',{exact:true}).blur();
-  await expect(page.getByText('Saved on this phone · Syncing',{exact:true})).toHaveCount(0);
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync','synced');
   const steps=new TestStepHelper(page,testInfo);steps.setMetadata('Examples, generation and approval','A labelled sample journey backed by durable Functions and owner-scoped events.');
   await steps.step('examples',{description:'Paste one complete example',verifications:[{spec:'The original item return path is retained',check:async()=>expect(page.getByRole('link',{name:'Back to photos',exact:true})).toHaveAttribute('href',new URL(itemUrl).pathname+'?view=photos')}]});
   await page.getByRole('button',{name:'Learn my style'}).click();
@@ -33,7 +33,7 @@ test('examples, sample generation, evidence, exact approval and copy survive rel
   await page.getByLabel('Description',{exact:true}).blur();
   await page.getByLabel('Listing price in GBP').fill('42.50');
   await page.getByLabel('Listing price in GBP').blur();
-  await expect(page.getByText('Saved on this phone · Syncing',{exact:true})).toHaveCount(0);
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync','synced');
   await steps.step('review',{description:'Editable proposal with honest price limitations',verifications:[{spec:'Sale estimates are unavailable without market evidence',check:async()=>expect(page.getByText('Expected sale range unavailable',{exact:true})).toBeVisible()}]});
   await page.getByRole('button',{name:/Price evidence No asking/}).click();
   await expect(page.getByRole('heading',{name:'Evidence unavailable'})).toBeVisible();
@@ -50,7 +50,7 @@ test('examples, sample generation, evidence, exact approval and copy survive rel
   await expect(other.getByRole('heading',{name:'Listing proposal',exact:true})).toBeVisible();
   await other.getByLabel('Title',{exact:true}).fill('Another tab title');
   await other.getByLabel('Title',{exact:true}).blur();
-  await expect(other.getByText('Saved on this phone · Syncing',{exact:true})).toHaveCount(0);
+  await expect(other.locator('main[data-sync]')).toHaveAttribute('data-sync','synced');
   await expect(page.getByLabel('Title',{exact:true})).toHaveValue('Checked green jacket');
   await page.getByLabel('Title',{exact:true}).fill('Local stale title');
   await expect(page.getByRole('button',{name:'Review latest version',exact:true})).toBeVisible();
@@ -60,7 +60,7 @@ test('examples, sample generation, evidence, exact approval and copy survive rel
   await expect(page.getByLabel('Title',{exact:true})).toHaveValue('Another tab title');
   await page.getByLabel('Title',{exact:true}).fill('Checked green jacket');
   await page.getByLabel('Title',{exact:true}).blur();
-  await expect(page.getByText('Saved on this phone · Syncing',{exact:true})).toHaveCount(0);
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync','synced');
   await context.setOffline(true);
   await page.getByRole('button',{name:'Approve listing',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Approval pending',exact:true})).toBeVisible();
@@ -86,7 +86,7 @@ test('partial examples, removal undo and offline learning remain recoverable',as
   await page.getByRole('button',{name:/Your listing style/}).click();
   await page.getByLabel('Title',{exact:true}).fill('My saved partial example');
   await page.getByLabel('Title',{exact:true}).blur();
-  await expect(page.getByText('Saved on this phone · Syncing',{exact:true})).toHaveCount(0);
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync','synced');
   await page.reload();await expect(page.getByLabel('Title',{exact:true})).toHaveValue('My saved partial example');
   await context.setOffline(true);
   await page.getByLabel('Description',{exact:true}).fill('A soft cotton shirt with an easy fit.');
