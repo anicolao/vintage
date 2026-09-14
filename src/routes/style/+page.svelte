@@ -1,12 +1,13 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
-  import { style, enqueue, pipelineSaving, pipelineIntents, connection, type Example } from '$lib/state/pipeline';
+  import { style, enqueue, pipelineSaving, pipelineResolution, pipelineIntents, connection, type Example } from '$lib/state/pipeline';
   import AccountGate from '$lib/components/AccountGate.svelte';
   import AccountMenu from '$lib/components/AccountMenu.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import PipelineStatus from '$lib/components/PipelineStatus.svelte';
   let rows:Example[]=[];let exampleBase:Example[]=[];let editing=false;let validation=false;let error='';let removed:{example:Example;index:number}|null=null;
+  $: if($pipelineResolution.startsWith('style/')) {editing=false;validation=false;removed=null;}
   $: destination=$page.url.searchParams.get('item');
   $: returnUrl=destination && /^[a-zA-Z0-9-]+$/.test(destination) ? `/listings/${destination}?view=photos` : '/?account=open';
   $: learning=$page.url.searchParams.get('view')==='learning';

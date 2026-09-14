@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { FixtureListingGenerator } from '../../functions/generator.mjs';
 import { normalizePhoto } from '../../functions/photos.mjs';
@@ -26,4 +27,13 @@ test('replay rejects gaps and unknown versions; duplicate stage delivery is stab
   assert.deepEqual(reduceWorkflow([event,event]),state);
   assert.throws(()=>reduceWorkflow([{...event,version:2}]));
   assert.throws(()=>reduceWorkflow([{...event,schemaVersion:9}]));
+});
+
+test('JPEG orientation is applied to analysis dimensions and metadata is stripped',async()=>{
+  const require=createRequire(new URL('../../functions/package.json',import.meta.url));
+  const sharp=require('sharp');
+  const original=await sharp({create:{width:12,height:24,channels:3,background:'#984831'}}).withMetadata({orientation:6}).jpeg().toBuffer();
+  const result=await normalizePhoto(original,'image/jpeg');
+  assert.equal(result.width,24);assert.equal(result.height,12);
+  const metadata=await sharp(result.bytes).metadata();assert.equal(metadata.orientation,undefined);
 });
