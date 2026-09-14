@@ -91,3 +91,7 @@ let's continue to have the intermediate screen that lets the user start a new li
 Prompt 21: Diagnose stale previews
 
 we're having an issue where on some browsers this preview link is still serving the old UI, and on others we are seeing the new UI. why would that be?
+
+Prompt 22: Refine glass typography
+
+the controls don't look glassmorphic and the fonts are blocky/all wrong, make the UI match the mockups more closely
