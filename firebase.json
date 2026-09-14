@@ -61,6 +61,18 @@
     "storage": {
       "host": "127.0.0.1",
       "port": 9290
+    },
+    "functions": {
+      "host": "127.0.0.1",
+      "port": 5001
+    },
+    "eventarc": {
+      "host": "127.0.0.1",
+      "port": 9300
+    },
+    "tasks": {
+      "host": "127.0.0.1",
+      "port": 9499
     }
   },
   "storage": {
@@ -73,5 +85,17 @@
         "supportEmail": "alex@boardgamescafe.org"
       }
     }
-  }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "vintage-pipeline",
+      "runtime": "nodejs22",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "*.log"
+      ]
+    }
+  ]
 }

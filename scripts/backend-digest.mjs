@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 const digest = createHash('sha256');
-for (const file of ['firestore.rules', 'storage.rules']) {
+const sources = directory => readdirSync(directory, {withFileTypes:true}).flatMap(entry => entry.name === 'node_modules' || entry.name.startsWith('.') ? [] : entry.isDirectory() ? sources(`${directory}/${entry.name}`) : [`${directory}/${entry.name}`]);
+for (const file of ['firestore.rules', 'storage.rules', ...sources('functions').sort()]) {
   digest.update(file + '\0');
   digest.update(readFileSync(file));
 }

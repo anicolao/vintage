@@ -1,5 +1,5 @@
 <script lang="ts">
-  export let name: 'style' | 'search' | 'tag' | 'lock' | 'back' | 'camera' | 'plus' | 'close' | 'up' | 'down' | 'check' | 'next' | 'logout' | 'photos' | 'cloud' | 'star' | 'replace' | 'trash' | 'more';
+  export let name: 'style' | 'search' | 'tag' | 'lock' | 'back' | 'camera' | 'plus' | 'close' | 'up' | 'down' | 'check' | 'next' | 'logout' | 'photos' | 'cloud' | 'star' | 'replace' | 'trash' | 'more' | 'copy' | 'chart';
   export let size = 24;
 </script>
 <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -20,6 +20,8 @@
   {:else if name === 'star'}<path d="m12 3 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1Z"/>
   {:else if name === 'replace'}<path d="M20 8a8 8 0 0 0-14-3L3 8m0-5v5h5m-4 8a8 8 0 0 0 14 3l3-3m0 5v-5h-5"/>
   {:else if name === 'trash'}<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>
+  {:else if name === 'copy'}<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/>
+  {:else if name === 'chart'}<path d="M3 3v18h18M6 15l5-5 4 3 6-8"/>
   {:else if name === 'more'}<circle cx="4" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="20" cy="12" r="1"/>
   {:else}<path d="m4 12 5 5L20 6"/>{/if}
 </svg>

@@ -92,3 +92,14 @@ test('eager batches increment atomically without a network read and retries cann
   await assertFails(append(3));
   assert.equal((await getDoc(doc(db,path))).data().version,3);
 });
+
+
+test('pipeline states, operations and approval events are owner-readable and server-authored only', async () => {
+  const uid='pipeline-rules';const ownerDb=environment.authenticatedContext(uid).firestore();const stranger=environment.authenticatedContext('pipeline-stranger').firestore();
+  for (const suffix of ['style/state','operations/request','workflowEvents/event','listings/item/pipeline/state','listings/item/workflowEvents/approved']) {
+    const path=`${account(uid)}/${suffix}`;
+    await environment.withSecurityRulesDisabled(async context=>setDoc(doc(context.firestore(),path),{status:'approved'}));
+    await assertSucceeds(getDoc(doc(ownerDb,path)));await assertFails(getDoc(doc(stranger,path)));
+    await assertFails(setDoc(doc(ownerDb,path),{status:'approved'}));await assertFails(deleteDoc(doc(ownerDb,path)));
+  }
+});

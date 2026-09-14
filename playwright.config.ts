@@ -45,7 +45,8 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120_000
   },
-  timeout: 30_000,
+  // The full journey has many steps; each action/assertion still has a 2s ceiling.
+  timeout: 60_000,
   expect: {
     timeout: 2_000,
     toHaveScreenshot: {
