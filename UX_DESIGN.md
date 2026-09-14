@@ -1,386 +1,259 @@
-# v0 UX Design
+# Vintage UX design
 
-## Experience goal
+Vintage helps a seller turn item photos into a listing that sounds like them, understand its price, and approve it with confidence. This document specifies the experience we want to build. The generated concepts establish the visual direction; the interaction requirements below specify behavior that a still image cannot show.
 
-Vintage turns a handful of item photos into an editable Vinted listing and a revenue-oriented price recommendation. The experience should feel like handing an item to a skilled listing partner: the seller supplies the item, Vintage does the research and drafting, and the seller makes the final call.
+The terracotta-and-linen sign-in, photo, generation and review concepts remain the approved foundation. The additional concepts in this revision are proposed extensions for review. Implementation progress belongs in [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md).
 
-The v0 is a mobile-first Svelte SPA designed at a canonical 393 × 852 CSS-pixel viewport. Desktop uses the same focused flow in a centered mobile-width workspace.
+## The experience
 
-## Screen inventory and delivery status
+**Start easily.** After sign-in, Your listings is a quiet home for the seller's work. New listing opens photo entry immediately. There is no naming form or setup tour between the seller and their first photo.
 
-This document covers full pages, dialogs, native handoffs and recovery states. **Current** means present in the merged app; **planned** means part of the v0 design and implementation plan, with no working screen yet. Planned screens must not be represented by simulated production controls.
+**Recognize your work.** Item photographs anchor listing cards, editing and review. The seller can tell what each item needs and return to it without remembering a generated name or where they stopped.
 
-| Screen or surface | Entry and exit | Status |
-| --- | --- | --- |
-| [Sign in](#sign-in) | `/` when signed out, or a protected listing URL; successful root sign-in opens Your listings, while a listing link returns to that item | Current |
-| [Google account selection](#native-google-and-camera-handoffs) | Continue with Google opens the provider popup; success or cancellation returns to Vintage | Current, provider-owned |
-| [Your listings](#your-listings) | `/` when signed in; New listing opens photo entry, an existing row resumes its item | Current, empty and populated |
-| [Add photos and context](#add-photos-and-context) | `/listings/new` creates a locally retained item and replaces the URL with `/listings/{id}`; back returns to Your listings | Current |
-| [Photo inspection](#photo-inspection) | Open a thumbnail; close returns to the same photo grid | Current, full-screen dialog |
-| [File selection and camera](#native-google-and-camera-handoffs) | Add photo, Use camera or Replace photo; selection returns to the grid | Current, browser/OS-owned |
-| [Your account](#your-account) | Avatar in photo entry; close returns to the item, Sign out opens sign-in | Current, dialog |
-| [Item unavailable](#item-unavailable) | Missing or inaccessible item URL; Add item starts a new listing | Current |
-| [Unknown URL](#unknown-url-and-application-errors) | An unmatched route; currently shows the framework 404 page | Current, default framework page |
-| [Restoring, uploading and recovery](#shared-loading-sync-and-error-states) | Inline states within the screen where work is taking place | Current |
-| [Seller examples](#seller-examples) | Supply the seller history required for style learning | Planned; input-source interaction still to be agreed |
-| [Learning progress](#learning-progress) | Submit examples; completion returns to photo entry | Planned |
-| [Build the draft](#build-the-draft) | Create my draft, once its durable inputs are ready; completion opens review | Planned |
-| [Review and edit](#review-edit-and-approve) | A completed proposal; opens evidence, approval or returns to listings | Planned |
-| [Evidence details](#evidence-details) | An evidence row in review; close returns to the same review position | Planned, bottom sheet |
-| [Approval and approved listing](#approval-confirmation-and-approved-listing) | Approve listing; copy the result, return to listings or start another item | Planned |
+**Stay in control.** Photos and edits appear immediately, with durable local intent and background synchronization. Learning and generation can continue while the seller navigates elsewhere. A connection problem never turns the whole app into a waiting room.
 
-## Core flow
+**Understand before approving.** Generated details are editable, uncertainty is visible, and evidence explains the price. Approval preserves exactly the reviewed version. The final action is copying that listing for use in Vinted.
 
-The implemented flow preserves the intermediate listing screen and starts every new listing with photos, without a naming form:
+## Journey and screen map
 
 ```mermaid
 flowchart TD
-  SignIn[Sign in] --> Listings[Your listings]
-  Listings -->|New listing or existing item| Photos[Add photos + Anything else?]
-  Photos -->|Back| Listings
-  Photos -->|Open thumbnail| Inspection[Photo inspection]
-  Inspection -->|Close| Photos
-  Photos -->|Avatar| Account[Your account]
-  Account -->|Close| Photos
-  Account -->|Sign out| SignIn
+    SignIn[Sign in] --> Listings[Your listings]
+    Listings -->|New listing| Photos[Add photos and optional context]
+    Listings -->|Resume| Resume{Saved stage}
+    Resume --> Photos
+    Resume --> Build[Building your draft]
+    Resume --> Review[Review listing and price]
+    Resume --> Approved[Approved listing]
+    Photos <-->|Inspect or arrange| Inspect[Photo inspection]
+    Photos -->|Create my draft| Style{Style ready?}
+    Style -->|Yes| Build
+    Style -->|No| Examples[Your listing examples]
+    Examples --> Learn[Learning your style]
+    Learn -->|Ready: return to photos| Photos
+    Build -->|Ready| Review
+    Review <-->|Explain| Evidence[Evidence sheet]
+    Review -->|Approve exact version| Approved
+    Approved -->|Copy or return| Listings
+    Listings <-->|Avatar| Account[Your account]
+    Account <-->|Manage examples| Examples
+    Account -->|Sign out| SignIn
+    Recovery[Unavailable link] --> Listings
 ```
 
+Account is also available from the photo and progress headers. Closing it returns to its invoking screen. Back from a supporting screen restores the item, scroll position and focus. Learning entered from an item returns to that item; learning entered from account returns to account. Completing learning does not silently submit a generation request: the seller returns to photos and chooses **Create my draft**.
 
-Selecting an existing row resumes that item. A signed-out visitor opening a direct item URL signs in on that URL, then sees the item or Item unavailable. Google account selection and the native camera/file picker are handoffs, not additional Vintage routes.
-
-The remaining product flow is:
-
-```text
-Seller examples → Learning progress → Add photos + context
-                                            ↓
-                                     Create my draft
-                                            ↓
-                                     Build the draft
-                                            ↓
-                                     Review and edit ↔ Evidence details
-                                            ↓
-                                     Approval confirmation
-                                            ↓
-                                     Your listings / Copy listing / New listing
-```
-
-The seller-example entry method remains a milestone 4 design decision; Google authentication does not by itself provide Vinted listing history. It must not silently replace the current Your listings landing screen.
-
-Progress is retained locally after meaningful actions and synced in the background. Editing and navigation do not wait for network acknowledgement. A cloud-dependent generation or approval action, once implemented, must distinguish an outstanding request from confirmed completion while keeping the rest of the interface usable.
-
-## Visual references
-
-The original concept mockups below remain the visual direction for the main journey. Additional images are **captures of the merged app**, documenting the screens and states that were missing. Both sets use compact, clickable light/dark images at 211px; the captures use a 393 × 852 CSS-pixel viewport. [Capture provenance](./docs/screens/README.md) identifies their source and sample data. Planned screens without a dedicated visual are specified in text; they are not claimed to have approved mockups.
-
-## Sign in
-
-| Light | Dark |
-| --- | --- |
-| <a href="./docs/mockups/01-sign-in-light.png"><img src="./docs/mockups/01-sign-in-light.png" alt="Vintage sign-in screen — light appearance" width="211" /></a> | <a href="./docs/mockups/01-sign-in-dark.png"><img src="./docs/mockups/01-sign-in-dark.png" alt="Vintage sign-in screen — dark appearance" width="211" /></a> |
-
-Purpose: establish identity with Google and explain how the seller's listing history improves the result.
-
-The primary action opens Google Account login. At `/`, successful authentication opens Your listings. On a direct item URL it restores access to that item. Account creation happens in the background; it does not gate navigation on a server acknowledgement.
-
-The sign-in copy describes the intended value of seller-history learning. Importing examples and producing the style profile are planned, not actions the current sign-in screen performs.
-
-The learning summary sets the expectation that Vintage studies:
-
-- title and description structure;
-- vocabulary, tone, formatting, and typical level of detail;
-- the seller's treatment of condition and flaws; and
-- their historical pricing approach.
-
-Returning signed-in sessions at `/` see Your listings. The seller explicitly selects an existing item or New listing.
-
-### States
-
-- Ready: `Continue with Google` is active.
-- Authenticating: the button shows progress and remains in place.
-- Signed in: open Your listings or restore the item from the requested URL.
-- Signed out from an item: show sign-in at the same URL; authenticate before displaying item content.
-- Recoverable error: explain the failed sign-in and keep `Continue with Google` available to retry.
-
-## Your listings
-
-**Current — `/` when signed in.** This is the intermediate screen between sign-in and photo entry.
-
-The glass header contains `Your listings` and `Sign out`. The primary `New listing` action opens photo entry directly. There is no naming form or additional setup step.
-
-### Empty listing screen
-
-| Light | Dark |
-| --- | --- |
-| <a href="./docs/screens/listings-empty-light.png"><img src="./docs/screens/listings-empty-light.png" alt="Your listings with no saved items — light appearance" width="211" /></a> | <a href="./docs/screens/listings-empty-dark.png"><img src="./docs/screens/listings-empty-dark.png" alt="Your listings with no saved items — dark appearance" width="211" /></a> |
-
-The empty state keeps the header and New listing action in place. It does not add promotional copy or sample listings.
-
-### Populated listing screen
-
-| Light | Dark |
-| --- | --- |
-| <a href="./docs/screens/listings-populated-light.png"><img src="./docs/screens/listings-populated-light.png" alt="Your listings with a saved item — light appearance" width="211" /></a> | <a href="./docs/screens/listings-populated-dark.png"><img src="./docs/screens/listings-populated-dark.png" alt="Your listings with a saved item — dark appearance" width="211" /></a> |
-
-Each glass row opens its item URL. Current rows use labels such as `Listing 1`; these are navigation labels, not seller-entered names. Locally created listings appear while synchronization is pending. Sign out clears the current account's visible listing state and returns to sign-in. Approved-listing access is part of the planned review/approval delivery.
-
-## Add photos and context
-
-| Light | Dark |
-| --- | --- |
-| <a href="./docs/mockups/02-add-photos-light.png"><img src="./docs/mockups/02-add-photos-light.png" alt="Add item photos screen — light appearance" width="211" /></a> | <a href="./docs/mockups/02-add-photos-dark.png"><img src="./docs/mockups/02-add-photos-dark.png" alt="Add item photos screen — dark appearance" width="211" /></a> |
-
-Purpose: gather enough visual evidence for a strong first proposal with minimal typing.
-
-The seller can select files, use the device camera, reorder thumbnails, replace a photo, and remove a photo. The grid encourages complementary views: front, back, label, construction details, and visible wear. Each tile has an accessible name based on position and purpose.
-
-`Anything else?` is an optional single-line input beneath the grid, for information beyond the images such as provenance, fit, fabric feel or an unpictured detail. It accepts up to 2,000 characters and enqueues changes as the seller types. The header shows `1 of 3 · Add photos`, a back action to Your listings and the account avatar.
-
-The `Create my draft` CTA in the concept mockup is planned. It is not present in the current app because generation is not implemented. When delivered, it can submit only after at least one valid photo and every selected input are durably ready.
-
-Upload progress appears on each tile. The current screen reports saving, uploading, saved or attention-needed state beneath the input. Selecting a photo shows its locally retained preview immediately where the format is browser-readable; HEIC/HEIF shows preparation/upload feedback while its readable preview is produced.
-
-### Interaction details
-
-- File and camera input accept JPEG, PNG, WebP and HEIC/HEIF, up to 8 photos and 10 MB per photo.
-- Photos preserve their selected order.
-- A photo opens into a full-screen inspection view.
-- Reordering uses drag, keyboard move controls, and touch-friendly move actions.
-- Back navigation, context editing and additional selections remain usable while syncing. Do not put a network-wait confirmation in front of navigation.
-- Upload work continues across app navigation. Reopening an item recovers locally retained bytes after a tab closes; a closed or suspended browser is not promised to keep uploading.
-- Cancelling the native picker leaves the existing photos intact. Replacement retains the current position; removing the target while replacement uploads prevents it from reappearing.
-- If a stored thumbnail cannot load, its tile offers Try again; the rest of the item remains usable.
-
-### Empty photo entry
-
-| Light | Dark |
-| --- | --- |
-| <a href="./docs/screens/photos-empty-light.png"><img src="./docs/screens/photos-empty-light.png" alt="New listing ready for a first photo — light appearance" width="211" /></a> | <a href="./docs/screens/photos-empty-dark.png"><img src="./docs/screens/photos-empty-dark.png" alt="New listing ready for a first photo — dark appearance" width="211" /></a> |
-
-This is the actual first screen after New listing: Add photo / Use camera plus Anything else?, without prefilled sample photos. The photos in the concept mockup illustrate a later populated state.
-
-## Photo inspection
-
-**Current — full-screen dialog over `/listings/{id}`.** Selecting a loaded thumbnail opens the natural-colour image at a contained size, with `Photo N of M` and a close control.
-
-| Light | Dark |
-| --- | --- |
-| <a href="./docs/screens/photo-inspection-light.png"><img src="./docs/screens/photo-inspection-light.png" alt="Full-screen photo inspection and actions — light appearance" width="211" /></a> | <a href="./docs/screens/photo-inspection-dark.png"><img src="./docs/screens/photo-inspection-dark.png" alt="Full-screen photo inspection and actions — dark appearance" width="211" /></a> |
-
-The action area contains `Move earlier`, `Move later`, `Replace photo` and `Remove photo`. Move earlier is unavailable for the first image; Move later is unavailable for the last. Reordering updates position immediately. Replace photo opens the native file picker and preserves the current position when the upload finishes. Remove photo closes inspection and updates the grid. Close or Escape returns to the item without discarding context or other photos.
-
-These actions belong to inspection, rather than a separate edit-photo route. The interface does not apply colour filters or claim image-editing tools that are not present.
-
-## Your account
-
-**Current — dialog opened by the photo-entry avatar.**
-
-| Light | Dark |
-| --- | --- |
-| <a href="./docs/screens/account-light.png"><img src="./docs/screens/account-light.png" alt="Your account dialog over photo entry — light appearance" width="211" /></a> | <a href="./docs/screens/account-dark.png"><img src="./docs/screens/account-dark.png" alt="Your account dialog over photo entry — dark appearance" width="211" /></a> |
-
-The dialog shows `Your account`, the signed-in display name, `Sign out` and `Close account`. Closing it returns to the same item. Signing out hides the item's content and displays sign-in at the same URL; access after the next sign-in is checked for that account. It is an account dialog, not a settings screen: the app has no manual appearance selector or account-editing form.
-
-## Native Google and camera handoffs
-
-These are necessary parts of the journey, but their chrome is controlled by the provider, browser or phone. Do not reproduce a fake system status bar, Google account selector, photo library or camera inside Vintage. Their exact layout can vary between phones and browsers.
-
-| Handoff | Trigger | Successful return | Cancel or unavailable |
-| --- | --- | --- | --- |
-| Google account selection | Continue with Google | Authenticated Your listings or the originally requested item | Return to sign-in; explain cancellation, a blocked popup or a connection failure and allow retry |
-| File/photo-library picker | Add photo | Retain selected files and show their tiles in photo entry | Leave the item unchanged |
-| Camera/capture picker | Use camera | Retain the captured image and return to photo entry | Leave the item unchanged; Add photo remains available if the browser cannot offer camera capture |
-| Replacement picker | Replace photo in inspection | Keep the target position and upload the selected replacement | Keep the original photo; closing the picker must not remove it |
-
-## Item unavailable
-
-**Current — `/listings/{id}` when the requested item is not available to the signed-in account.**
-
-| Light | Dark |
-| --- | --- |
-| <a href="./docs/screens/item-unavailable-light.png"><img src="./docs/screens/item-unavailable-light.png" alt="Unavailable item with a new-item action — light appearance" width="211" /></a> | <a href="./docs/screens/item-unavailable-dark.png"><img src="./docs/screens/item-unavailable-dark.png" alt="Unavailable item with a new-item action — dark appearance" width="211" /></a> |
-
-Keep the photo-flow header, back navigation and account action. Show `Item unavailable`, `This item isn’t available in this account.` and `Add item`. Back returns to Your listings; Add item opens a new photo-first item. Do not disclose another account's item details or imply that the user should rename an item to recover access. A fetch/connection failure is a recoverable error, not proof that the item is missing.
-
-## Unknown URL and application errors
-
-**Current — unmatched routes.** A URL outside the application's routes displays the framework's `404` / `Not Found` page. It is different from an existing listing route whose item is unavailable.
-
-| Light | Dark |
-| --- | --- |
-| <a href="./docs/screens/not-found-light.png"><img src="./docs/screens/not-found-light.png" alt="Unmatched URL showing 404 — light appearance" width="211" /></a> | <a href="./docs/screens/not-found-dark.png"><img src="./docs/screens/not-found-dark.png" alt="Unmatched URL showing 404 — dark appearance" width="211" /></a> |
-
-The current page has no in-app recovery action; browser Back or opening `/` returns to the application. A designed route-error screen with a Your listings/sign-in return action is still needed. Unrecoverable application failures similarly need a concise error and safe reload/return action without exposing internal diagnostics or claiming that local changes were lost. These are outstanding error-screen design requirements, not implemented controls in the capture.
-
-## Shared loading, sync and error states
-
-Loading and recovery normally stay inside the affected page or tile. They are not extra onboarding screens and must not replace the item with a full-screen network spinner while the seller is editing.
-
-| State | Presentation | Available recovery/navigation |
+| Surface | Entry and main action | Return or continuation |
 | --- | --- | --- |
-| Initial protected-route restoration | `Restoring your account…` | Resolve the local auth state before revealing account content |
-| Opening an item | `Opening your item…` during local creation/restoration | A failed open offers Try again; a new item obtains its durable URL without a server round trip |
-| Signing in | `Connecting…` or `Signing in…` in the Google control | Keep the control in place; cancellation/blocking/connection errors return it to a retryable state |
-| Local edits awaiting acknowledgement | `Saving…`; input retains the seller's text | Continue editing or navigate; synchronize in the background |
-| Photo selected, preparing or uploading | Local thumbnail when readable, `Waiting to upload` or `Uploading N%` and progress | Continue editing or navigate; other selections remain available within the photo limit |
-| Fully synchronized | `Saved` beneath the input | Continue editing, inspect photos or return to listings |
-| File validation/upload failure | Error on the affected tile, Try again and Remove; aggregate attention message | Retry that selection or remove it without losing the other photos or context |
-| Stored thumbnail read failure | `Photo could not load. Try again` on that tile | Retry the read while keeping the rest of the item usable |
-| Local retention failure | Explain that the selection/details could not be saved on this device | Retain the visible editable state where possible, offer retry or reselection; do not claim cloud confirmation |
-| Rejected synchronization | Inline sync error; Try again and, when available, Discard unsaved change | Keep editing; discarding affects rejected local changes, not the saved item itself |
-| Event/projection problem | `Some changes could not be displayed.` | Preserve recoverable item content and do not present an invented successful state |
+| Sign in | Google authentication | Your listings; resume an authorized deep link when supplied |
+| Your listings, empty | New listing | Photo entry |
+| Your listings, populated | Resume an item or New listing | Its saved stage or photo entry |
+| Photo entry, empty/populated | Take or choose photos; optional Anything else? | Create my draft; Back to Your listings |
+| Photo inspection | Open a thumbnail | Close to unchanged editor position |
+| Your account | Avatar | Close to invoking screen; examples; sign out |
+| Listing examples | First generation without a style, or account | Learn my style; Back preserves examples and item |
+| Learning your style | Submitted examples | Continue editing; return when ready |
+| Building your draft | Create my draft | Review when ready; Your listings while working |
+| Review | Finished proposal or saved review | Edit, inspect evidence, approve |
+| Evidence sheet | Photo, style or pricing evidence | Close to the exact review position |
+| Approved listing | Confirmed approval or saved approved card | Copy listing; Your listings |
+| Unavailable link | Unknown URL or inaccessible item | Your listings; switch account where relevant |
+| Recoverable states | Offline, failed photo, failed generation or approval | In-place recovery with work retained |
 
-### Upload error example
+Native Google authentication, camera and photo-library pickers are system-owned handoffs. Vintage designs their launch, cancellation and recovery, and does not imitate those interfaces.
 
-| Light | Dark |
-| --- | --- |
-| <a href="./docs/screens/upload-error-light.png"><img src="./docs/screens/upload-error-light.png" alt="Invalid file selection with retry and removal — light appearance" width="211" /></a> | <a href="./docs/screens/upload-error-dark.png"><img src="./docs/screens/upload-error-dark.png" alt="Invalid file selection with retry and removal — dark appearance" width="211" /></a> |
+## Reading the concepts
 
-The capture uses an unsupported text file to exercise the actual upload-error UI. File type/size failures require a valid replacement selection; retry alone cannot make an invalid file valid.
+All visual references below are AI-generated design concepts. New boards place **light on the left and dark on the right**, displayed at 422 pixels total, approximately 211 pixels per screen. Click to inspect the full image. Existing individual concepts retain the same 211-pixel display width. Board proportions are illustrative; implementation uses a fluid phone layout and a centered mobile-width column on desktop.
 
-### Locally retained work without connectivity
+The [original generation prompts](./docs/mockups/GENERATION.md) and [extension prompts](./docs/mockups/EXPANDED_FLOW_GENERATION.md) record provenance. Example identities, items, prices and evidence in the images are illustrative. Text requirements below govern behavior and resolve any image-rendered text ambiguity.
 
-| Light | Dark |
-| --- | --- |
-| <a href="./docs/screens/offline-edits-light.png"><img src="./docs/screens/offline-edits-light.png" alt="Locally retained photo and context while disconnected — light appearance" width="211" /></a> | <a href="./docs/screens/offline-edits-dark.png"><img src="./docs/screens/offline-edits-dark.png" alt="Locally retained photo and context while disconnected — dark appearance" width="211" /></a> |
-
-This capture shows a second photo and context retained while the browser is disconnected. The current UI uses the pending/upload indicators above rather than a dedicated offline page. Connectivity loss does not disable Back, New listing or Anything else?. On reconnection, pending writes and uploads resume. After tab closure, reopening the item recovers selected bytes retained on that device; if device storage has been cleared, the seller must reselect missing files. Do not instruct the seller to clear site data as routine recovery for a stale preview.
-
-## Seller examples
-
-**Planned — milestone 4.** This screen supplies the source material for personalized writing and pricing. It needs an empty state asking for examples, a review of the supplied material, validation errors, duplicate/replacement handling and an action to start learning.
-
-Before implementation, agree the input source and entry interaction, its limits, and where it is opened from the listing journey. No source picker, import route or dedicated visual is approved by this document yet. Google identity must not be described as automatically providing marketplace history. With no examples, ask for them; a generic-draft option needs the separate product decision identified in the implementation plan and must never claim to use the seller's established style.
-
-## Learning progress
-
-**Planned — after examples are submitted.** This is distinct from Google authentication and from item-draft generation.
-
-Show the actual examples received and analyzed, the current learning step, and completion or a recoverable error. Counts and completion come from persisted work, not timed animation. The seller can leave and return without restarting completed work. Retry must continue or safely repeat the failed operation. On completion, return to photo entry for the item being prepared. Previously selected photos and context survive the learning flow. A source-specific mockup is still needed once the example-input interaction is agreed.
-
-## Build the draft
-
-**Planned.** No generation-progress screen is currently exposed.
+## 1. Sign in
 
 | Light | Dark |
 | --- | --- |
-| <a href="./docs/mockups/03-building-draft-light.png"><img src="./docs/mockups/03-building-draft-light.png" alt="AI draft generation screen — light appearance" width="211" /></a> | <a href="./docs/mockups/03-building-draft-dark.png"><img src="./docs/mockups/03-building-draft-dark.png" alt="AI draft generation screen — dark appearance" width="211" /></a> |
+| <a href="./docs/mockups/01-sign-in-light.png"><img src="./docs/mockups/01-sign-in-light.png" alt="Generated sign-in concept, light" width="211" /></a> | <a href="./docs/mockups/01-sign-in-dark.png"><img src="./docs/mockups/01-sign-in-dark.png" alt="Generated sign-in concept, dark" width="211" /></a> |
 
-Purpose: make useful work and progress legible while Vintage produces the proposal.
+Keep the approved restrained brand composition, natural garment imagery, neutral Google control and privacy reassurance. This is the one introductory surface; working screens use short task copy.
 
-The stage list corresponds to durable generation events:
+Google signs the seller into Vintage. It does not grant access to their Vinted history. Explain that learning uses examples the seller supplies. Cancelling authentication leaves sign-in usable. Failure appears beside the action with **Try again**, without discarding the destination of an item link. Show a quiet authentication indicator while resolving a session, not a flash of another user's listings.
 
-1. Reading the photos
-2. Matching the seller's listing style
-3. Comparing the market
-4. Building the price strategy
+## 2. Your listings
 
-Completed stages remain checked after refresh because the screen is a projection of the listing event stream. The active stage is announced through an `aria-live="polite"` status region. The seller can leave the screen and return while processing continues.
+### First visit
 
-The market message reinforces the pricing objective: determine the item's best market position using the complete relevant price distribution, item differentiation, demand, and negotiation room.
+<a href="./docs/mockups/06-first-listing.png"><img src="./docs/mockups/06-first-listing.png" alt="Generated first-listing concepts, light and dark" width="422" /></a>
 
-## Review, edit, and approve
+One calm empty card says **Your first listing** and **Start with a photo. Add the details as you go.** The primary **New listing** action creates local draft intent and opens photo entry immediately. Account stays available. No sample listings, statistics or required title.
 
-**Planned.** The current app stops at photo entry; these controls become available with real proposal generation.
+### Returning to work
+
+<a href="./docs/mockups/05-your-listings.png"><img src="./docs/mockups/05-your-listings.png" alt="Generated photo-led listing home concepts, light and dark" width="422" /></a>
+
+Each generous glass card has a cover photo, a short title when available, a plain-language stage and a last-edited time. Before a title exists, use **Untitled item** with its actual photo and photo count. Never invent an AI identification before analysis. Stages are **Draft**, **Creating draft**, **Ready to review**, **Approval pending** and **Approved**. Add a small local-only indicator when an item has not synced.
+
+The entire card resumes its actual stage. Keep **New listing** prominent near the bottom safe area without obscuring the final card. A long list scrolls naturally. An empty device awaiting its first fetch shows gentle card placeholders; cached listings remain immediately usable during refresh. An error loading additional work appears inline with retry, alongside the available items.
+
+## 3. Photo entry
+
+### Before the first photo
+
+<a href="./docs/mockups/07-first-photo.png"><img src="./docs/mockups/07-first-photo.png" alt="Generated first-photo capture concepts, light and dark" width="422" /></a>
+
+The first meaningful action is **Take photo**, with **Choose photos** alongside it as a secondary option. **Anything else?** is optional and appears beneath the capture surface. It accepts fit, provenance, fabric feel or an unpictured detail; it is never a listing-name field. **Create my draft** explains **Add a photo to continue** while there are no usable images.
+
+### Building a useful photo set
 
 | Light | Dark |
 | --- | --- |
-| <a href="./docs/mockups/04-review-light.png"><img src="./docs/mockups/04-review-light.png" alt="Listing and pricing review screen — light appearance" width="211" /></a> | <a href="./docs/mockups/04-review-dark.png"><img src="./docs/mockups/04-review-dark.png" alt="Listing and pricing review screen — dark appearance" width="211" /></a> |
+| <a href="./docs/mockups/02-add-photos-light.png"><img src="./docs/mockups/02-add-photos-light.png" alt="Generated populated photo-entry concept, light" width="211" /></a> | <a href="./docs/mockups/02-add-photos-dark.png"><img src="./docs/mockups/02-add-photos-dark.png" alt="Generated populated photo-entry concept, dark" width="211" /></a> |
 
-Purpose: let the seller evaluate one coherent proposal and approve it confidently.
+After selection, show the local photo immediately in the two-column grid and retain an **Add photo** tile. Keep the item central, with short guidance to include the front, back, labels and wear. Grid thumbnails may crop to fit; inspection always reveals the whole image. The first photo is the cover. Reordering changes that order locally and syncs in the background.
 
-The review is a single scrollable form with two clear sections.
+Tapping **Create my draft** records the request immediately. If files are still syncing, show **Waiting for photos to sync** with **Keep editing** and **Your listings** available. The request must identify the input version it will use; later edits are retained separately and clearly identified as changes for a subsequent draft. No repeat tap creates duplicate work.
 
-### Listing proposal
+If seller style is missing, open listing examples with the item preserved. The proposed v0 input is pasted titles and descriptions from the seller's own listings, matching the plan's manual-input direction. At least one example is required for personalized generation. The seller can leave setup and keep their item; no generic draft is silently presented as personalized.
 
-- Ordered photos
-- Editable title
-- Editable category, brand, size, colour, material, condition, and other attributes
-- Editable description
-- Visible markers for inferred fields and uncertain observations
-- A `Written in your style` explanation showing which recurring seller patterns shaped the draft
+## 4. Photo inspection and arrangement
 
-Edits save as the seller works. Field-level undo restores the latest AI proposal. Vintage records the difference between generated and approved content as learning evidence for later drafts.
+<a href="./docs/mockups/08-photo-inspection.png"><img src="./docs/mockups/08-photo-inspection.png" alt="Generated photo inspection concepts, light and dark" width="422" /></a>
 
-### Pricing proposal
+Give the garment most of the screen. Use a small translucent header, an untinted full image, a thumbnail strip and a compact glass action bar. Support pinch zoom and explicit previous/next controls; announce **Photo 1 of 3** and which photo is the cover.
 
-The recommended listing price is the visual anchor. It is accompanied by:
+**Make cover** moves the selected photo first. It is marked as already selected for the current cover. **Replace** launches the picker while keeping the existing photo until a replacement succeeds. **Remove** acts immediately with a reachable **Undo** message; its target is unambiguous. Removing the last photo returns to empty photo entry. Drag ordering also has accessible **Move earlier** and **Move later** alternatives in the overflow menu.
 
-- an expected sale-price range;
-- the relationship between price, expected revenue, and time to sale;
-- a seller-adjustable price control;
-- evidence supporting premium positioning;
-- relevant comparable groups and their price distributions; and
-- room reserved for likely offers.
+Closing preserves editor context. Cancelling a picker changes nothing. Never use a whole-screen network spinner for these actions.
 
-Selecting an evidence row opens a bottom sheet with the underlying comparable group, why it is relevant, its condition and attributes, and its contribution to the recommendation. Changing the price updates the expected range and sale-speed estimate.
+## 5. Your account
 
-`Approve listing` commits the current title, attributes, description, photo order, and chosen price as one approved proposal.
+<a href="./docs/mockups/09-account.png"><img src="./docs/mockups/09-account.png" alt="Generated account sheet concepts, light and dark" width="422" /></a>
 
-## Evidence details
+A focused glass sheet contains Google identity, **Your listing style**, its example count/readiness, privacy information and **Sign out**. It has a visible close button as well as dismissal gestures. There is no appearance selector or technical connection panel.
 
-**Planned — bottom sheet opened from a review evidence row.** This is a separate interaction surface even though it does not need a new route.
+Keep privacy reassurance inline: **Your photos and drafts are private to your account.** Explain that examples shape drafts and approval does not publish to Vinted. This does not need another navigation destination.
 
-Show the selected evidence's title, relevance to the item, source references and the observation supporting the proposal. Market evidence includes comparable groups, condition/attributes, price distribution, currency and freshness. Distinguish asking prices, observed sales and modeled estimates. Photo or seller-style evidence identifies its corresponding source instead of fabricating a market comparison.
+Sign-out must account for local work. When work is fully synced, sign out directly. If changes exist only on this device, present **Keep working** and **Sign out** with an explicit explanation that those changes remain on this device for this account and cannot yet be opened elsewhere. Do not erase recoverable work or expose it to the next signed-in account.
 
-The sheet has a visible close action and supports Escape. Closing restores the review scroll position, edited values, selected price and focus on the invoking row. Long evidence scrolls inside the sheet. Missing evidence or a failed fetch is explained in place with retry where applicable; it must not erase review edits or display invented comparables. A dedicated light/dark evidence-sheet mockup remains part of the planned review work.
+## 6. Your listing examples
 
-## Approval confirmation and approved listing
+<a href="./docs/mockups/10-style-examples.png"><img src="./docs/mockups/10-style-examples.png" alt="Generated seller example entry concepts, light and dark" width="422" /></a>
 
-**Planned.** This is a distinct success/read-only state of the review flow, not a current route.
+**Make it sound like you** explains why examples are useful at the point they become relevant. Ask for one existing title and description, with **Add another example** and **Learn my style**. More examples can be supplied later; no arbitrary multi-example gate. Preserve typed examples and item context when leaving the screen.
 
-Approval resolves to a compact success state within the review screen. It shows the approved price, confirms that the listing is ready, and provides a primary `Copy listing` action. The approved result remains available from Your listings as an immutable approved snapshot. Reopening it shows the approved copy and price rather than an editable draft. Copy success has visible feedback; if the clipboard is unavailable, expose selectable listing text. A failed or stale approval keeps the editable proposal and explains the action needed; it must not show success before confirmation. Returning to Your listings and starting a New listing remain available.
+Existing examples appear as compact editable cards. Each supports removal with undo. Validate missing title or description next to the field, without clearing other input. Do not ask for Vinted credentials or claim an import is occurring. Account entry uses neutral supporting copy; item entry adds **Your photos are saved** only when local persistence has succeeded.
 
-## Visual language
+This manual example-entry interaction is a proposed design decision in this PR. Structured export ingestion can be designed separately if chosen; it is not an additional hidden path in this flow.
 
-The interface uses a terracotta and linen palette with glassmorphic surfaces in both light and dark appearances. Translucent, softly blurred cards sit over restrained terracotta and sand background gradients, with fine edge highlights and subtle shadows. Text, icons, photos, and essential controls remain crisp and opaque.
+## 7. Learning your style
 
-| Element | Light appearance | Dark appearance |
+<a href="./docs/mockups/11-learning-style.png"><img src="./docs/mockups/11-learning-style.png" alt="Generated style-learning concepts, light and dark" width="422" /></a>
+
+Show actual work: **Reading [count] examples**, **Finding your tone**, **Saving your style**. Use completed ticks, one current stage and quiet pending stages. No invented percentage or completion time. Preserve the operation across reloads.
+
+**Back to photos** is available for item entry; account entry offers **Back to account**. Completion offers **Continue to photos** or **Back to account**, and a quiet ready indicator appears if the seller has already left. Do not redirect away from active editing. Failure retains examples with **Try again**; offline submission says **Will start when connected**. A changed example set requires a newly learned profile before the next personalized generation.
+
+## 8. Building your draft
+
+| Light | Dark |
+| --- | --- |
+| <a href="./docs/mockups/03-building-draft-light.png"><img src="./docs/mockups/03-building-draft-light.png" alt="Generated draft-building concept, light" width="211" /></a> | <a href="./docs/mockups/03-building-draft-dark.png"><img src="./docs/mockups/03-building-draft-dark.png" alt="Generated draft-building concept, dark" width="211" /></a> |
+
+Keep the photo and genuine stage visible: reading photos, applying seller style, comparing the market and building the price strategy. Progress resumes from persisted operation state, with no simulated timers. **Your listings** remains available while work continues. A ready card returns the seller to review; completion must not steal focus from another task.
+
+If generation fails, the same progress card explains **We couldn't finish this draft**, retains the item and offers **Try again** and **Back to photos**. Retry resumes or creates an explicitly new attempt without duplicating approval or losing edits. When a new proposal would replace an edited one, show **Replace proposal?** and explain which edits would be replaced before proceeding.
+
+## 9. Review the listing and price
+
+| Light | Dark |
+| --- | --- |
+| <a href="./docs/mockups/04-review-light.png"><img src="./docs/mockups/04-review-light.png" alt="Generated listing review concept, light" width="211" /></a> | <a href="./docs/mockups/04-review-dark.png"><img src="./docs/mockups/04-review-dark.png" alt="Generated listing review concept, dark" width="211" /></a> |
+
+Use one scrollable review with two clear groups: **Listing proposal** and **Recommended price**. Show ordered photos, editable title and description, and category, brand, size, colour, material and condition. Mark uncertain inferences with text such as **Check size**, linked to the relevant photo. Do not bury uncertainty in an icon or present guessed facts as confirmed.
+
+Edits save locally as the seller types. A field-level **Restore suggestion** action returns to the generated value. **Written in your style** opens evidence from the examples actually used; it appears only when that claim is supported.
+
+Price is the visual anchor, with an editable listing price, currency, expected sale range and concise rationale. Distinguish a listing price from a predicted sale price. The inherited mockup's “Faster sale / Slower sale” curve is illustrative, not a valid chart specification: an implemented chart must name its measured quantity and horizon, distinguish expected revenue from sale probability and time to sale, and use supported data. Show plain-language uncertainty or unavailable estimates when evidence cannot support a chart. Changing price retains the new value immediately and identifies dependent estimates as updating until recalculated.
+
+**Approve listing** captures the exact reviewed title, description, attributes, photo order and chosen price. If confirmation needs network work, transition immediately to **Approval pending**, preserve an immutable view of the submitted version, and keep navigation available. Show **Approved** only after confirmation. Failure returns to a recoverable review; concurrent changes require review of the newer version rather than silently approving stale content.
+
+## 10. Evidence details
+
+<a href="./docs/mockups/12-price-evidence.png"><img src="./docs/mockups/12-price-evidence.png" alt="Generated price-evidence sheet concepts, light and dark" width="422" /></a>
+
+Evidence opens in a near-full-height glass sheet above the review. Lead with the question being answered, such as **Why £48?**, followed by the observation and inspectable sources. Price evidence distinguishes **Asking**, **Sold** and modeled estimates, with currency, source links and observation dates. Explain why each comparable matters and where it differs; include higher-value matches when relevant. Values and sources pictured here are illustrative, never production fixture evidence.
+
+Use the same sheet anatomy for photo observations and seller-style evidence, replacing comparable rows with the actual referenced photo or example excerpts. Missing evidence says **Evidence unavailable** with retry when appropriate; it never invents sources. Close and Escape restore edited values, selected price, scroll position and focus on the invoking row.
+
+## 11. Approved listing and copying
+
+<a href="./docs/mockups/13-approved-listing.png"><img src="./docs/mockups/13-approved-listing.png" alt="Generated approved-listing concepts, light and dark" width="422" /></a>
+
+A restrained success mark, item photo and approved price confirm the result. **Ready to copy** leads to **Copy listing**, with **Your listings** as the secondary action. The approved listing is a read-only snapshot, available from its saved card after reload. **View full listing** expands the complete approved text and attributes inline; it does not open an editor.
+
+Copy produces **Copied** feedback. If clipboard access fails, expand selectable full text with **Select listing text** and manual-copy guidance. Always let the seller inspect what is being copied. Approval never publishes automatically; **Paste it into Vinted when you're ready** explains the handoff. Starting another listing remains available from Your listings.
+
+## 12. Offline and recovery
+
+### Keep the item usable
+
+<a href="./docs/mockups/14-offline-photos.png"><img src="./docs/mockups/14-offline-photos.png" alt="Generated offline photo editing concepts, light and dark" width="422" /></a>
+
+Use one quiet contextual status: **Saved on this phone** and **Photos will sync when you're connected**. It appears only when useful. Once local persistence succeeds, camera, context entry, photo arrangement and navigation stay responsive. Sync resumes automatically. Do not claim cloud save, or local save before the corresponding write succeeds.
+
+| Situation | Presentation and recovery |
+| --- | --- |
+| Camera or picker cancelled | Return to the editor and invoking control with no error or lost input |
+| Camera unavailable or permission denied | Inline explanation with **Choose photos**; native permission settings remain system-owned |
+| Unsupported or unreadable file | Error on the affected tile: **Couldn't use this photo**, with **Choose another photo** and **Remove**; retain other photos |
+| Upload interrupted | Keep the local thumbnail; indicate pending sync; retry automatically and offer manual retry after persistent failure |
+| Local storage cannot retain a photo or edit | Explicit **Not saved on this phone** near the affected content; retain the in-memory value and explain the risk before leaving |
+| Session expired | Preserve recoverable local work and offer **Sign in again**; hide private content until the account is re-established |
+| Learning or generation failed | In-place stage error with retry and a route back to the retained input |
+| Approval pending or failed | Preserve the submitted version; never display confirmed approval prematurely |
+| Copy unavailable | Expand selectable approved text with manual-copy guidance |
+
+Error messages identify the affected operation and give a useful action. No raw backend messages, technical diagnostics or whole-page replacement of an editable item.
+
+### An unavailable link
+
+<a href="./docs/mockups/15-recovery.png"><img src="./docs/mockups/15-recovery.png" alt="Generated unavailable-listing recovery concepts, light and dark" width="422" /></a>
+
+A shared recovery layout keeps the same header, glass treatment and typography. For an inaccessible item, say **Listing unavailable** without exposing another account's data or confirming whether that item exists. Offer **Your listings** and **Switch account**. For an unknown route, use **Page unavailable**, **This link may be out of date**, and **Your listings**; omit the account-specific explanation. Signed-out visitors receive **Sign in** instead. Authentication failures and temporary fetch failures use retry before treating a link as unavailable.
+
+## Visual and interaction system
+
+| Element | Light | Dark |
 | --- | --- | --- |
-| Canvas | Linen `#F7F0E6` with pale sand and terracotta gradients | Warm charcoal `#211C19` with muted clay and umber glows |
-| Glass surfaces | Frosted translucent linen-white | Frosted translucent warm charcoal |
+| Canvas | Linen `#F7F0E6`, restrained sand and terracotta clouds | Warm charcoal `#211C19`, muted clay and umber glow |
+| Glass | Translucent linen-white, fine light edge, soft shadow | Translucent warm charcoal, pale linen edge, restrained depth |
 | Text | Warm charcoal `#2B2521` | Linen `#F7F0E6` |
-| Primary actions | Rust `#984831` with white text | Soft apricot `#EDB59B` with warm charcoal text |
-| Price, selection, and progress accents | Rust `#984831` | Soft apricot `#EDB59B` |
+| Primary action | Rust `#984831`, white label | Apricot `#EDB59B`, warm charcoal label |
 | Evidence and completion | Dark sage | Pale sage |
-| Inputs and boundaries | Defined neutral edges and light fills | Visible pale edges and dark fills |
+| Photos | Natural, untinted colour | The same natural, untinted colour |
 
-Sage remains a secondary colour for evidence and completion. Decorative glows use clay and sand; photographs retain their natural colours. Palette values are implementation targets, subject to contrast verification on the final composited surfaces.
+Glass should be visible in controls as well as cards: soft transmitted background colour, a fine edge highlight, a restrained inner sheen and a gentle shadow. Keep labels opaque and crisp. Avoid thick rims, flat grey slabs and decorative blur behind low-contrast text. Input surfaces need enough opacity to stay readable while still belonging to the glass system.
 
-Both appearances use generous whitespace, an 8-pixel spacing grid, rounded surfaces, highly legible sans-serif type, and item photography whose colours remain unchanged by the theme. Current typography uses self-hosted Inter Variable at 400–600 weights, with DM Serif Display for the wordmark. Use fine edge highlights and softly shaded translucent controls rather than thick opaque rims. Glass blur includes Safari support; input fills keep text readable on the composited background.
+Use a refined serif only for the Vintage wordmark, and a rounded, open modern sans for everything functional. Target regular body text, medium control labels and restrained semibold headings; avoid heavy block lettering. At phone scale start with 16px body/control text, 13–14px supporting text and 28–32px page headings, adjusting to match the concepts while preserving accessibility. Use an 8px spacing rhythm, roughly 16–24px page gutters, 20–28px panel corners, fine consistent line icons and generous internal spacing.
 
-### Follow system appearance
+The app remains a focused mobile-width column on desktop, approximately 393px with room for accessibility scaling. Let content scroll, including tall forms and evidence. Keep primary actions reachable above safe areas and virtual keyboards without covering fields. In sheets, trap focus, provide a visible close action, support Escape and restore focus when dismissed. Short confirmations and errors reuse this same glass sheet system.
 
-Vintage follows the phone's light/dark system setting automatically from the first render and responds when that setting changes while the app is open. The same behavior applies on desktop. There is no separate in-app theme selection in v0.
+### System appearance and motion
 
-Implementation should use the system colour-scheme preference for theme tokens and native controls, including page backgrounds, inputs, dialogs, loading states, errors, and approval confirmation. Switching appearance preserves the current route, draft, entered values, photo order, and focus, without a reload or a flash of the opposite theme.
+Follow the device's light/dark setting on first paint and while open. There is no in-app theme switch. Every route, sheet, input, native control colour scheme, loading state and recovery state participates. A change preserves the item, entered values, photo order, route and focus without a reload or opposite-theme flash.
 
-Glass is decorative: sufficient surface opacity must keep text and control contrast readable over every background. Provide solid surface fallbacks when backdrop blur is unavailable or reduced transparency is requested. The generated mockups illustrate the visual direction; implementation must verify contrast and interaction accessibility in both appearances.
+When transparency is reduced or backdrop blur is unavailable, use deliberately opaque surfaces with the same hierarchy and contrast. Motion communicates continuity between the photo, its inspection and review; reduced motion uses immediate changes and static progress. Neither animation nor network completion gates navigation.
 
-Motion communicates continuity between stages. The reduced-motion experience uses immediate state changes and static progress indicators.
+## Acceptance criteria
 
-## Accessibility contract
-
-- Every control has a programmatic name and visible focus treatment.
-- Touch targets are at least 44 × 44 CSS pixels.
-- Text and interactive controls meet WCAG 2.2 AA contrast in both appearances, including over glass surfaces.
-- Focus indicators, uncertain fields, errors, and disabled controls remain distinguishable in both appearances.
-- The complete flow works with keyboard-only input.
-- Validation and generation statuses are announced to assistive technology.
-- Colour always has a text or icon counterpart.
-- Photo order and AI uncertainty are available as text.
-- Zoom and text scaling preserve action access and reading order.
-
-## UX acceptance criteria
-
-- A signed-in seller can open Your listings, choose New listing and reach photo entry without entering a name.
-- Empty and populated listing screens, photo inspection, account/sign-out, inaccessible-item recovery and native camera/file handoffs have documented entry and return paths.
-- Edits and selected photos appear locally without waiting for network acknowledgement; navigation remains available, and retained changes recover after reconnection.
-- Cancelling a picker or closing a dialog preserves the item and returns focus to a usable control.
-- A seller can provide photos and optional one-line context as the complete generation input.
-- Generation progress survives reload and reports the current stage.
-- The draft reflects recognizable patterns from the seller's prior listings.
-- Inferred and uncertain content is easy to identify and edit.
-- Pricing presents one recommendation, an expected range, and inspectable evidence.
-- Approval captures exactly the content and price visible to the seller.
-- Every screen follows the system light/dark appearance on first render and when the setting changes, preserving the current draft and focus.
-- Both appearances have readable solid-surface fallbacks and are covered by phone and desktop visual checks.
+- A new seller reaches the camera from Your listings without naming an item or completing a setup tour.
+- Returning sellers recognize and resume drafts from photos and stage labels.
+- Every surface in the map has a defined entry, primary action and return path in both appearances.
+- Local photos and edits appear immediately; background work and reconnecting do not erase or duplicate intent.
+- Seller examples have an explicit input mechanism, truthful learning status and a return to the original item.
+- Review exposes uncertainty, real source evidence and editable copy and price.
+- Approval confirms exactly the submitted version; copy and manual-copy recovery use that approved snapshot.
+- System appearance changes preserve work and focus across all screens and sheets.
+- Controls have accessible names and visible focus; touch targets are at least 44 × 44 CSS pixels.
+- Text and controls meet WCAG 2.2 AA contrast on the final composited surfaces in both appearances.
+- Keyboard access, screen-reader status announcements, photo-order alternatives, text scaling, reduced motion and reduced transparency work throughout.
+- Implementation is visually reviewed against these generated concepts at phone size and in the centered desktop layout.
