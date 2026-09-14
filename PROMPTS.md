@@ -79,3 +79,7 @@ one thing I wanted to see in this design was what access we have to completed au
 Prompt 19: Design Investigation Prototype
 
 Let's design a specific minimal price history/estimating process where a cloud function wakes up on some schedule, gathers the completed action info, and there's some backend-based webpage that can show us the status and conclusions of that for debugging. call it the EBAY_INVESTIGATION_PROTOTYPE.md and we'll revirew that design before implementing
+
+Prompt 20: Simplify Collection Proof
+
+this design is a little too far reaching. we hardly need tests, scheduling, or all this other production stuff until we've verified that the basics work: that we can harvest and process the ebay repsonses. let's trim it down to the bare minimum to prove that we can do the basic data collection
