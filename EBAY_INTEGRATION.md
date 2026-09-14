@@ -4,7 +4,7 @@ Status: proposed for review; researched 14 September 2026. This is a design inve
 
 ## Recommendation
 
-Treat eBay as three independent capabilities: a publishing destination, a source of the connected seller's listings and outcomes, and a possible source of market evidence. Start with a small seller-authorized integration spike. Make Browse-based research conditional on production access and permission for Vintage's particular use case. Do not make broad sold-price access a dependency: Marketplace Insights is currently closed to new users.
+Treat eBay as three independent capabilities: a publishing destination, a source of the connected seller's listings and outcomes, and a possible source of market evidence. Start with a small seller-authorized integration spike. Make Browse-based research conditional on production access and permission for Vintage's particular use case. Prioritize completed-auction outcomes over asking prices for pricing evidence, while making broad automated pricing conditional on a usable sold-data source. Marketplace Insights is currently closed to new users; the completed-auction access assessment below distinguishes seller tools, known-item lookup and seller-authorized transactions.
 
 Keep the existing Vinted-oriented v0 intact while evaluating eBay. The approved flow in [UX_DESIGN.md](./UX_DESIGN.md) ends with approval and `Copy listing`; it does not authorize marketplace publication. A future eBay destination, account connection, or publish action requires an explicit UX proposal and approved mockups before production screens change. This document proposes those capabilities without replacing the current flow or copy.
 
@@ -24,6 +24,56 @@ Keep the existing Vinted-oriented v0 intact while evaluating eBay. The approved 
 | Bulk operations and other seller tools | Sell Feed, Notification, Negotiation, Marketing and related APIs | Available for larger imports, lifecycle updates, offers and promotion. Defer bulk feeds, buyer messages, advertising and checkout until the core seller use case is proven. [Seller API portfolio](https://developer.ebay.com/develop/api/sell/inventory_api). |
 
 Avoid outdated integration recipes: Finding and Shopping were decommissioned in Q1 2025. `UploadSiteHostedPictures` is scheduled for retirement on 30 September 2026; use Media for new work. [2025 update](https://www.developer.ebay.com/updates/newsletter/q1_2025), [2026 update](https://developer.ebay.com/updates/newsletter/q2_2026).
+
+## Completed auctions: pricing evidence and actual access
+
+**Finding:** completed auctions are a stronger starting point than active asking prices because they show an observed market outcome. However, completion includes unsuccessful auctions, and a winning bid does not establish payment or retained seller revenue. Vintage should prioritize comparable successful auction outcomes and confirmed transactions, while keeping unsuccessful auctions as separate demand evidence. This is a proposed evidence policy, not a claim that every auction result predicts the best fixed listing price.
+
+### Access routes
+
+| Route | What we can obtain | Access decision for Vintage |
+| --- | --- | --- |
+| eBay completed/sold search | Recent ended/sold listings through the website; eBay describes a 90-day window | Useful for human investigation. Website availability does not imply an API or automated collection entitlement. [Product Research comparison](https://www.ebay.com/help/selling/selling-tools/research?id=4853). |
+| Seller Hub Product Research, formerly Terapeak | Up to three years of sales; filter by listing format to isolate auctions; actual accepted Best Offer prices are also available | Available to sellers with Seller Hub access. This is the strongest documented manual research route. No generally available public Product Research API was established in this investigation. [Product Research](https://www.ebay.com/help/selling/selling-tools/research?id=4853). |
+| Marketplace Insights | eBay's designated Buy API for sold-item history | Current support docs say it is restricted and not open to new users. We have no demonstrated entitlement. Ask eBay about a partnership, but do not schedule delivery on an assumed approval. [API purpose](https://developer.ebay.com/develop/get-started/get-started-on-a-buying-application), [restriction](https://www.developer.ebay.com/api-docs/buy/static/ref-marketplace-supported.html). |
+| Trading `GetItem(ItemID)` | One known listing, including recently ended listings; title/price/details stop being returned when its end time is over 90 days old | A practical candidate for selected comparables, not discovery of all completed auctions. Requires API authorization and known IDs; validate non-owned listing field visibility with Vintage's credentials. [GetItem reference](https://developer.ebay.com/devzone/xml/docs/Reference/ebay/GetItem.html). |
+| Seller-authorized listing and order reads | The connected seller's completed listings and orders | Join listing-format evidence to Fulfillment orders for payment/cancellation information. Fulfillment's documented two-year order history is separate from GetItem's shorter listing-detail window, so old orders may lack sufficient item details. [Fulfillment release notes](https://www.developer.ebay.com/api-docs/sell/fulfillment/static/release-notes.html), [getOrders](https://developer.ebay.com/api-docs/sell/fulfillment/resources/order/methods/getOrders). |
+| Browse auction search | Discover auction inventory using `buyingOptions:{AUCTION}` | Auction filtering does not turn Browse into a completed-sales archive; the documented filters offer no equivalent completed/sold search switch. Potential input for a prospective sample only, subject to permitted use. [Browse filters](https://www.developer.ebay.com/api-docs/buy/static/ref-buy-browse-filters.html). |
+| Legacy Finding `findCompletedItems` | Historical completed-listing search route | Unavailable as a new integration: Finding was decommissioned in Q1 2025. Old examples using this method are not an implementation path. [Decommission notice](https://www.developer.ebay.com/updates/newsletter/q1_2025). |
+
+There is also historical evidence of a **partner-only Terapeak API**: eBay's 2021 presentation described a limited beta, sold-item details and a representative-managed waitlist. That establishes a concrete question for eBay, not current availability or an active application process. Ask whether a successor or licensed research feed is available for auction valuation, with which fields, territories, history, quotas and downstream-use rights. [2021 eBay presentation](https://developer.ebay.com/cms/files/connect-2021/selling_capabilities_scot.pdf).
+
+No authenticated eBay keyset or account entitlement has been tested here. Therefore “documented API capability,” “available to a human seller,” and “enabled for Vintage” must remain distinct. No unrestricted market-wide completed-auction API has been established for Vintage.
+
+### Classify the outcome before using its price
+
+For a known listing, request and retain only permitted evidence: `ListingType`, `ListingDetails.EndTime`, `SellingStatus.ListingStatus`, `BidCount`, `CurrentPrice` with currency, `ReserveMet`, `QuantitySold`, `SoldAsBin`, and applicable ending reason. `GetItem` is a single-item lookup; unavailable or removed records remain unknown, not unsold. [GetItem](https://developer.ebay.com/devzone/xml/docs/Reference/ebay/GetItem.html).
+
+The classifier must account for these API semantics: `CurrentPrice` can be the starting price when there are no bids or the highest bid otherwise; `ReserveMet` can be true when there was no reserve; `SoldAsBin` identifies an auction listing purchased via Buy It Now. Listing processing can lag the end time. None of these fields alone establishes a paid sale. [SellingStatus fields](https://developer.ebay.com/devzone/xml/docs/Reference/ebay/types/SellingStatusType.html).
+
+Proposed normalized outcomes:
+
+- `auction_won_payment_unknown`: ended auction with consistent winning-sale evidence, positive bids and sold quantity, satisfied reserve, and no Buy It Now outcome. Use the final bid as observed auction price, explicitly marking payment unknown.
+- `auction_unsold`: affirmative no-sale evidence, such as no bids or unmet reserve after processing. Retain the failed offer/auction context separately; exclude its displayed price from sold-price distributions.
+- `buy_it_now_sale`: classify separately even if the original listing format was auction. Do not mistake the auction's starting/highest bid for the Buy It Now transaction price.
+- `paid_sale`, `cancelled_sale`, `refunded_sale`: use authorized transaction evidence to establish or revise these states. Public comparable records generally cannot establish all of them.
+- `unknown`: missing, contradictory, administratively removed or still-processing data; retry when appropriate and exclude from sold-price aggregates until resolved.
+
+These rules are deliberately conservative and require contract tests against actual responses before release. Early-ended auctions need their ending reason considered: eBay can sell to the high bidder or cancel bids and end unsuccessfully. [Ending behavior](https://www.developer.ebay.com/api-docs/user-guides/static/trading-user-guide/end-early.html).
+
+### Revised evidence design and first experiment
+
+Add a dedicated `CompletedAuctionSource` adapter with `lookupKnownItems` and capability flags for `searchHistoricalSales`, `sellerOrders` and `paymentVerification`. Default historical search to unavailable. Support independently gated known-item and seller-order providers; reserve a historical provider for confirmed partner access. Do not silently substitute Browse asking prices when callers request completed-auction evidence.
+
+Extend evidence records with listing format, end time, normalized outcome, raw status provenance, bid count, reserve state, sale-price basis, payment verification, shipping amount/unknown flag and source access mode. Avoid retaining bidder identities. Keep item price, delivered buyer cost and net seller proceeds distinct. Deduplicate relists where identifiable without erasing genuine separate sales.
+
+First validate 20–30 representative vintage-item examples: inspect successful sales through human Product Research, and obtain unsuccessful/edge-case listings from seller history, known-item lookups or Sandbox fixtures. Cover successful auctions, no bids, unmet reserves, Buy It Now, sparse matches and condition differences; do not assume Product Research supplies unsold records. This is a suggested feasibility sample, not statistical validation. Use only approved recording/export mechanisms; manual entry is not a workaround for data-use restrictions. Separately test authorized `GetItem` reads for known recent owned and non-owned IDs, unavailable IDs and expired history. Test payment/cancellation joins on the connected seller's orders. Record field coverage and visibility, not just HTTP success.
+
+If eBay permits prospective collection, discover a bounded sample of live auction IDs through Browse and inspect them after their expected end using Trading. Recheck actual end state; do not save the last observed live bid as the final price. This creates a forward-looking, selection-biased sample, not a historical archive, and requires permitted retention and adequate quotas. Do not scrape Product Research, automate logged-in pages or buy a third-party dataset without establishing its licensed source and reuse rights.
+
+For comparable ranking, give successful auction outcomes more evidential weight than asks, but match category, condition, authenticity, lot size, location, shipping and recency first. Keep auction and fixed-price distributions separate until their relationship is validated; a one-bid auction with poor exposure can understate achievable value. Include unsold outcomes when assessing demand, otherwise successful-sales-only selection biases sale-through estimates. Auction duration is not a prediction of time to sell at Vintage's recommended fixed price. Report sample coverage and unavailable estimates in the existing evidence design.
+
+**Delivery change:** completed-auction feasibility becomes an explicit exit gate for increment 2 below. A pricing pilot needs either a permitted historical provider, a demonstrably useful known-item/seller-outcome sample, or an explicit product decision to ship a narrower evidence-assisted experience. Active Browse prices alone do not satisfy this gate.
 
 ## Access and data-use gates
 
@@ -68,7 +118,7 @@ These are proposed logical records, not existing schemas:
 | Connection | Owner UID, eBay identity reference, environment, marketplace, granted scopes, status, last sync, server-only credential reference |
 | Import checkpoint | Connection, source method, cursor/date window, run ID, completion/errors |
 | Seller example | Source item ID, source kind, permitted title/description/aspects, retrieval time, retention policy and provenance |
-| Evidence | Source item ID/URL, marketplace, currency, condition/aspects, asking versus sold classification, shipping treatment, observed time, expiry and permitted-use flags |
+| Evidence | Source item ID/URL, marketplace, currency, condition/aspects, listing format, auction outcome and price basis, payment verification, end/observed times, shipping treatment, provenance, expiry and permitted-use flags |
 | Destination projection | Vintage draft ID, approved revision/hash, eBay SKU, offer ID, listing ID, marketplace and sync state |
 | Job | Stable command ID, owner, connection version, operation, input revision, prerequisite photo IDs, attempts, next attempt, outcome/error category |
 
@@ -107,7 +157,7 @@ Retry rate limits and transient failures with bounded exponential backoff and ji
 | --- | --- | --- |
 | 0: feasibility | Confirm launch marketplace/currency, developer access, permitted data use and Inventory editing tradeoff | Recorded capability matrix from actual Sandbox calls; production access status explicit |
 | 1: connection and import | Backend OAuth, ownership rules, deletion handling, paginated seller import | Connect/reconnect/disconnect; two-user isolation; token redaction; repeat import without duplicates; deletion during queued work |
-| 2: evidence experiment | Separately gated Browse adapter and optional Inventory Mapping comparison | Representative vintage-item results, coverage/freshness, provenance, cost/latency; asking/sold distinction; no unsupported estimates |
+| 2: evidence experiment | CompletedAuctionSource feasibility; separately gated Browse and optional Inventory Mapping comparison | Known ended-item visibility, sold/unsold/Buy It Now classification, seller payment joins, permitted historical-access decision, representative coverage and cost; active asks alone cannot pass |
 | 3: publishing pilot | Approved UX plus one marketplace's fixed-price publish/revise/withdraw flow | Sandbox publish and cleanup, timeout-after-success recovery, duplicate-click safety, exact approved content and photo order |
 | 4: limited production | Approved access, operational dashboards, explicit seller-authorized trial | Live Firebase review preview, real account connection and bounded listing test; no real listings created merely by CI |
 

@@ -71,3 +71,7 @@ Let's make a new worktree to investigate integrating with ebay. What's available
 Prompt 17: Continue Interrupted Investigation
 
 interrupted by accident, continue
+
+Prompt 18: Research Completed Auctions
+
+one thing I wanted to see in this design was what access we have to completed auction info which should be the best soruce of pricing fro ebay - the doc seems silent on this - please research and update
