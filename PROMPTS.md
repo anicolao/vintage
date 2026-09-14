@@ -63,3 +63,19 @@ File uploaded, read back, and deleted successfully.
 Prompt 15: Resolve rebase conflicts
 
 the PR looks good but says it can't be rebased due to conflicts
+
+Prompt 16: Investigate eBay Integration
+
+Let's make a new worktree to investigate integrating with ebay. What's available? Write EBAY_INTEGRATION.md with a design proposal on the new worktree and put up a PR
+
+Prompt 17: Continue Interrupted Investigation
+
+interrupted by accident, continue
+
+Prompt 18: Research Completed Auctions
+
+one thing I wanted to see in this design was what access we have to completed auction info which should be the best soruce of pricing fro ebay - the doc seems silent on this - please research and update
+
+Prompt 19: Design Investigation Prototype
+
+Let's design a specific minimal price history/estimating process where a cloud function wakes up on some schedule, gathers the completed action info, and there's some backend-based webpage that can show us the status and conclusions of that for debugging. call it the EBAY_INVESTIGATION_PROTOTYPE.md and we'll revirew that design before implementing
