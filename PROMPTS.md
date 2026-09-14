@@ -203,3 +203,11 @@ can this be doen anonymously, or do we need a user? let's implement the simplest
 Prompt 48: Rebase merge requests
 
 use a new work tree to rebase and merge PRs 6&7
+
+Prompt 49: Load Local Credentials
+
+I'd like to read a .env file that is .gitignore'd instead of usign the environment. will that work automatically or do you need to update hte script
+
+Prompt 50: Rebase merge requests
+
+use a new work tree to rebase and merge PRs 6&7

@@ -1,14 +1,16 @@
 #!/usr/bin/env node
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { parseArgs } from 'node:util';
+import { parseArgs, parseEnv } from 'node:util';
 import { XMLParser, XMLBuilder, XMLValidator } from 'fast-xml-parser';
 
 const help = `Fetch up to five known eBay items through Trading GetItem.
 
 Usage: node scripts/investigate-ebay.mjs --site-id SITE_ID [--sandbox] ITEM_ID ...
 
-Set EBAY_USER_TOKEN to an OAuth USER access token (not an application token).
+Set EBAY_USER_TOKEN in the worktree root .env file (gitignored).
+Use an OAuth USER access token, not an application token.
+The .env value takes precedence over an exported EBAY_USER_TOKEN.
 Default: Production. --sandbox requires a Sandbox user token and Sandbox item IDs.
 Output: table, results.json and filtered XML excerpts under .cache/ebay/.
 No automatic retries. Exit 1 if any lookup fails; exit 2 for setup errors.
@@ -116,9 +118,15 @@ async function main() {
       ids.some(id => !/^\d{1,20}$/.test(id))) {
     throw new Error('Supply --site-id and 1–5 numeric item IDs. Use --help for usage.');
   }
-  const token = process.env.EBAY_USER_TOKEN?.trim();
+  let localEnv = {};
+  try {
+    localEnv = parseEnv(await readFile(new URL('../.env', import.meta.url), 'utf8'));
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw new Error('Could not read the worktree .env file.');
+  }
+  const token = (localEnv.EBAY_USER_TOKEN ?? process.env.EBAY_USER_TOKEN)?.trim();
   if (!token || /[\r\n]/.test(token)) {
-    throw new Error('Set EBAY_USER_TOKEN to an eBay OAuth user access token. See EBAY_INVESTIGATION_PROTOTYPE.md.');
+    throw new Error('Set EBAY_USER_TOKEN in the worktree .env file to an eBay OAuth user access token. See EBAY_INVESTIGATION_PROTOTYPE.md.');
   }
   const environment = values.sandbox ? 'Sandbox' : 'Production';
   const endpoint = values.sandbox ? 'https://api.sandbox.ebay.com/ws/api.dll' :

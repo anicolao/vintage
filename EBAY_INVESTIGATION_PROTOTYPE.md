@@ -14,18 +14,19 @@ Trading `GetItem` requires a user token. An application-only token or anonymous 
 
 Obtain a **Production OAuth user access token** for your developer application through eBay's user consent/token process. Use an eBay account for that consent; a developer application key alone is not a user token. This script consumes the resulting token directly: it does not need the client secret and does not implement token generation or refresh. Auth'n'Auth tokens are not supported by this script. [eBay authorization guide](https://developer.ebay.com/develop/guides/sell/authorization).
 
-In zsh, paste the token into a hidden prompt so it is not saved in shell history:
+Create `.env` in this worktree's root directory and put the token in it:
 
-```sh
-read -rs 'EBAY_USER_TOKEN?eBay OAuth user token: '
-export EBAY_USER_TOKEN
+```dotenv
+EBAY_USER_TOKEN="paste-your-OAuth-user-token-here"
 ```
 
-Then run the command below, replacing `SITE_ID` and the item-ID placeholders with actual numbers. Add `--sandbox` only when using a Sandbox token and Sandbox items. Use `--help` for usage. Afterward, `unset EBAY_USER_TOKEN`. Keep tokens out of chat and committed files.
+The script automatically reads this file, including quoted values, on each run. `.env` is gitignored. No shell export is needed. The file is resolved relative to the script's worktree, even when invoked from another directory. Its token takes precedence over an exported `EBAY_USER_TOKEN`; the exported variable remains a fallback when the file has no token entry. Node.js 22 or later is required.
+
+Then run the command below, replacing `SITE_ID` and the item-ID placeholders with actual numbers. Add `--sandbox` only when using a Sandbox token and Sandbox items. Use `--help` for usage. Keep tokens out of chat and committed files.
 
 ## Inputs and one run
 
-Provide an existing eBay user access token through an environment variable and 3–5 known item IDs as command arguments. Include a recently completed successful auction, an unsuccessful auction if available, and an active listing for comparison. Include a non-owned listing: reading only our own listings would not prove comparable-item access.
+Provide an existing eBay user access token in the gitignored `.env` file and 3–5 known item IDs as command arguments. Include a recently completed successful auction, an unsuccessful auction if available, and an active listing for comparison. Include a non-owned listing: reading only our own listings would not prove comparable-item access.
 
 Run from the worktree after `npm ci`:
 
