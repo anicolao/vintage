@@ -95,3 +95,7 @@ we're having an issue where on some browsers this preview link is still serving 
 Prompt 22: Refine glass typography
 
 the controls don't look glassmorphic and the fonts are blocky/all wrong, make the UI match the mockups more closely
+
+Prompt 23: Complete screen documentation
+
+we've merged these changes - the UX_DESIGN.md doesn't include all the screens in the app, update the file to include all the necessary screens
