@@ -187,3 +187,11 @@ Let's design a specific minimal price history/estimating process where a cloud f
 Prompt 44: Rebase merge requests
 
 use a new work tree to rebase and merge PRs 6&7
+
+Prompt 45: Simplify Collection Proof
+
+this design is a little too far reaching. we hardly need tests, scheduling, or all this other production stuff until we've verified that the basics work: that we can harvest and process the ebay repsonses. let's trim it down to the bare minimum to prove that we can do the basic data collection
+
+Prompt 46: Rebase merge requests
+
+use a new work tree to rebase and merge PRs 6&7

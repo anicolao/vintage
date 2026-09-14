@@ -27,7 +27,7 @@ Avoid outdated integration recipes: Finding and Shopping were decommissioned in 
 
 ## Completed auctions: pricing evidence and actual access
 
-The concrete scheduled collector and backend debug-page proposal is in [EBAY_INVESTIGATION_PROTOTYPE.md](./EBAY_INVESTIGATION_PROTOTYPE.md), pending design review before implementation.
+The immediate collection proof is in [EBAY_INVESTIGATION_PROTOTYPE.md](./EBAY_INVESTIGATION_PROTOTYPE.md): a manually run script that fetches known auction IDs and exposes the parsed responses. Review that design before implementation and its findings before undertaking the broader architecture below.
 
 **Finding:** completed auctions are a stronger starting point than active asking prices because they show an observed market outcome. However, completion includes unsuccessful auctions, and a winning bid does not establish payment or retained seller revenue. Vintage should prioritize comparable successful auction outcomes and confirmed transactions, while keeping unsuccessful auctions as separate demand evidence. This is a proposed evidence policy, not a claim that every auction result predicts the best fixed listing price.
 
