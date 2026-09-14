@@ -159,3 +159,15 @@ Review the markdown for this project to get oriented. Then make a vinted-integra
 Prompt 37: Rebase merge requests
 
 use a new work tree to rebase and merge PRs 6&7
+
+Prompt 38: Investigate eBay Integration
+
+Let's make a new worktree to investigate integrating with ebay. What's available? Write EBAY_INTEGRATION.md with a design proposal on the new worktree and put up a PR
+
+Prompt 39: Continue Interrupted Investigation
+
+interrupted by accident, continue
+
+Prompt 40: Rebase merge requests
+
+use a new work tree to rebase and merge PRs 6&7
