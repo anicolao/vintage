@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "sample": true,
+  "copy": {
+    "title": "Vintage green cotton chore jacket",
+    "description": "A relaxed green chore jacket with three front pockets. A useful everyday layer. Please check the photos, measurements and condition before listing.",
+    "category": "Jackets", "brand": "Check label", "size": "Check size", "colour": "Green", "material": "Check fabric label", "condition": "Check for wear"
+  },
+  "confidence": { "title": 0, "description": 0, "category": 0, "brand": 0, "size": 0, "colour": 0, "material": 0, "condition": 0 },
+  "observations": ["Sample details have not been inferred from your photos. Check every field against your item."],
+  "pricing": { "recommended": { "currency": "GBP", "minor": 4800 }, "expectedSaleRange": null, "estimates": [], "rationale": "£48 is a sample listing price, not a valuation. No market data has been retrieved; sale range, probability, revenue and time-to-sale estimates are unavailable." },
+  "evidence": [
+    { "id": "photos", "kind": "photo", "label": "Check against your photos", "sourceIds": [], "unavailable": false },
+    { "id": "examples", "kind": "history", "label": "Examples supplied", "sourceIds": [], "unavailable": false },
+    { "id": "market", "kind": "market", "label": "Price evidence unavailable", "sourceIds": [], "unavailable": true }
+  ],
+  "model": { "provider": "review-sample", "model": "fixed-proposal-v1", "promptVersion": "1" }
+}

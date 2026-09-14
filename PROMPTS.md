@@ -127,3 +127,7 @@ thanks, we've applied these changes - now update the implementation plan to refl
 Prompt 30: Remove footer artifact
 
 the button at the bottom of the main page has rounded corners but the transparency of the container is wrong or something bercause there is a white corner cutting into the background. this button is labeled "New Listing" and the behaviour is very obbvious in light mode; dark mode has a similar rectangular artifact. otherwise this looks pretty good
+
+Prompt 31: Complete sixth milestone
+
+good, implement up to milestone 6 on a new PR

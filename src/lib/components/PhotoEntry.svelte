@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
+  import { style, workflows, enqueue, emptyWorkflow } from '$lib/state/pipeline';
+  import PipelineStatus from './PipelineStatus.svelte';
   import { onMount, onDestroy, tick } from 'svelte';
   import { app, dispatch, retryDelivery, discardRejected } from '$lib/state/app';
   import { watchListing, eventFor } from '$lib/repositories/drafts';
@@ -12,6 +15,20 @@
   import Status from './Status.svelte';
   export let id: string;
   export let uid: string;
+  let replaceDialog: HTMLDialogElement;
+  async function generate(replace = false) {
+    await saveContext();
+    if (error || empty) return;
+    if ($style.status !== 'ready') { await goto(`/style?item=${encodeURIComponent(id)}`); return; }
+    const workflow = $workflows[id] || emptyWorkflow();
+    if (workflow.proposal && !replace) { replaceDialog.showModal(); return; }
+    const ids = projection.photos.filter(p => !jobs.some(j => j.replace === p.id)).map(p => p.id);
+    ids.push(...jobs.filter(j => !j.error).map(j => j.photo.id));
+    try {
+      await enqueue({ kind: 'generate', listingId: id, expectedVersion: workflow.version, photoIds: ids, context, styleVersion: $style.version, replace });
+      await goto(`/listings/${id}`);
+    } catch { error = 'Your request could not be saved on this phone. Try again.'; }
+  }
   let events: unknown[] = []; let loaded = false; let error = '';
   let context = ''; let edited = false; let saving = false;
   let online = true;
@@ -109,6 +126,9 @@
     <input class="file-input" tabindex="-1" bind:this={fileInput} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" multiple={!replacing} oncancel={() => { replacing = null; replacingJob = null; }} onchange={() => addFiles(fileInput)} aria-label="Choose item photos" />
     <input class="file-input" tabindex="-1" bind:this={cameraInput} type="file" accept="image/*" capture="environment" oncancel={() => { replacing = null; replacingJob = null; }} onchange={() => addFiles(cameraInput)} aria-label="Take item photo" />
     <section class="context-card glass"><label for="item-context">Anything else?</label><input id="item-context" bind:value={context} oninput={changed} onblur={saveContext} maxlength="2000" placeholder={empty ? 'Fit, provenance, or an unpictured detail' : 'e.g. Rare 1990s piece, fits oversized'} /></section>
+    <button class="create-draft" disabled={empty || $workflows[id]?.status === 'generating'} onclick={() => generate()}>Create my draft<Icon name="next"/></button>
+    {#if empty}<p class="quiet-status">Add a photo to continue</p>{/if}
+    <PipelineStatus/>
     {#if removed}<div class="undo-notice glass" role="status"><span>Photo removed</span><button class="text-button" disabled={undoing} onclick={undoRemove}>Undo</button></div>{/if}
   {:else}<p role="status">Opening your item…</p>{/if}
   <Status message={error || (pending ? $app.error : '')} error />
@@ -126,3 +146,5 @@
     <div class="photo-actions glass"><button disabled={selectedPosition === 0} onclick={() => selected && move(selected.id, 0)}><Icon name="star" />Make cover</button><button aria-label="Replace photo" onclick={() => { replacing = selected?.id ?? null; photoDialog.close(); fileInput.click(); }}><Icon name="replace" />Replace</button><button class="remove-action" aria-label="Remove photo" onclick={remove}><Icon name="trash" />Remove</button></div>
   {/if}
 </dialog>
+
+<dialog class="account-sheet glass" bind:this={replaceDialog} aria-labelledby="replace-title"><h2 id="replace-title">Replace proposal?</h2><p>A new sample proposal will replace your title, description, attributes and selected price. Your photos and context will stay saved.</p><button onclick={() => { replaceDialog.close(); void generate(true); }}>Replace proposal</button><button class="secondary" onclick={() => replaceDialog.close()}>Keep editing</button></dialog>
