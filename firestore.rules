@@ -4,21 +4,6 @@ service cloud.firestore {
     function owner(uid) {
       return request.auth != null && request.auth.uid == uid;
     }
-    match /workspaces/{workspace}/users/{uid} {
-      allow read: if owner(uid);
-      allow create: if owner(uid)
-        && request.resource.data.keys().hasAll(['ownerUid', 'note', 'createdAt', 'updatedAt'])
-        && request.resource.data.keys().hasOnly(['ownerUid', 'note', 'createdAt', 'updatedAt'])
-        && request.resource.data.ownerUid == uid
-        && request.resource.data.note is string && request.resource.data.note.size() <= 500
-        && request.resource.data.createdAt == request.time
-        && request.resource.data.updatedAt == request.time;
-      allow update: if owner(uid)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['note', 'updatedAt'])
-        && request.resource.data.note is string && request.resource.data.note.size() <= 500
-        && request.resource.data.updatedAt == request.time;
-    }
-    // Domain streams are additive; milestone-zero workspace notes remain compatible.
     match /workspaces/{workspace}/accounts/{uid} {
       function streamPath(listingId) {
         return /databases/$(database)/documents/workspaces/$(workspace)/accounts/$(uid)/listings/$(listingId);
@@ -35,59 +20,90 @@ service cloud.firestore {
       }
       function linkedEvent(path, data, type) {
         let event = getAfter(/$(path)/events/$(data.lastEventId)).data;
-        return event.streamVersion == data.version && event.createdAt == request.time
-          && event.type == type && event.actorUid == uid;
+        return event.createdAt == request.time
+          && event.type in type && event.actorUid == uid;
       }
       function envelope(event, eventId, streamId) {
-        return event.keys().hasAll(['id', 'streamId', 'type', 'payload', 'actorUid', 'deviceId', 'clientSeq', 'correlationId', 'causationId', 'createdAt', 'schemaVersion', 'reducerVersion', 'streamVersion'])
-          && event.keys().hasOnly(['id', 'streamId', 'type', 'payload', 'actorUid', 'deviceId', 'clientSeq', 'correlationId', 'causationId', 'createdAt', 'schemaVersion', 'reducerVersion', 'streamVersion'])
+        return event.keys().hasAll(['id', 'streamId', 'type', 'payload', 'actorUid', 'deviceId', 'clientSeq', 'correlationId', 'causationId', 'createdAt', 'schemaVersion', 'reducerVersion'])
+          && event.keys().hasOnly(['id', 'streamId', 'type', 'payload', 'actorUid', 'deviceId', 'clientSeq', 'correlationId', 'causationId', 'createdAt', 'schemaVersion', 'reducerVersion'])
           && event.id == eventId && eventId.size() <= 256 && event.streamId == streamId
           && event.actorUid == uid && event.deviceId is string && event.deviceId.matches('^[a-zA-Z0-9-]{1,64}$')
           && event.clientSeq is int && event.clientSeq > 0 && event.clientSeq <= 9007199254740991
           && event.id == uid + '-' + event.deviceId + '-' + string(event.clientSeq)
           && event.correlationId == eventId && event.causationId == null
           && event.createdAt == request.time && event.schemaVersion == 2 && event.reducerVersion == 1
-          && event.streamVersion is int && event.streamVersion > 0 && event.payload is map;
+          && event.payload is map;
       }
       function linkedDescriptor(path, event) {
         let after = getAfter(path).data;
-        return after.lastEventId == event.id && after.version == event.streamVersion
+        return after.lastEventId == event.id
           && after.updatedAt == request.time && after.ownerUid == uid;
+      }
+      function photoPayload(payload, listingId) {
+        let p = payload.photo;
+        let base = 'workspaces/' + workspace + '/accounts/' + uid + '/listings/' + listingId + '/photos/' + p.id + '/';
+        return payload.keys().hasOnly(['photo'])
+          && p.keys().hasAll(['id', 'path', 'previewPath', 'type', 'size', 'width', 'height', 'digest'])
+          && p.keys().hasOnly(['id', 'path', 'previewPath', 'type', 'size', 'width', 'height', 'digest'])
+          && p.id is string && p.id.matches('^[a-zA-Z0-9-]{1,64}$')
+          && p.path == base + 'original' && p.previewPath in [p.path, base + 'preview']
+          && p.type in ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+          && p.size is int && p.size > 0 && p.size <= 10485760
+          && p.width is int && p.width > 0 && p.width <= 20000
+          && p.height is int && p.height > 0 && p.height <= 20000
+          && p.digest is string && p.digest.matches('^[a-f0-9]{64}$');
+      }
+      function photoIdAt(ids, i) {
+        return i >= ids.size() || (ids[i] is string && ids[i].matches('^[a-zA-Z0-9-]{1,64}$'));
+      }
+      function change(event, listingId) {
+        return (event.type == 'context/changed' && event.payload.keys().hasOnly(['context'])
+            && event.payload.context is string && event.payload.context.size() <= 2000)
+          || (event.type == 'photo/uploaded' && photoPayload(event.payload, listingId))
+          || (event.type == 'photo/replaced' && event.payload.keys().hasOnly(['photo', 'photoId'])
+            && photoPayload({'photo': event.payload.photo}, listingId)
+            && event.payload.photoId is string && event.payload.photoId.matches('^[a-zA-Z0-9-]{1,64}$'))
+          || (event.type == 'photo/removed' && event.payload.keys().hasOnly(['photoId'])
+            && event.payload.photoId is string && event.payload.photoId.matches('^[a-zA-Z0-9-]{1,64}$'))
+          || (event.type == 'photo/reordered' && event.payload.keys().hasOnly(['photoIds'])
+            && event.payload.photoIds is list && event.payload.photoIds.size() <= 8
+            && event.payload.photoIds.toSet().size() == event.payload.photoIds.size()
+            && photoIdAt(event.payload.photoIds, 0) && photoIdAt(event.payload.photoIds, 1)
+            && photoIdAt(event.payload.photoIds, 2) && photoIdAt(event.payload.photoIds, 3)
+            && photoIdAt(event.payload.photoIds, 4) && photoIdAt(event.payload.photoIds, 5)
+            && photoIdAt(event.payload.photoIds, 6) && photoIdAt(event.payload.photoIds, 7));
       }
       allow read: if owner(uid);
       allow create: if owner(uid) && descriptor(request.resource.data)
         && request.resource.data.createdAt == request.time && request.resource.data.version == 1
-        && linkedEvent(accountPath(), request.resource.data, 'account/created');
+        && linkedEvent(accountPath(), request.resource.data, ['account/created']);
       match /events/{eventId} {
         allow read: if owner(uid);
         allow create: if owner(uid) && envelope(request.resource.data, eventId, uid)
           && request.resource.data.type == 'account/created' && request.resource.data.payload.keys().size() == 0
-          && request.resource.data.streamVersion == 1 && !exists(accountPath())
+          && !exists(accountPath())
           && linkedDescriptor(accountPath(), request.resource.data);
       }
       match /listings/{listingId} {
         allow read: if owner(uid);
-        allow create: if owner(uid) && exists(accountPath())
+        allow create: if owner(uid)
           && descriptor(request.resource.data) && request.resource.data.createdAt == request.time
           && request.resource.data.version == 1 && listingId == request.resource.data.lastEventId
-          && linkedEvent(streamPath(listingId), request.resource.data, 'listing/created');
+          && linkedEvent(streamPath(listingId), request.resource.data, ['listing/created']);
         allow update: if owner(uid) && descriptor(request.resource.data)
           && request.resource.data.createdAt == resource.data.createdAt
           && request.resource.data.version == resource.data.version + 1
           && request.resource.data.lastEventId != resource.data.lastEventId
-          && linkedEvent(streamPath(listingId), request.resource.data, 'context/changed');
+          && linkedEvent(streamPath(listingId), request.resource.data, ['context/changed', 'photo/uploaded', 'photo/replaced', 'photo/removed', 'photo/reordered']);
         match /events/{eventId} {
           allow read: if owner(uid);
           allow create: if owner(uid) && envelope(request.resource.data, eventId, listingId)
             && linkedDescriptor(streamPath(listingId), request.resource.data)
             && ((request.resource.data.type == 'listing/created'
-              && !exists(streamPath(listingId)) && request.resource.data.streamVersion == 1
+              && !exists(streamPath(listingId))
               && request.resource.data.payload.keys().hasOnly(['title'])
               && request.resource.data.payload.title is string && request.resource.data.payload.title.size() > 0 && request.resource.data.payload.title.size() <= 100)
-            || (request.resource.data.type == 'context/changed' && exists(streamPath(listingId))
-              && request.resource.data.streamVersion == get(streamPath(listingId)).data.version + 1
-              && request.resource.data.payload.keys().hasOnly(['context'])
-              && request.resource.data.payload.context is string && request.resource.data.payload.context.size() <= 2000));
+            || (change(request.resource.data, listingId) && exists(streamPath(listingId))));
         }
       }
     }

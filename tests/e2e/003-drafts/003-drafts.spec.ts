@@ -2,115 +2,114 @@ import { expect, test } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
 import { resetAuth, signIn } from '../helpers/sign-in';
 
-test('draft survives direct reload, follows appearance and clears on account changes', async ({ page, context, request }, testInfo) => {
-  await resetAuth(request);
-  await page.goto('/');
-  await signIn(page, context);
-  await page.getByRole('link', { name: 'Start a new draft' }).click();
-  await page.getByLabel('Draft name').fill('Favourite linen jacket');
-  await page.getByRole('button', { name: 'Create draft', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Favourite linen jacket' })).toBeVisible();
-  const draftUrl = page.url();
-  await page.getByLabel('What should we know?').fill('Relaxed fit. A tiny mark on the left cuff.');
-  await expect(page.getByText('Unsaved changes', { exact: true })).toBeVisible();
-  await expect(page.getByText('Saved to your account', { exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Save details', exact: true }).click();
-  await expect(page.getByText('Saved to your account', { exact: true })).toBeVisible();
+test('photo entry follows the approved flow and resumes the saved item', async ({ page, context, request }, testInfo) => {
+  await resetAuth(request); await page.goto('/'); await signIn(page, context);
+  const steps=new TestStepHelper(page,testInfo);
+  steps.setMetadata('Listings and photo entry','Start a listing with photos and optional context, persisted to the backend.');
+  await steps.step('listings',{description:'Start a new listing without a name form',verifications:[{spec:'New listing opens the photo flow',check:async()=>expect(page.getByRole('link',{name:'New listing',exact:true})).toBeVisible()}]});
+  await page.getByRole('link', {name:'New listing',exact:true}).click();
+  await expect(page.getByRole('heading', { name: 'Show us the item' })).toBeVisible();
+  await expect(page.getByLabel('Draft name')).toHaveCount(0);
+  const url=page.url();
+  await page.getByLabel('Choose item photos').setInputFiles('static/images/wardrobe.png');
+  await expect(page.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
+  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
+  await page.getByLabel('Anything else?').fill('Rare 1990s piece, fits oversized');
+  await page.getByLabel('Anything else?').blur();
+  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
   await page.reload();
-  await expect(page.getByLabel('What should we know?')).toHaveValue('Relaxed fit. A tiny mark on the left cuff.');
-  const steps = new TestStepHelper(page, testInfo);
-  steps.setMetadata('Durable listing drafts', 'Create and replay a private cloud-backed draft. The same Firebase auth observer handles the emulator Google identity and live Google accounts.');
-  await steps.step('draft-restored', { description: 'A draft and its saved details survive a direct reload', verifications: [
-    { spec: 'The title is reconstructed from its creation event', check: async () => expect(page.getByRole('heading', { name: 'Favourite linen jacket' })).toBeVisible() },
-    { spec: 'Details are replayed from acknowledged events', check: async () => expect(page.getByLabel('What should we know?')).toHaveValue('Relaxed fit. A tiny mark on the left cuff.') }
-  ] });
-  steps.generateDocs();
-  const input = page.getByLabel('What should we know?');
-  await input.fill('Unsaved detail stays through a theme change.');
-  await input.focus();
-  const original = testInfo.project.use.colorScheme;
-  await page.emulateMedia({ colorScheme: original === 'dark' ? 'light' : 'dark' });
-  await expect(input).toBeFocused();
-  await expect(input).toHaveValue('Unsaved detail stays through a theme change.');
-  expect(page.url()).toBe(draftUrl);
-  await expect(page.locator('html')).toHaveCSS('color-scheme', original === 'dark' ? 'light' : 'dark');
-  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
-  await expect(input).toHaveCount(0);
-  await signIn(page, context, 'second.seller@example.test', 'Second Seller');
-  await expect(page.getByRole('heading', { name: 'Draft unavailable' })).toBeVisible();
-  await expect(page.getByText('Favourite linen jacket', { exact: true })).toHaveCount(0);
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Your drafts', exact: true })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Saved drafts' })).toHaveCount(0);
+  await expect(page.getByLabel('Anything else?')).toHaveValue('Rare 1990s piece, fits oversized');
+  await expect(page.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
+  await steps.step('photo-entry',{description:'Photo and context restored after reload',verifications:[{spec:'The approved step header is visible',check:async()=>expect(page.getByText('1 of 3 · Add photos',{exact:true})).toBeVisible()},{spec:'The photo opens for inspection',check:async()=>expect(page.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled()}]});steps.generateDocs();
+  await page.getByLabel('Anything else?').focus();
+  await page.emulateMedia({colorScheme:testInfo.project.use.colorScheme==='dark'?'light':'dark'});
+  await expect(page.getByLabel('Anything else?')).toBeFocused();
+  await expect(page.getByLabel('Anything else?')).toHaveValue('Rare 1990s piece, fits oversized');
+  expect(page.url()).toBe(url);
+  await page.getByRole('button',{name:'Inspect photo 1'}).click();
+  await expect(page.getByRole('dialog').getByAltText('Item photo 1')).toBeVisible();
+  await page.getByRole('button',{name:'Close photo',exact:true}).click();
+  await page.getByRole('button',{name:'Your account'}).click();
+  await page.getByRole('button',{name:'Sign out',exact:true}).click();
+  await expect(page.getByLabel('Anything else?')).toHaveCount(0);
+  await signIn(page,context,'second.seller@example.test','Second Seller');
+  await expect(page.getByRole('heading',{name:'Item unavailable'})).toBeVisible();
 });
 
-test('device sequence allocation is atomic across tabs', async ({ page, context, request }) => {
-  await resetAuth(request); await page.goto('/'); await signIn(page, context);
-  await expect(page.getByRole('link',{name:'Start a new draft'})).toBeVisible();
-  // Exercise the shipped UI across tabs, including shared IndexedDB sequence allocation.
-  const second=await context.newPage(); await second.goto('/listings/new'); await page.goto('/listings/new');
-  await page.getByLabel('Draft name').fill('First tab draft'); await second.getByLabel('Draft name').fill('Second tab draft');
-  await Promise.all([page.getByRole('button',{name:'Create draft',exact:true}).click(),second.getByRole('button',{name:'Create draft',exact:true}).click()]);
-  await expect(page.getByRole('heading',{name:'First tab draft'})).toBeVisible();
-  await expect(second.getByRole('heading',{name:'Second tab draft'})).toBeVisible();
-  expect(page.url()).not.toBe(second.url());
-  const commands=await page.evaluate(async () => {
-    const db=await new Promise<IDBDatabase>((resolve,reject)=>{const r=indexedDB.open('vintage-delivery-v1',1);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
-    return new Promise<number>((resolve,reject)=>{const r=db.transaction('identity').objectStore('identity').get('device');r.onsuccess=()=>resolve(r.result.sequence);r.onerror=()=>reject(r.error);});
-  });
-  expect(commands).toBeGreaterThanOrEqual(4);
-  await second.close();
-  await page.goto('/'); await expect(page.getByRole('region',{name:'Saved drafts'}).getByRole('link')).toHaveCount(2);
+test('photo controls reorder, remove and reject unsupported files', async ({page,context,request}) => {
+  await resetAuth(request);await page.goto('/');await signIn(page,context); await page.getByRole('link', {name:'New listing',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Show us the item'})).toBeVisible();
+  await page.getByLabel('Choose item photos').setInputFiles(['static/images/wardrobe.png','static/images/wardrobe.png']);
+  await expect(page.getByRole('button',{name:'Inspect photo 2'})).toBeEnabled();
+  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Inspect photo 1'}).click();
+  await page.getByRole('button',{name:'Move later'}).click();
+  await expect(page.getByText('Photo 2 of 2',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Replace photo'}).click();
+  await page.getByLabel('Choose item photos').setInputFiles('static/images/wardrobe.png');
+  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Inspect photo 2'}).click();
+  await expect(page.getByText('Photo 2 of 2',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Remove photo'}).click();
+  await expect(page.getByRole('button',{name:'Inspect photo 2'})).toHaveCount(0);
+  await page.reload();await expect(page.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
+  await page.getByLabel('Choose item photos').setInputFiles({name:'bad.txt',mimeType:'text/plain',buffer:Buffer.from('not a photo')});
+  await expect(page.getByRole('alert')).toContainText('Choose a JPEG');
+  await page.getByRole('button',{name:'Remove',exact:true}).click();
+  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
 });
 
-test('a persisted retry acknowledges the existing event without duplicating the draft', async ({ page, context, request }) => {
-  await resetAuth(request); await page.goto('/'); await signIn(page, context);
-  await page.getByRole('link',{name:'Start a new draft'}).click();
-  await page.getByLabel('Draft name').fill('Retry-safe jacket');
-  await page.getByRole('button',{name:'Create draft',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Retry-safe jacket'})).toBeVisible();
-  const id=new URL(page.url()).pathname.split('/').at(-1)!;
-  // Restore a delivery intent as if the tab closed after server acknowledgement
-  // but before local cleanup. Production retries use this exact IndexedDB queue.
-  await page.evaluate(async id => {
-    const db=await new Promise<IDBDatabase>((resolve,reject)=>{const r=indexedDB.open('vintage-delivery-v1',1);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
-    await new Promise<void>((resolve,reject)=>{
-      const tx=db.transaction(['identity','commands'],'readwrite');const r=tx.objectStore('identity').get('device');
-      r.onsuccess=()=>{const deviceId=r.result.id; const actorUid=id.slice(0,id.indexOf(`-${deviceId}-`));const clientSeq=Number(id.split('-').at(-1));tx.objectStore('commands').put({id,actorUid,deviceId,clientSeq,workspace:'e2e',streamId:id,type:'listing/created',payload:{title:'Retry-safe jacket'},status:'pending'});};
-      tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);
-    });
-  },id);
+test('HEIC original has a readable preview after reload', async ({page,context,request}) => {
+  await resetAuth(request); await page.goto('/'); await signIn(page,context); await page.getByRole('link', {name:'New listing',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Show us the item'})).toBeVisible();
+  await page.getByLabel('Choose item photos').setInputFiles('tests/fixtures/sample.heic');
+  await expect(page.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
+  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
   await page.reload();
-  await expect(page.getByText('Saved to your account',{exact:true})).toBeVisible();
-  await page.goto('/');
-  await expect(page.getByRole('region',{name:'Saved drafts'}).getByRole('link')).toHaveCount(1);
+  await expect(page.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
+  await page.getByRole('button',{name:'Inspect photo 1'}).click();
+  await expect.poll(() => page.getByRole('dialog').getByAltText('Item photo 1').evaluate((img: HTMLImageElement)=>img.naturalWidth)).toBeGreaterThan(0);
 });
 
-test('rejected delivery stays visible across reload and retry uses the same intent', async ({ page, context, request }) => {
-  await resetAuth(request); await page.goto('/'); await signIn(page, context);
-  await page.getByRole('link',{name:'Start a new draft'}).click();
-  await page.getByLabel('Draft name').fill('Recovery jacket');
-  await page.getByRole('button',{name:'Create draft',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Recovery jacket'})).toBeVisible();
-  const streamId=new URL(page.url()).pathname.split('/').at(-1)!;
-  // Simulate an old/offline client retaining an intent that current rules reject.
-  await page.evaluate(async streamId => {
-    const db=await new Promise<IDBDatabase>((resolve,reject)=>{const r=indexedDB.open('vintage-delivery-v1',1);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
-    await new Promise<void>((resolve,reject)=>{
-      const tx=db.transaction(['identity','commands'],'readwrite');const r=tx.objectStore('identity').get('device');
-      r.onsuccess=()=>{const d=r.result;d.sequence++;tx.objectStore('identity').put(d,'device');const actorUid=streamId.slice(0,streamId.indexOf(`-${d.id}-`));const id=`${actorUid}-${d.id}-${d.sequence}`;tx.objectStore('commands').put({id,actorUid,deviceId:d.id,clientSeq:d.sequence,workspace:'e2e',streamId,type:'context/changed',payload:{context:'x'.repeat(2001)},status:'pending'});};
-      tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);
-    });
-  },streamId);
+test('offline edits and navigation apply immediately and sync after reconnect', async ({page,context,request}) => {
+  await resetAuth(request); await page.goto('/'); await signIn(page,context);
+  await expect(page.getByRole('heading',{name:'Your listings'})).toBeVisible();
+  await page.getByRole('link',{name:'New listing',exact:true}).click();
+  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
+  const first = page.url();
+  await context.setOffline(true);
+  await page.getByLabel('Anything else?').fill('Written offline');
+  await page.getByLabel('Choose item photos').setInputFiles('static/images/wardrobe.png');
+  await expect(page.getByAltText('Selected item',{exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Add photo',exact:true})).toBeEnabled();
+  await page.getByRole('link',{name:'Your listings',exact:true}).click();
+  await page.getByRole('link',{name:'New listing',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Show us the item'})).toBeVisible();
+  expect(page.url()).not.toBe(first);
+  await page.getByLabel('Anything else?').fill('Second offline listing');
+  await context.setOffline(false);
+  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('button',{name:'Retry saving'})).toBeVisible();
-  await expect(page.getByRole('alert')).toContainText('hasn’t reached the cloud');
-  await page.getByRole('button',{name:'Retry saving'}).click();
-  await expect(page.getByRole('button',{name:'Retry saving'})).toBeVisible();
-  await page.reload();
-  await expect(page.getByRole('button',{name:'Retry saving'})).toBeVisible();
-  await expect(page.getByText('Saved to your account',{exact:true})).toHaveCount(0);
-  await page.getByRole('button',{name:'Discard unsaved change'}).click();
-  await expect(page.getByLabel('What should we know?')).toHaveValue('');
-  await expect(page.getByText('Saved to your account',{exact:true})).toBeVisible();
+  await expect(page.getByLabel('Anything else?')).toHaveValue('Second offline listing');
+  await page.goto(first);
+  await expect(page.getByLabel('Anything else?')).toHaveValue('Written offline');
+  await expect(page.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
+  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
+});
+
+test('selected photo bytes recover when the page closes before upload', async ({page,context,request}) => {
+  await resetAuth(request); await page.goto('/'); await signIn(page,context);
+  await page.getByRole('link',{name:'New listing',exact:true}).click();
+  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
+  const url=page.url();
+  await context.setOffline(true);
+  await page.getByLabel('Choose item photos').setInputFiles('static/images/wardrobe.png');
+  await expect(page.getByAltText('Selected item',{exact:true})).toBeVisible();
+  await page.close();
+  await context.setOffline(false);
+  const resumed=await context.newPage();await resumed.goto(url);
+  await expect(resumed.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
+  await expect(resumed.getByText('Saved',{exact:true})).toBeVisible();
+  await resumed.reload();
+  await expect(resumed.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
 });

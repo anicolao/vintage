@@ -82,11 +82,11 @@ If market outcomes or demand signals cannot support sale probabilities, expected
 - [x] Wire real Google sign-in, sign-out and session restoration on the existing home. Add a minimal owned workspace document, authenticated Firestore reads/writes and narrowly scoped Storage access; no public data-write rules. Milestone 2 extends this foundation into domain event streams.
 - [x] Create the Firebase Hosting PR deployment workflow, authorized sign-in domains and SPA route rewrites. Select an isolation strategy before deploying shared backend changes. Include rules/index/backend deployment and a preview URL tied to the PR revision; a static-only Pages preview does not satisfy this gate.
 - [x] Install the initial owner rules for Firestore and Storage, and add emulator tests proving both permitted owner operations and rejected cross-user operations before deploying them. Enable later domain paths only when their validation ships.
-- [x] Add the environment example and repeatable live smoke-check procedure, with an authenticated Storage verification harness until photo capture ships.
+- [x] Add the environment example and repeatable live smoke-check procedure, using production photo upload and readback.
 - [ ] Complete the deployed real Google sign-in and second-account phone smoke check, including workspace write/read after reload and an owned Storage upload/download.
 - [x] Define PR-specific review-data cleanup and backend rollback/compatibility procedures. Reviewers must be able to return to the same preview without a local emulator or developer workstation running.
 
-Implementation and cloud provisioning are included in [PR #3](https://github.com/anicolao/vintage/pull/3). Automated rules/browser checks pass. The live preview reached the real Google OAuth popup, and the reviewer confirmed an authenticated Storage upload/read/delete on their phone at revision `2f3f7ad` on 2026-09-12: “File uploaded, read back, and deleted successfully.” Explicit confirmation of note persistence after reload and the second-account phone check remains a review gate; see [Firebase setup](./docs/FIREBASE_SETUP.md).
+Initial implementation and cloud provisioning were included in [PR #3](https://github.com/anicolao/vintage/pull/3). Automated rules/browser checks pass. The live preview reached the real Google OAuth popup, and the reviewer confirmed an authenticated Storage upload/read/delete on their phone at revision `2f3f7ad` on 2026-09-12: “File uploaded, read back, and deleted successfully.” Explicit confirmation of note persistence after reload and the second-account phone check remains a review gate; see [Firebase setup](./docs/FIREBASE_SETUP.md).
 
 **Done when:** the first implementation PR has a reachable deployed URL, real Google login/session restoration, a verified owner-scoped Firestore round trip and Storage upload/download, and deployed rules that reject another user's access. Its review notes identify the cloud project and revision and include live smoke-check results. This is the prerequisite for all subsequent implementation PRs.
 
@@ -99,7 +99,7 @@ Implementation and cloud provisioning are included in [PR #3](https://github.com
 - [x] Keep item photography untinted. Use real UI elements and approved assets, not mockup screenshots as application backgrounds.
 - [x] Extend Playwright to phone-light, phone-dark, desktop-light and desktop-dark projects; preserve the existing pinned renderer and zero-pixel threshold.
 
-Implementation is present; automated acceptance and live phone review evidence are tracked in [Draft foundation](./docs/DRAFT_FOUNDATION.md).
+Production UI corrections and current acceptance evidence are tracked in [Draft foundation](./docs/DRAFT_FOUNDATION.md).
 
 **Done when:** the live Firebase preview still passes sign-in and persistence checks, and the home screen matches the approved visual direction in all four projects; keyboard focus survives an appearance change; text, focus and controls meet the UX contrast/touch-target requirements; fallback surfaces remain usable. Review intentional screenshots before committing them.
 
@@ -108,24 +108,26 @@ Implementation is present; automated acceptance and live phone review evidence a
 - [x] Separate Firebase initialization, auth state, repositories, event contracts and projections under `src/lib/`; routes render projections and dispatch typed actions.
 - [x] Extend the live Google authentication from milestone 0 with cancellation/retry and blocked-popup handling as appropriate. Resolve auth before selecting the sign-in or resume route; detach old subscriptions on account changes.
 - [x] Add a deterministic emulator identity using the same auth-observer path. Reject test authentication unless the build is explicitly E2E and every backend endpoint is local.
-- [x] Implement versioned event validation, ordering, deduplication, pure reducers and diagnostics. Test acknowledged versus pending timestamps, repeated IDs, unknown events, malformed payloads and schema upgrades.
+- [x] Implement current-version event validation, ordering, deduplication, pure reducers and diagnostics. Test acknowledged versus pending timestamps, repeated IDs, unknown events and malformed payloads; reject unsupported schemas.
 - [x] Persist stable device identity and allocate client sequences safely across tabs. Make retry delivery idempotent and pending/rejected writes visible.
 - [x] Create owner-scoped account and listing descriptors and event streams atomically where needed; add subscriptions and new/resume routes. Define the listing version used by later commands so it covers every relevant write.
 - [x] Introduce owner/envelope/payload validation in Firestore rules. Deny cross-user access, event updates/deletes and client-authored privileged events. Add rules tests with both allowed and rejected operations.
 - [x] Add the domain unit-test runner and extend milestone 0 rules tests and CI. Keep live review/production configuration separate from emulator tests; deploy new domain rules and indexes with this PR.
 - [x] Extend milestone 0 routing to the live draft routes; a direct reload of `/listings/[id]` must serve the SPA and restore the cloud-backed draft.
 
-Implementation is present; automated acceptance and live phone review evidence are tracked in [Draft foundation](./docs/DRAFT_FOUNDATION.md).
+Production UI corrections and current acceptance evidence are tracked in [Draft foundation](./docs/DRAFT_FOUNDATION.md).
 
 **Done when:** a seller can sign in, create one durable draft, reload its direct URL and resume; repeated actions do not duplicate events; another user cannot read or alter it. Sign-out removes the previous user's state from the UI. Reducer and rule tests demonstrate the ownership and replay contract.
 
 ## 3. Photo capture and recovery
 
-- [ ] Extend the live Storage setup with the photo repository and owner-scoped photo rules, accepted types and bounded sizes. Deploy these rules with capture; extend automated emulator scripts to include Storage.
-- [ ] Implement file/camera input, thumbnail progress, image inspection, removal, replacement and accessible reordering. Add optional context and persist edits.
-- [ ] Upload immutable originals under the designed owner/listing/photo path. Append `photo/uploaded` only after confirmation, recording digest, dimensions, type, byte count and display order.
+Photo entry, uploads, local recovery and optimistic context edits are included in the milestone 1–2 UX correction PR. Server analysis derivatives and generation gating remain outstanding.
+
+- [x] Extend the live Storage setup with the photo repository and owner-scoped photo rules, accepted types and bounded sizes. Deploy these rules with capture; extend automated emulator scripts to include Storage.
+- [x] Implement file/camera input, thumbnail progress, image inspection, removal, replacement and accessible reordering. Add optional context and persist edits.
+- [x] Upload immutable originals under the designed owner/listing/photo path. Append `photo/uploaded` only after confirmation, recording digest, dimensions, type, byte count and display order.
 - [ ] Introduce and deploy Cloud Functions for live photo normalization, with a matching Functions emulator for tests. Preserve originals and create oriented analysis derivatives with stable metadata. Test HEIC decoding rather than relying on browser preview support.
-- [ ] Define recovery for selected but unfinished files: persist local upload input where supported and request reselection when bytes are unavailable after reload. Preserve acknowledged photos and context in either case; do not promise seamless background upload on mobile.
+- [x] Define recovery for selected but unfinished files: persist local upload input where supported and request reselection when bytes are unavailable after reload. Preserve acknowledged photos and context in either case; do not promise seamless background upload on mobile.
 - [ ] Handle navigation during active uploads, failures, retries and orphaned uploads. Prevent generation until at least one valid photo exists and all selected photos are durably ready.
 
 **Done when:** the photo scenario verifies stored objects, thumbnail order and context after reload, recovery from an interrupted upload, removal/replacement, invalid files and keyboard/touch reordering. Storage tests reject cross-user access and invalid uploads. Add replay and isolation assertions now, not only at release.

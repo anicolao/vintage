@@ -40,7 +40,7 @@ Run `npm run check`, `npm run test:config`, `npm run test:hooks` and `npm run te
 
 ## PR deployment
 
-The Verify and preview workflow checks the code, then builds a live frontend and deploys identical approved backend rules and a Hosting channel. Fork PRs have no deployment credential access. The GitHub Actions job summary and `live-preview` artifact contain the URL, Firebase project, workspace and Git revision. `version.json` is checked after deployment, together with the `/connection-check` SPA rewrite.
+The Verify and preview workflow checks the code, then builds a live frontend and deploys identical approved backend rules and a Hosting channel. Fork PRs have no deployment credential access. The GitHub Actions job summary and `live-preview` artifact contain the URL, Firebase project, workspace and Git revision. `version.json` is checked after deployment, together with the direct item-route SPA rewrite.
 
 Repository variables configured for this project:
 
@@ -54,28 +54,22 @@ The project and Google provider were provisioned once using the authenticated Fi
 
 ## Data and backend compatibility
 
-Firestore workspace documents live at `workspaces/{main|pr-N}/users/{uid}`. Storage verification objects live beneath the same scope at `checks/{uuid}.txt`. Scope separates each PR's own test data; authenticated ownership is enforced independently. Changing scope never permits access to another user's data. Auth accounts are shared across the review project's previews.
+Production account and item streams live under `workspaces/{main|pr-N}/accounts/{uid}`. Immutable photo objects use the item's `photos/{photoId}/{original|preview}` prefix. Owners can read their own streams and photos; the rules reject other users. See [Product UI and saved items](./DRAFT_FOUNDATION.md) for the schema and photo contract.
 
-Only a bounded note, immutable owner/creation fields and server update timestamps are allowed in Firestore. Only new text check files up to 1 KiB can be created; owners may read and delete them. Photos and other paths remain denied until their feature ships. Milestone 2 adds bounded account/listing event streams under `workspaces/{workspace}/accounts/{uid}`; see [Draft foundation](./DRAFT_FOUNDATION.md) for the additive rules and version contract. The Storage check reads authenticated bytes and removes its own object; it does not generate a publicly shareable download-token URL. Bucket GET CORS permits browser downloads; authentication/rules still protect the bytes.
+Hosting channels share backend rules. The approved digest gates deployment of the current production contract. Superseded development interfaces and their permissions are removed rather than supported indefinitely. Updating the digest requires reviewing the rules and passing their tests.
 
-Hosting channels do not isolate backend rules or APIs. The workflow therefore refuses a rules digest that differs from the operator-approved live contract. A future incompatible schema/rule change needs a separate project, or an explicitly reviewed additive migration proven compatible with all active channels before updating the approved digest. Do not update the digest just to make a failing deploy pass. The stable milestone 0 contract must continue working while its previews exist.
+## Live review
 
-## Live smoke check
-
-For draft creation and appearance checks, also follow the [milestones 1–2 checklist](./DRAFT_FOUNDATION.md#review-checklist).
-
-1. Open `/connection-check` on the PR URL on the phone. Confirm Continue with Google opens the real Google flow, complete sign-in, and check the displayed account.
-2. Save a distinctive workspace note. Confirm the read-back message, reload `/connection-check`, and confirm both the restored session and note.
-3. Open Preview connection checks and choose Verify file storage. Confirm upload, authenticated read and cleanup succeed. Record the project, workspace and revision shown there.
-4. Sign out, then sign in with a second Google account. Its workspace should be empty and independent. Emulator rules tests additionally assert that direct cross-user reads/writes/deletes fail.
-5. Record browser/device, revision and outcomes in the PR review. Popup cancellation and popup blocking must leave a usable retry action. Check Chrome and phone Safari; this implementation uses the documented popup flow, not redirect authentication.
-
-Automated emulator checks do not count as live Google/browser verification. Until this checklist is performed on the deployed revision, its human sign-in check remains pending.
+1. Open the PR URL on a phone and sign in with Google.
+2. Add a photo and one-line context, then reload the item URL. Inspect the photo and verify the saved context.
+3. Change the system appearance while editing; check that focus, content and route remain.
+4. Use the account menu to sign out. A second account must not open the first account's item.
+5. Record browser/device, outcome and revision from `/version.json` in the PR. Automated emulator tests do not stand in for real Google/browser review.
 
 ## Cleanup and rollback
 
-The check action deletes its temporary file after read-back, including on a read failure where possible. Network interruption can leave an orphan; an operator can remove objects only under the affected `workspaces/pr-N/users/{uid}/checks/` prefix. On PR closure, delete the Hosting channel (`firebase hosting:channel:delete pr-N --project vintage-review-anicolao`) and, when no longer needed, the corresponding Firestore documents and Storage prefix. Do not clear all project data or delete shared Auth accounts as part of PR cleanup. A 30-day channel expiry does not delete data.
+Hosting channel expiry does not delete item data or Auth accounts. Cleanup must target the intended PR workspace and its photo prefixes explicitly. Do not delete shared Auth accounts or unrelated workspaces.
 
-Redeploy a previous reviewed Git revision to roll back the frontend. Backend rules must remain at the compatible approved digest; do not roll back rules to a version that exposes or invalidates another live preview's data. Review new rules and their emulator tests before updating the project-wide contract. Operational cleanup uses explicit project/scope identifiers and authorized operator credentials, never an E2E reset command.
+Frontend rollback uses a reviewed revision compatible with the current product schema. Do not restore superseded diagnostic rules. Production rule changes and cleanup require explicit scope and owner-rule verification.
 
 References: [Google popup authentication](https://firebase.google.com/docs/auth/web/google-signin), [Hosting preview deployments](https://firebase.google.com/docs/hosting/test-preview-deploy), and [authenticated Storage downloads and CORS](https://firebase.google.com/docs/storage/web/download-files).

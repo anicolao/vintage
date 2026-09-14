@@ -7,3 +7,9 @@
 - Put all project work up as a PR for user review. Do not merge your own work without authorization.
 
 The initial prompt history contains the nine user-authored project prompts available in the recovery conversation. Earlier project conversations were not available and must not be reconstructed from guesses or commit messages. If their exact text becomes available, append it with a new number; do not rewrite existing history.
+
+- Build production screens from `UX_DESIGN.md` and its approved mockups. Match the specified flow, copy, mobile-width desktop layout, typography, icons and glass treatments; do not invent marketing copy or substitute flows.
+- Remove superseded implementations, temporary diagnostic screens, demo controls and their obsolete repositories, rules and tests as work progresses. Do not retain them as legacy or compatibility paths in this new product.
+- Required accessibility behavior in `UX_DESIGN.md` (including reduced transparency and unsupported blur) belongs to the current implementation.
+
+- Keep navigation and editing independent of network acknowledgement. Persist intent on the device, update the UI optimistically, and sync Firestore writes and photo uploads in the background.

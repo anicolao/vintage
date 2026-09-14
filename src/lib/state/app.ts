@@ -9,33 +9,30 @@ interface AppState { user: User | null; resolved: boolean; ready: boolean; error
 const empty = (): AppState => ({ user: null, resolved: false, ready: false, error: '', drafts: [], commands: [], sending: false });
 export const app = writable<AppState>(empty());
 let generation = 0;
-let draining: Promise<void> | undefined;
+const inFlight = new Map<string, Promise<void>>();
 let activeUid: string | undefined;
 async function refresh(uid: string, epoch: number) {
   const commands = await queued(uid, settings.workspace);
   if (epoch === generation) app.update(s => ({ ...s, commands }));
 }
-export function retryDelivery() {
-  if (draining) return draining;
+export async function retryDelivery() {
   const uid = get(app).user?.uid; const epoch = generation;
-  if (!uid) return Promise.resolve();
-  const operation = (async () => {
-    app.update(s => ({ ...s, sending: true, error: '' }));
-    try {
-      while (epoch === generation) {
-        const command = (await queued(uid, settings.workspace))[0];
-        if (!command) break;
-        if (epoch !== generation) return;
-        try { await deliver(command); await settle(command); }
-        catch { await settle(command, true); if (epoch === generation) app.update(s => ({ ...s, error: 'Your change is saved on this device, but hasn’t reached the cloud. Retry when connected.' })); break; }
-      }
+  if (!uid) return;
+  const commands = await queued(uid, settings.workspace);
+  if (epoch !== generation) return;
+  for (const command of commands) {
+    if (inFlight.has(command.id)) continue;
+    const work = deliver(command).then(() => settle(command)).catch(async () => {
+      await settle(command, true);
+      if (epoch === generation) app.update(s => ({ ...s, error: 'A change could not sync. You can keep editing and try again.' }));
+    }).finally(async () => {
+      inFlight.delete(command.id);
       await refresh(uid, epoch);
-    } catch (cause) { if (epoch === generation) app.update(s => ({ ...s, error: cause instanceof Error ? cause.message : explain(cause) })); }
-    finally { if (epoch === generation) app.update(s => ({ ...s, sending: false })); }
-  })();
-  draining = operation;
-  void operation.finally(() => { if (draining === operation) draining = undefined; });
-  return operation;
+      if (epoch === generation) app.update(s => ({ ...s, sending: inFlight.size > 0 }));
+    });
+    inFlight.set(command.id, work);
+  }
+  if (epoch === generation) app.update(s => ({ ...s, sending: inFlight.size > 0 }));
 }
 export async function dispatch(action: DraftAction, streamId?: string) {
   const current = get(app); const epoch = generation;
@@ -50,14 +47,12 @@ export function startSession() {
   let stopDrafts = () => {};
   const stopAuth = observeUser(async user => {
     const epoch = ++generation;
-    stopDrafts(); stopDrafts = () => {}; draining = undefined;
+    stopDrafts(); stopDrafts = () => {}; inFlight.clear();
     activeUid = user?.uid;
-    app.set({ ...empty(), user, resolved: true });
+    app.set({ ...empty(), user, resolved: true, ready: !!user });
     if (!user) return;
     try {
       const command = await allocate(user.uid, settings.workspace, 'account/created', {}, user.uid);
-      if (epoch !== generation) return;
-      await deliver(command); await settle(command);
       if (epoch !== generation) return;
       stopDrafts = watchDrafts(user.uid, drafts => {
         if (epoch === generation) app.update(s => ({ ...s, drafts, ready: true }));

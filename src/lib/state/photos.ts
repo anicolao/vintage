@@ -1,0 +1,48 @@
+import { writable, get } from 'svelte/store';
+import { app, dispatch } from './app';
+import { settings } from '../firebase';
+import { uploadPhoto, retain, retained, type PendingPhoto } from '../repositories/photos';
+export interface PhotoJob { photo: PendingPhoto; url: string; progress: number; error: string; running: boolean; replace: string | null }
+export const photoJobs = writable<PhotoJob[]>([]);
+let processing = false;
+const update = () => photoJobs.update(jobs => [...jobs]);
+export async function restorePhotos(uid: string, id: string) {
+  const photos = await retained(uid, id);
+  photoJobs.update(jobs => [...jobs, ...photos.filter(p => !jobs.some(j => j.photo.id === p.id)).map(photo => ({ photo, url: URL.createObjectURL(photo.file), progress: 0, error: '', running: false, replace: photo.replace ?? null }))]);
+  void processPhotos();
+}
+export async function addPhoto(file: File, uid: string, listingId: string, replace: string | null) {
+  const photo = { id: crypto.randomUUID(), uid, listingId, workspace: settings.workspace, file, replace };
+  const job: PhotoJob = { photo, url: URL.createObjectURL(file), progress: 0, error: '', running: false, replace };
+  await retain(photo);
+  photoJobs.update(jobs => [...jobs, job]);
+  void processPhotos();
+}
+export async function discardPhoto(job: PhotoJob) {
+  if (job.running) return;
+  await retain(job.photo, true); URL.revokeObjectURL(job.url);
+  photoJobs.update(jobs => jobs.filter(j => j !== job));
+}
+export function retryPhoto(job: PhotoJob) { job.error = ''; update(); void processPhotos(); }
+export async function processPhotos() {
+  if (processing) return;
+  processing = true;
+  try {
+    for (;;) {
+      const uid = get(app).user?.uid;
+      const job = get(photoJobs).find(j => !j.error && j.photo.uid === uid);
+      if (!job) break;
+      job.running = true; update();
+      try {
+        const photo = await uploadPhoto(job.photo, progress => { job.progress = progress; update(); });
+        if (get(app).user?.uid !== uid) throw new Error('Sign in to finish uploading this photo.');
+        await dispatch(job.replace
+          ? { type: 'photo/replaced', payload: { photo, photoId: job.replace } }
+          : { type: 'photo/uploaded', payload: { photo } }, job.photo.listingId);
+        await retain(job.photo, true); URL.revokeObjectURL(job.url);
+        photoJobs.update(jobs => jobs.filter(j => j !== job));
+      } catch (cause) { job.error = cause instanceof Error ? cause.message : 'Upload failed. Try again.'; }
+      finally { job.running = false; update(); }
+    }
+  } finally { processing = false; }
+}

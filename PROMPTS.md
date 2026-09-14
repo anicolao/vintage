@@ -71,3 +71,19 @@ ok merged to main, let's do the next 2 milestones on a new PR
 Prompt 17: Verify durable saving
 
 ok merged to main, let's do the next 2 milestones on a new PR
+
+Prompt 18: Follow approved design
+
+first of all, we are creating a new product and we don't ever want you to keep 'legacy' 'fallback' or 'old implementation' around as we make progress. for example, the 'Connection checks' is 100% ceritified garbage - consturction dust from a previous phase that should be long ago deleted. Secondly, you are *IMPLEMENTING PRODUCTION CODE* and that means *FOLLOWING THE UX_DESIGN* not implementing hyour own marketing bullshit on every page. we have a design for a reason, follow it. Finally the finished product has approximately the right colours but none of the other important ux touches. Fix it
+
+Prompt 19: Confirm appearance switching
+
+> The new live preview is ready: https://vintage-review-anicolao--pr-5-hnn9v3fr.web.app . Please sign in on your phone, create a draft, save details, and reload its URL. Also try changing the phone’s light/dark setting while editing. Do the draft and appearance behave as expected?
+
+yes light and dark mode switching seems to work
+
+Prompt 20: Preserve optimistic flow
+
+> The approved signed-in screen is photo entry; my named-draft form was the wrong flow. Should this correction include working photo capture/upload (the next milestone), or should I restrict it to correcting milestones 1–2 and leave photo functionality for the next PR?
+
+let's continue to have the intermediate screen that lets the user start a new listing, but the new listing shoudl begin with the photo, and not with a name for the listing. let's make the flow go right to the photo screen adn support taking a photo and filling in "anything else..." under the photo. Also, we should never have the UI wait for the network; firestore should be eagerly responding to all of our writes and the UI shoudl update optimistically to keep it fast.

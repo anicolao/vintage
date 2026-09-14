@@ -1,10 +1,10 @@
-Milestones 1–2 extend current coverage to phone-light, phone-dark, desktop-light and desktop-dark. The draft scenarios exercise direct reload, account isolation, cross-tab identity allocation, retry idempotency and rejected-write recovery. `npm run test:domain` verifies pure replay and schema diagnostics. See [Draft foundation](./docs/DRAFT_FOUNDATION.md).
+Current production coverage follows the sign-in and photo-entry screens in `UX_DESIGN.md`. Tests use local Firebase emulators solely for automation; PR review uses the live Firebase project. Coverage includes image uploads/readback, HEIC preview conversion, photo controls, saved one-line context, owner isolation and phone/desktop system appearances. `npm run test:domain` verifies replay; `npm run test:foundation` runs rules and browser scenarios. The scenarios below describe subsequent pipeline milestones where not yet implemented.
 
 # End-to-End Testing Guide
 
 ## Current milestone 0 coverage
 
-`npm run test:foundation` runs the Firestore/Storage owner-rule suite and phone/desktop browser scenarios against Auth, Firestore and Storage emulators using the non-production `demo-vintage` project. Playwright builds the static SPA in E2E mode before serving it. The browser signs in through the Auth emulator's Google popup using the same production SDK path, saves/reloads a workspace note, verifies Storage and signs out. No test-auth adapter is shipped in the app.
+`npm run test:foundation` runs the Firestore/Storage owner-rule suite and phone/desktop browser scenarios against Auth, Firestore and Storage emulators using the non-production `demo-vintage` project. Playwright builds the static SPA in E2E mode before serving it. The browser signs in through the Auth emulator's Google popup using the same production SDK path, uploads/reloads item photos, saves context and signs out. No test-auth adapter is shipped in the app.
 
 PR review deployments use live Firebase, separately from this test command. See [live setup and smoke checks](./docs/FIREBASE_SETUP.md). Functions, listing events, AI fixtures and the full scenario catalogue below remain the target contract for later milestones. The current projects are phone/desktop light; dark mode is milestone 1.
 

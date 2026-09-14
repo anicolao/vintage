@@ -1,53 +1,35 @@
-# Appearance and durable drafts
+# Product UI and saved items
 
-Milestones 1–2 add `/listings/new` and `/listings/{id}` to the live Firebase SPA. Google sign-in restores the requested route. Home lists saved drafts by their replayed names; signing out or changing accounts detaches subscriptions and removes the old projection. Photos and generation remain later milestones.
+The production interface follows `UX_DESIGN.md`: the specified sign-in copy and Google control, followed by Your listings; New listing opens photo entry. Desktop keeps the same 393px workspace as the phone. There is no draft-name form, promotional dashboard, diagnostic route or workspace-note schema.
 
-## Appearance
+The sign-in background is an independently generated garment photograph in `static/images/wardrobe.png`; no mockup is used as an interface or background. Typography, Google logo, semantic icons, frosted borders, controls and text are rendered natively. System appearance is CSS-driven before JavaScript and while editing. Solid surfaces for reduced transparency and unavailable blur implement the accessibility behavior required by the design.
 
-`src/lib/styles.css` contains system-driven linen/rust and charcoal/apricot tokens. Inline canvas colours and native `color-scheme` in `src/app.html` apply before JavaScript. CSS media queries respond without replacing controls, so input, route and focus survive a system change. Glass has an opaque base fallback, with blur added only through `@supports`; reduced transparency uses solid surfaces and reduced motion disables animation. No image tint or mockup background is applied.
-
-Shared cards, buttons and status components accompany shared native input, chip and focus styles. The browser suite covers four phone/desktop light/dark projects, 44px targets, text/control contrast, focus across theme changes and the reduced-transparency fallback. Snapshot changes require visual review at the pinned renderer and zero-pixel threshold.
-
-## Cloud layout and compatibility
-
-All paths retain milestone 0's PR/main scope:
+## Item persistence
 
 ```text
-workspaces/{workspace}/users/{uid}                   existing connection-check note
-workspaces/{workspace}/accounts/{uid}                account descriptor
-workspaces/{workspace}/accounts/{uid}/events/{id}     account creation event
-workspaces/{workspace}/accounts/{uid}/listings/{id}   listing descriptor
-workspaces/{workspace}/accounts/{uid}/listings/{id}/events/{eventId}
+workspaces/{workspace}/accounts/{uid}
+workspaces/{workspace}/accounts/{uid}/events/{eventId}
+workspaces/{workspace}/accounts/{uid}/listings/{listingId}
+workspaces/{workspace}/accounts/{uid}/listings/{listingId}/events/{eventId}
+workspaces/{workspace}/accounts/{uid}/listings/{listingId}/photos/{photoId}/{original|preview}
 ```
 
-The account stream is separate from the existing note document so older previews keep their exact schema. This is the scoped implementation of the conceptual `users/{uid}` streams in `V0_DESIGN.md`. New rules are additive: the old note and Storage contracts are unchanged. Update the approved backend digest when deploying these rules; older workflow revisions cannot redeploy an obsolete ruleset afterward. Queries read direct owner collections without filters or server ordering; no composite indexes are required. The default single-field indexes suffice.
+Each event and descriptor version advance in one atomic batch using a server-side version increment. Schema 2/reducer 1 accepts account creation, item creation, context changes and photo upload/remove/reorder events. Unsupported schemas and malformed/foreign events produce diagnostics. There is no compatibility implementation for previous schemas. Client writes cannot author generation events or modify/delete existing events.
 
-## Events and command version
+Event IDs combine UID, stable device ID and a sequence allocated atomically in IndexedDB across tabs. Delivery intents are retained before network delivery. Retries reuse event IDs; an identical repeated batch is rejected atomically, then acknowledged by readback without advancing the version twice. A descriptor's `version` covers every relevant event and is the value future commands must check transactionally.
 
-New writes use schema 2, reducer 1. Supported client events are `account/created` (`{}`), `listing/created` (`{title}`, 1–100 characters), and `context/changed` (`{context}`, at most 2,000 characters). Every envelope has the design's IDs, owner, sequence, correlation, causation and timestamps, plus `deviceId` and `streamVersion`. Schema 1's `context/changed` payload `{text}` is upgraded in memory to `{context}`. Original documents are never rewritten.
+## Photo entry
 
-A descriptor and its event are written in one transaction. The descriptor's integer `version` advances exactly once per event; its `lastEventId` references that event. Rules enforce this relationship in both directions, reject skipped versions, deny descriptor/event deletion and event modification, and allow only the bounded client vocabulary. Future server commands must advance the same descriptor version for **every** event that can affect their inputs. Their `expectedVersion` must compare this integer inside the command transaction, not timestamps or a local event count. No client generation/approval privileges are introduced.
+Selecting an item starts an owned stream without asking for a name. Photo files and camera input accept JPEG, PNG, WebP and HEIC/HEIF, up to 8 photos at 10 MB each. Originals remain untinted and immutable. HEIC originals are retained alongside a browser-readable JPEG preview; this client preview conversion is not the server analysis normalization planned for milestone 3.
 
-Pure replay validates envelopes and payloads, upgrades known old schemas, orders acknowledged events by server timestamp (including nanoseconds) and ID, places pending events afterward by client sequence and ID, and deduplicates IDs. An acknowledged copy supersedes its pending copy. Unknown/malformed/foreign events produce diagnostics and are not applied. Only acknowledged events advance the projected command version.
+Selected bytes are retained in IndexedDB until upload and local event enqueue succeed. Each tile reports progress or offers retry/remove. Interrupted selections can be recovered on the same device. Authenticated reads restore thumbnails after reload without shareable download tokens. Inspection uses a full-screen dialog; move controls support keyboard/touch, and tiles also support drag ordering. Replacement retains position. Uploads run independently of the screen and continue after navigation. Local thumbnails appear before upload; authenticated previews are cached on the device. Navigation and controls do not wait for network acknowledgement.
 
-## Device identity, delivery and recovery
+`Anything else?` is a single-line field. Changes enqueue on input, with saved/pending/error feedback. Sign-out detaches the user's streams and removes their UI state. Returning opens Your listings. Firestore uses persistent multi-tab cache and local batch snapshots; the retained-command projection covers the interval before those snapshots arrive. Offline edits and new listings sync on reconnection.
 
-IndexedDB stores a stable random device ID, a monotonic sequence and an owner/workspace-partitioned delivery queue. One read/write transaction allocates sequence and intent atomically across tabs. Clearing browser site data creates a new random device identity rather than reusing an old sequence. No test identity or endpoint override is shipped in live builds; emulator browser tests use the actual Google popup with deterministic test email/display name through the same auth observer. Emulator builds require explicit E2E flags, the demo project and localhost; all three SDK endpoints are fixed to loopback.
+Seller-history ingestion and AI generation are not implemented in this PR. The generation CTA is therefore not shipped as a dead or simulated action. The remaining pipeline belongs to its implementation milestones; the UI does not claim that photos have been analyzed or a proposal generated.
 
-Event IDs are `${uid}-${deviceId}-${clientSeq}`. Retries keep the original ID and payload. Delivery reads the event first; an identical acknowledged event returns successfully without writing again. Transactions create/advance the descriptor only for a new event. A tab closing after server acknowledgement but before queue cleanup therefore produces no duplicate on resume.
+## Verification
 
-Pending actions are kept on the device until acknowledged, retried after sign-in/reload or reconnect, and surfaced as waiting rather than saved. Failed delivery exposes Retry saving and Discard unsaved change; discard removes only that draft's rejected local intent. Previously acknowledged cloud events remain immutable. Local queue errors are shown instead of claiming persistence. An entirely offline cold start cannot restore an account or cloud draft: this milestone does not promise offline-first browsing. Unsaved keystrokes are preserved through a theme change, but must be submitted with Save details to survive reload.
+Use the live PR URL: sign in, add photos, enter context, reload, inspect/reorder/replace/remove photos, switch system appearance while editing, then verify another account cannot open the item. Production metadata is in `/version.json` and the CI artifact, outside product screens.
 
-## Review checklist
-
-Use the PR's live preview, not the emulator:
-
-1. On a phone, sign in with Google, create a named draft and save details.
-2. Reload its `/listings/{id}` URL and verify the title and details. Return home and resume it.
-3. Change the system appearance with the textarea focused; verify its text, focus and route remain.
-4. Sign out. Sign in with a second account and reopen the first draft URL: it must be unavailable.
-5. Run the existing connection checks, including Storage, and record browser/device, revision and outcome on the PR.
-
-Automated tests separately cover rules, replay/schema diagnostics, two-tab sequence allocation, an acknowledged retry, a rejected intent across reload/retry/discard, themes and screenshots. Real Google and phone results remain explicit review evidence.
-
-Implementation references: [Firestore atomic transactions](https://firebase.google.com/docs/firestore/manage-data/transactions), [snapshot listeners and detachment](https://firebase.google.com/docs/firestore/query-data/listen), and [reduced transparency](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@media/prefers-reduced-transparency).
+Automated tests cover current owner rules, event replay, actual image upload/read, HEIC conversion, direct reload, system appearance, focus, touch targets and visual comparison on all four phone/desktop appearance projects. Superseded diagnostic tests and screenshot baselines are deleted.

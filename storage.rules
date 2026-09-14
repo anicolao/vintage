@@ -1,14 +1,13 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    match /workspaces/{workspace}/users/{uid}/checks/{file} {
-      function owner() {
-        return request.auth != null && request.auth.uid == uid;
-      }
-      allow read, delete: if owner();
-      allow create: if owner() && resource == null && file.matches('.*[.]txt')
-        && request.resource.size <= 1024
-        && request.resource.contentType == 'text/plain';
+    match /workspaces/{workspace}/accounts/{uid}/listings/{listing}/photos/{photo}/{file} {
+      function owner() { return request.auth != null && request.auth.uid == uid; }
+      allow read: if owner();
+      allow create: if owner() && resource == null && file in ['original', 'preview']
+        && request.resource.size > 0 && request.resource.size <= 10485760
+        && request.resource.contentType in ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+        && request.resource.metadata.digest.matches('^[a-f0-9]{64}$');
     }
   }
 }
