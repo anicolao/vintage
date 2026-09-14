@@ -1,0 +1,93 @@
+<script lang="ts">
+  import { onMount, tick } from 'svelte';
+  import { app } from '$lib/state/app';
+  import { watchListing } from '$lib/repositories/drafts';
+  import { enqueue, locallyPersisted, workflows, pipelineIntents, connection, listingFields, type Workflow, type ListingField, type Copy, type Snapshot } from '$lib/state/pipeline';
+  import type { Photo } from '$lib/events/contracts';
+  import AccountMenu from './AccountMenu.svelte';
+  import PhotoTile from './PhotoTile.svelte';
+  import Icon from './Icon.svelte';
+  import PipelineStatus from './PipelineStatus.svelte';
+  export let id:string;export let uid:string;export let workflow:Workflow;
+  let values:Copy;let fieldBases:Partial<Copy>={};let price='';let activeField='';let seenVersion=-1;let baseVersion=0;let error='';
+  let evidenceDialog:HTMLDialogElement;let evidence='market';let inspected='';let inspectedAlt='';let full=false;let copied=false;let manual=false;let copyArea:HTMLTextAreaElement;
+  $: current=$workflows[id] || workflow;
+  $: if(current.copy && current.version!==seenVersion) {
+    const retained=activeField && values ? values[activeField as ListingField] : undefined;
+    values={...current.copy};if(retained!==undefined)values[activeField as ListingField]=retained;
+    if(activeField!=='price')price=((current.price?.minor || 0)/100).toFixed(2);
+    for (const field of listingFields) if(activeField!==field)fieldBases[field]=current.copy[field];
+    seenVersion=current.version;
+  }
+  $: approved=current.approved;
+  $: submitted=current.status==='approved' || current.status==='approval-pending';
+  $: photos=submitted ? approved?.photos || [] : current.input?.photos || [];
+  $: text=approved ? `${approved.copy.title}\n\n${approved.copy.description}\n\n${listingFields.slice(2).map(f=>`${label(f)}: ${approved.copy[f]}`).join('\n')}\n\n£${(approved.price.minor/100).toFixed(2)}` : '';
+  onMount(()=>watchListing(uid,id,events=>{baseVersion=events.filter(e=>(e as {createdAt:unknown}).createdAt).length;},()=>error='The latest photo version could not be checked. Try again.'));
+  function label(field:string) {return field[0].toUpperCase()+field.slice(1);}
+  async function edit(field:ListingField,value:string) {
+    const previousValue=fieldBases[field] ?? values[field];
+    fieldBases[field]=value; values={...values,[field]:value};
+    try {await enqueue({kind:'edit',listingId:id,expectedVersion:current.version,field,value,previousValue});error='';}catch{error='Not saved on this phone. Keep this page open and try again.';}
+  }
+  async function choosePrice() {
+    if(!/^\d{1,6}(\.\d{1,2})?$/.test(price) || Number(price)<=0 || Number(price)>100000) {error='Enter a price between £0.01 and £100,000, using at most two decimal places.';return;}
+    try{await enqueue({kind:'price',listingId:id,expectedVersion:current.version,price:{currency:'GBP',minor:Math.round(Number(price)*100)}});error='';}catch{error='The price could not be saved on this phone.';}
+  }
+  async function approve() {
+    await locallyPersisted(); await tick();
+    if(error || !values.title.trim() || !values.description.trim()) {error='Check the title, description and price before approval.';return;}
+    const snapshot:Snapshot={copy:{...values},price:{currency:'GBP',minor:Math.round(Number(price)*100)},photos:structuredClone(photos),proposalId:current.proposalId,sample:true};
+    try{await enqueue({kind:'approve',listingId:id,expectedVersion:current.version,baseVersion,snapshot});}catch{error='Approval could not be saved on this phone. Try again.';}
+  }
+  function showEvidence(kind:string) {evidence=kind;inspected='';evidenceDialog.showModal();}
+  function inspect(photo:Photo,url:string) {evidence='photo';inspected=url;inspectedAlt=`Item photo ${photos.findIndex(p=>p.id===photo.id)+1}`;evidenceDialog.showModal();}
+  async function copy() {try{await navigator.clipboard.writeText(text);copied=true;}catch{full=true;manual=true;await tick();copyArea.focus();copyArea.select();}}
+</script>
+<main class="flow-screen review-screen" data-status="ready" data-e2e-layout data-workflow={current.status}>
+<header class="step-header glass"><a class="icon-button" href="/" aria-label="Your listings"><Icon name="back"/></a><span>{submitted?(current.status==='approved'?'Approved listing':'Approval pending'):current.status==='generating'?'2 of 3 · Create draft':'3 of 3 · Review'}</span><AccountMenu/></header>
+{#if submitted && approved}
+  <div class="approved-intro"><span class="success-orb"><Icon name={current.status==='approved'?'check':'cloud'} size={30}/></span><h1>{current.status==='approved'?'Ready to copy':'Approval pending'}</h1><p>{current.status==='approved'?'Your approved version is saved.':'This exact version is saved on this phone. Approval will be confirmed when it syncs.'}</p></div>
+  <section class="glass approved-item"><div class="approved-photo">{#if photos[0]}<PhotoTile photo={photos[0]} position={1} open={inspect}/>{/if}</div><div><h2>{approved.copy.title}</h2><p class="approved-price">£{(approved.price.minor/100).toFixed(2)}</p></div></section>
+  <section class="glass flow-card"><h2>Listing text</h2><p class="approved-description">{approved.copy.description}</p><button class="evidence-row" onclick={()=>full=!full} aria-expanded={full}>View full listing<Icon name="next"/></button>
+    {#if full}<textarea class="copy-text" readonly bind:this={copyArea} value={text} rows="14" aria-label="Approved listing text"></textarea>{/if}
+  </section>
+  {#if current.status==='approved'}<button onclick={copy}>{copied?'Copied':'Copy listing'}<Icon name={copied?'check':'copy'}/></button>{/if}
+  {#if manual}<p role="status">Copy is unavailable here. Select the listing text and copy it manually.</p><button class="secondary" onclick={()=>{copyArea.focus();copyArea.select();}}>Select listing text</button>{/if}
+  <a class="button secondary" href="/">Your listings</a><p class="quiet-status">Paste it into Vinted when you're ready.</p>
+{:else if current.status==='generating' || current.status==='failed'}
+  <h1>{current.status==='failed'?"We couldn't finish this draft":'Building your draft'}</h1>
+  <p class="sample-notice">Sample preview · The proposal is fixed sample copy, not analysis of your item or personal style.</p>
+  {#if photos[0]}<div class="progress-photo"><PhotoTile photo={photos[0]} position={1} open={inspect}/></div>{/if}
+  <section class="glass flow-card">
+    {#if $pipelineIntents.some(i=>i.request.kind==='generate' && i.request.listingId===id)}<p role="status">{$connection?'Waiting for photos to sync':'Will start when connected'}</p>{/if}
+    <ol class="stage-list">{#each ['Reading photos','Preparing sample proposal','Saving your draft'] as name,index}<li class:stage-done={(current.stage || 0)>index}><span class="stage-number">{#if (current.stage || 0)>index}<Icon name="check" size={18}/>{:else}{index+1}{/if}</span>{name}</li>{/each}</ol>
+    {#if current.error}<p role="alert">{current.error}</p>{/if}
+  </section>
+  <a class="button secondary" href={`/listings/${id}?view=photos`}>{current.status==='failed'?'Try again':'Keep editing'}</a><a class="text-link" href="/">Your listings</a>
+{:else if current.proposal && values}
+  <nav class="review-filmstrip" aria-label="Listing photos">{#each photos as photo,index}<div><PhotoTile {photo} position={index+1} open={inspect}/></div>{/each}</nav>
+  <p class="sample-notice">Sample proposal · Check every detail. These suggestions and £48 starting price have not been inferred from your item.</p>
+  <section class="glass flow-card"><h1 class="section-title">Listing proposal</h1>
+    {#each ['title','description'] as field}{@const key=field as ListingField}<div class="review-field"><label for={`review-${field}`}>{label(field)}</label>
+    {#if field==='description'}<textarea id={`review-${field}`} bind:value={values[key]} onfocus={()=>activeField=field} onblur={()=>activeField=''} oninput={()=>edit(key,values[key])} rows="5" maxlength="5000"></textarea>{:else}<input id={`review-${field}`} bind:value={values[key]} onfocus={()=>activeField=field} onblur={()=>activeField=''} oninput={()=>edit(key,values[key])} maxlength="200"/>{/if}
+    {#if values[key]!==current.proposal.copy[key]}<button class="restore-button" onclick={()=>edit(key,current.proposal!.copy[key])} aria-label={`Restore ${field} suggestion`}>Restore suggestion</button>{/if}</div>{/each}
+    <div class="attribute-grid">{#each listingFields.slice(2) as field}<div class="review-field"><label for={`review-${field}`}>{label(field)}</label><input id={`review-${field}`} bind:value={values[field]} maxlength="200" onfocus={()=>activeField=field} onblur={()=>activeField=''} oninput={()=>edit(field,values[field])}/>{#if values[field]!==current.proposal.copy[field]}<button class="restore-button" onclick={()=>edit(field,current.proposal!.copy[field])} aria-label={`Restore ${field} suggestion`}>Restore suggestion</button>{/if}</div>{/each}</div>
+    <button class="evidence-row" onclick={()=>showEvidence('photo')}><Icon name="camera"/><span>Check size, labels and wear<small>Photo observations · unverified sample details</small></span><Icon name="next"/></button>
+    <button class="evidence-row" onclick={()=>showEvidence('history')}><Icon name="star"/><span>Examples supplied<small>Personal style analysis not yet enabled</small></span><Icon name="next"/></button>
+  </section>
+  <section class="glass flow-card price-card"><h2>Recommended price</h2><p class="quiet-status">Sample listing price</p><label class="price-label" for="listing-price"><span aria-hidden="true">£</span><input id="listing-price" aria-label="Listing price in GBP" inputmode="decimal" bind:value={price} onfocus={()=>activeField='price'} onblur={()=>activeField=''} oninput={choosePrice}/></label>
+    <p>Expected sale range unavailable</p><p class="supporting">{current.proposal.pricing.rationale}</p>
+    <div class="estimate-unavailable"><Icon name="chart"/><span>Sale probability, expected revenue and time to sale are unavailable without market evidence.</span></div>
+    <button class="evidence-row" onclick={()=>showEvidence('market')}><Icon name="tag"/><span>Price evidence<small>No asking prices or sold comparables retrieved</small></span><Icon name="next"/></button>
+  </section>
+  {#if current.input && baseVersion!==current.input.baseVersion}<p role="status">Photos or context changed after this proposal. Create another proposal from the updated photos before approving.</p>{/if}
+  <button disabled={!!current.input && baseVersion!==current.input.baseVersion} onclick={approve}>Approve listing<Icon name="check"/></button><a class="text-link" href={`/listings/${id}?view=photos`}>Edit photos or create another proposal</a>
+{/if}
+{#if error}<p role="alert">{error}</p>{/if}<PipelineStatus/>
+</main>
+<dialog class="evidence-sheet glass" bind:this={evidenceDialog} aria-labelledby="evidence-title"><div class="sheet-handle" aria-hidden="true"></div><header class="sheet-header"><h2 id="evidence-title">{evidence==='market'?'Why this price?':evidence==='history'?'Your listing examples':'Your photo evidence'}</h2><button class="icon-button secondary" aria-label="Close evidence" onclick={()=>evidenceDialog.close()}><Icon name="close"/></button></header>
+{#if evidence==='market'}<p class="sample-notice">Sample price · £48 is illustrative.</p><h3>Evidence unavailable</h3><p>No live asking prices or completed sales have been retrieved. There are no source links, observation dates or modelled estimates to inspect yet.</p><p>Choose your own listing price after checking your item. Changing the price does not create a market estimate.</p>
+{:else if evidence==='history'}<p>These are the exact examples pinned to this proposal. The sample provider does not imitate your tone.</p>{#each current.input?.examples || [] as example}<blockquote class="glass example-excerpt"><strong>{example.title}</strong><p>{example.description}</p></blockquote>{/each}
+{:else}{#if inspected}<img class="evidence-photo" src={inspected} alt={inspectedAlt}/>{:else}{#each photos as photo,index}<PhotoTile {photo} position={index+1} open={(_,url)=>{inspected=url;inspectedAlt=`Item photo ${index+1}`;}}/>{/each}{/if}<p>Inspect labels, size and signs of wear. The sample proposal's details have not been identified from these photos.</p>{/if}
+</dialog>

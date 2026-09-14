@@ -22,13 +22,13 @@ Event IDs combine UID, stable device ID and a sequence allocated atomically in I
 
 ## Photo entry
 
-Selecting an item starts an owned stream without asking for a name. Photo files and camera input accept JPEG, PNG, WebP and HEIC/HEIF, up to 8 photos at 10 MB each. Originals remain untinted and immutable. HEIC originals are retained alongside a browser-readable JPEG preview; this client preview conversion is not the server analysis normalization planned for milestone 3.
+Selecting an item starts an owned stream without asking for a name. Photo files and camera input accept JPEG, PNG, WebP and HEIC/HEIF, up to 8 photos at 10 MB each. Originals remain untinted and immutable. HEIC originals are retained alongside a browser-readable JPEG preview; the original is also decoded server-side to an oriented JPEG analysis derivative.
 
 Selected bytes are retained in IndexedDB until upload and local event enqueue succeed. Pending tiles keep their local image and a discreet sync badge. Offline status says Saved on this phone; invalid files offer replacement/removal, and interrupted transfers offer retry. Interrupted selections can be recovered on the same device. Authenticated reads restore thumbnails after reload without shareable download tokens. Inspection uses a centered mobile-width full-height dialog with a filmstrip, Make cover, Replace and Remove. Removal offers Undo. The order menu supports keyboard/touch movement, and tiles also support drag ordering. Replacement retains position. Uploads run independently of the screen and continue after navigation. Local thumbnails appear before upload; authenticated previews are cached on the device. Navigation and controls do not wait for network acknowledgement.
 
 `Anything else?` is a single-line field. Changes enqueue on input. Routine saves stay quiet; offline retention and actionable errors appear contextually. `data-sync` exposes delivery completion for automation without a permanent Saved label. The shared account sheet shows identity and privacy reassurance. Sign-out explains any device-only changes and offers Keep working before detaching the user's streams and removing their UI state. Local work stays scoped to its original account. Returning opens Your listings. Firestore uses persistent multi-tab cache and local batch snapshots; the retained-command projection covers the interval before those snapshots arrive. Offline edits and new listings sync on reconnection.
 
-Seller-history ingestion and AI generation are not implemented in this PR. The generation CTA is therefore not shipped as a dead or simulated action. The remaining pipeline belongs to its implementation milestones; the UI does not claim that photos have been analyzed or a proposal generated.
+Create my draft now enters examples/style setup when needed, then records durable sample-generation intent. Review, evidence, approval and copying use the workflow described in [Pipeline implementation](./PIPELINE.md). Sample text is explicitly labelled and never described as analysis of arbitrary photos.
 
 ## Verification
 

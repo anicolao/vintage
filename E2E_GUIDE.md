@@ -1,12 +1,12 @@
-Current production coverage follows the sign-in and photo-entry screens in `UX_DESIGN.md`. Tests use local Firebase emulators solely for automation; PR review uses the live Firebase project. Coverage includes image uploads/readback, HEIC preview conversion, photo controls, saved one-line context, owner isolation and phone/desktop system appearances. `npm run test:domain` verifies replay; `npm run test:foundation` runs rules and browser scenarios. The scenarios below describe subsequent pipeline milestones where not yet implemented.
+Current production coverage follows the approved photo-first flow through examples, durable sample generation, review, evidence, exact approval and copying. Tests use local Firebase emulators; review previews use live Firebase.
 
 # End-to-End Testing Guide
 
 ## Current automated coverage
 
-`npm run test:foundation` runs the Firestore/Storage owner-rule suite and phone/desktop browser scenarios against Auth, Firestore and Storage emulators using the non-production `demo-vintage` project. Playwright builds the static SPA in E2E mode before serving it. The browser signs in through the Auth emulator's Google popup using the same production SDK path, uploads/reloads item photos, saves context and signs out. No test-auth adapter is shipped in the app.
+`npm run test:foundation` runs the Firestore/Storage owner-rule suite and phone/desktop browser scenarios against Auth, Firestore, Storage and Functions emulators using the non-production `demo-vintage` project. Playwright builds the static SPA in E2E mode before serving it. The browser signs in through the Auth emulator's Google popup using the same production SDK path, uploads/reloads item photos, saves context and signs out. No test-auth adapter is shipped in the app.
 
-PR review deployments use live Firebase, separately from this test command. See [live setup and smoke checks](./docs/FIREBASE_SETUP.md). Functions, AI fixtures and the later generation/review scenarios below remain planned. The current projects are phone-light, phone-dark, desktop-light and desktop-dark. Listing events, photo recovery and account isolation are implemented.
+PR review deployments use live Firebase, separately from this test command. See [live setup and smoke checks](./docs/FIREBASE_SETUP.md). Functions, labelled sample fixtures and generation/review scenarios are implemented. `test:pipeline` covers schemas, HEIC originals, retries, stale versions, exact approval and workflow replay. `lint:e2e` checks the wait policy. The current projects are phone-light, phone-dark, desktop-light and desktop-dark. Listing events, photo recovery and account isolation are implemented.
 
 ## Contract
 
