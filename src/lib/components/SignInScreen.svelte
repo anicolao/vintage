@@ -7,7 +7,7 @@
   <div class="wardrobe" aria-hidden="true"></div>
   <a class="wordmark" href="/" aria-label="Vintage home">V<span class="brand-i">i<span class="brand-star" aria-hidden="true">✦</span></span>ntage</a>
   <h1>List smarter.<br />Earn more.</h1>
-  <div class="flourish" aria-hidden="true"><span></span>✦</div>
+  <div class="flourish" aria-hidden="true"><span></span>✦<span></span></div>
   <p class="sign-in-description">Turn a few photos into a listing written like you, with pricing built for value.</p>
   <SignIn />
   <section class="learn glass" aria-labelledby="learn-title">

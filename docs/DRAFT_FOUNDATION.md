@@ -2,7 +2,7 @@
 
 The production interface follows `UX_DESIGN.md`: the specified sign-in copy and Google control, followed by Your listings; New listing opens photo entry. Desktop keeps the same 393px workspace as the phone. There is no draft-name form, promotional dashboard, diagnostic route or workspace-note schema.
 
-The sign-in background is an independently generated garment photograph in `static/images/wardrobe.png`; no mockup is used as an interface or background. Typography, Google logo, semantic icons, frosted borders, controls and text are rendered natively. System appearance is CSS-driven before JavaScript and while editing. Solid surfaces for reduced transparency and unavailable blur implement the accessibility behavior required by the design.
+The sign-in background is an independently generated garment photograph in `static/images/wardrobe.png`; no mockup is used as an interface or background. Self-hosted Inter Variable provides the sans-serif typography at 400–600 weights; DM Serif Display renders the wordmark. Google logo, semantic icons, fine glass highlights, controls and text are rendered natively. Translucent gradient surfaces use 20px backdrop blur (including the Safari-prefixed property), with separate readable input fills and softly highlighted primary actions. System appearance is CSS-driven before JavaScript and while editing. Solid surfaces for reduced transparency and unavailable blur implement the accessibility behavior required by the design.
 
 ## Item persistence
 
