@@ -99,3 +99,7 @@ the controls don't look glassmorphic and the fonts are blocky/all wrong, make th
 Prompt 23: Complete screen documentation
 
 we've merged these changes - the UX_DESIGN.md doesn't include all the screens in the app, update the file to include all the necessary screens
+
+Prompt 24: Design intended experience
+
+NO NO NO. You may not take screen captures of the software - which is wrong and shitty - and call that "UX DESIGN" You must use image generation to generate actualy good looking screens, think about the UX flow, think about how the deisgn will work and make the user feel, adn design what we WANT to have not the garbage we do have. try again
