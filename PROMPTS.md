@@ -171,3 +171,11 @@ interrupted by accident, continue
 Prompt 40: Rebase merge requests
 
 use a new work tree to rebase and merge PRs 6&7
+
+Prompt 41: Research Completed Auctions
+
+one thing I wanted to see in this design was what access we have to completed auction info which should be the best soruce of pricing fro ebay - the doc seems silent on this - please research and update
+
+Prompt 42: Rebase merge requests
+
+use a new work tree to rebase and merge PRs 6&7
