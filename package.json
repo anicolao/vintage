@@ -20,7 +20,8 @@
     "build:e2e": "vite build --mode e2e",
     "test:foundation": "npm run test:e2e",
     "build:live": "node scripts/build-live.mjs",
-    "test:domain": "node --test tests/domain/*.test.mjs"
+    "test:domain": "node --test tests/domain/*.test.mjs",
+    "investigate:ebay": "node scripts/investigate-ebay.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
@@ -34,6 +35,7 @@
     "@sveltejs/adapter-static": "^3.0.10",
     "@sveltejs/kit": "^2.70.3",
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
+    "fast-xml-parser": "5.11.1",
     "firebase-tools": "^15.28.1",
     "svelte": "^5.56.10",
     "svelte-check": "^4.7.6",

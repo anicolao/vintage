@@ -195,3 +195,11 @@ this design is a little too far reaching. we hardly need tests, scheduling, or a
 Prompt 46: Rebase merge requests
 
 use a new work tree to rebase and merge PRs 6&7
+
+Prompt 47: Implement Collection Script
+
+can this be doen anonymously, or do we need a user? let's implement the simplest thing so that we can try it out
+
+Prompt 48: Rebase merge requests
+
+use a new work tree to rebase and merge PRs 6&7
