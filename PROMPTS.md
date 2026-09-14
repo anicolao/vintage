@@ -87,3 +87,7 @@ this design is a little too far reaching. we hardly need tests, scheduling, or a
 Prompt 21: Implement Collection Script
 
 can this be doen anonymously, or do we need a user? let's implement the simplest thing so that we can try it out
+
+Prompt 22: Load Local Credentials
+
+I'd like to read a .env file that is .gitignore'd instead of usign the environment. will that work automatically or do you need to update hte script
