@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { style, pipelineIntents } from '$lib/state/pipeline';
+  import { style, pipelineSaving, pipelineIntents } from '$lib/state/pipeline';
   import { app } from '$lib/state/app';
   import { photoJobs } from '$lib/state/photos';
   import { logout } from '$lib/auth/session';
@@ -10,7 +10,7 @@
   let dialog: HTMLDialogElement;
   let confirming = false;
   let error = '';
-  $: localWork = $app.commands.some(c => c.type !== 'account/created') || $photoJobs.some(j => j.photo.uid === $app.user?.uid) || $pipelineIntents.length > 0;
+  $: localWork = $app.commands.some(c => c.type !== 'account/created') || $photoJobs.some(j => j.photo.uid === $app.user?.uid) || $pipelineIntents.length > 0 || $pipelineSaving > 0;
   onMount(() => { if ($page.url.searchParams.get('account') === 'open') dialog.showModal(); });
   function open() { confirming = false; error = ''; dialog.showModal(); }
   async function signOut() {

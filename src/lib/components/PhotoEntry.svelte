@@ -18,7 +18,7 @@
   let replaceDialog: HTMLDialogElement;
   async function generate(replace = false) {
     await saveContext();
-    if (error || empty) return;
+    if (error || !usable) return;
     if ($style.status !== 'ready') { await goto(`/style?item=${encodeURIComponent(id)}`); return; }
     const workflow = $workflows[id] || emptyWorkflow();
     if (workflow.proposal && !replace) { replaceDialog.showModal(); return; }
@@ -47,6 +47,7 @@
   $: projection = reduceListing([...events, ...commands.filter(c => !events.some(e => (e as { id: string }).id === c.id)).map(eventFor)], id, uid);
   $: pending = commands.length > 0;
   $: empty = projection.photos.length + jobs.length === 0;
+  $: usable = projection.photos.length + jobs.filter(j => !j.error).length;
   $: if (!edited) context = commands.filter(c => c.type === 'context/changed').at(-1)?.payload.context ?? projection.context;
   $: selectedPosition = selected ? projection.photos.findIndex(p => p.id === selected?.id) : -1;
   $: sync = error || jobs.some(j => j.error) ? 'error' : saving || edited || pending || jobs.length ? 'pending' : 'synced';
@@ -126,8 +127,8 @@
     <input class="file-input" tabindex="-1" bind:this={fileInput} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" multiple={!replacing} oncancel={() => { replacing = null; replacingJob = null; }} onchange={() => addFiles(fileInput)} aria-label="Choose item photos" />
     <input class="file-input" tabindex="-1" bind:this={cameraInput} type="file" accept="image/*" capture="environment" oncancel={() => { replacing = null; replacingJob = null; }} onchange={() => addFiles(cameraInput)} aria-label="Take item photo" />
     <section class="context-card glass"><label for="item-context">Anything else?</label><input id="item-context" bind:value={context} oninput={changed} onblur={saveContext} maxlength="2000" placeholder={empty ? 'Fit, provenance, or an unpictured detail' : 'e.g. Rare 1990s piece, fits oversized'} /></section>
-    <button class="create-draft" disabled={empty || $workflows[id]?.status === 'generating'} onclick={() => generate()}>Create my draft<Icon name="next"/></button>
-    {#if empty}<p class="quiet-status">Add a photo to continue</p>{/if}
+    <button class="create-draft" disabled={!usable || $workflows[id]?.status === 'generating'} onclick={() => generate()}>Create my draft<Icon name="next"/></button>
+    {#if !usable}<p class="quiet-status">Add a photo to continue</p>{/if}
     <PipelineStatus/>
     {#if removed}<div class="undo-notice glass" role="status"><span>Photo removed</span><button class="text-button" disabled={undoing} onclick={undoRemove}>Undo</button></div>{/if}
   {:else}<p role="status">Opening your item…</p>{/if}

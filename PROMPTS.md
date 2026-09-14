@@ -215,3 +215,7 @@ use a new work tree to rebase and merge PRs 6&7
 Prompt 51: Complete sixth milestone
 
 good, implement up to milestone 6 on a new PR
+
+Prompt 52: Complete sixth milestone
+
+good, implement up to milestone 6 on a new PR
