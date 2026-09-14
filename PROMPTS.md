@@ -63,3 +63,11 @@ File uploaded, read back, and deleted successfully.
 Prompt 15: Resolve rebase conflicts
 
 the PR looks good but says it can't be rebased due to conflicts
+
+Prompt 16: Investigate eBay Integration
+
+Let's make a new worktree to investigate integrating with ebay. What's available? Write EBAY_INTEGRATION.md with a design proposal on the new worktree and put up a PR
+
+Prompt 17: Continue Interrupted Investigation
+
+interrupted by accident, continue
