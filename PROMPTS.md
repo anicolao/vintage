@@ -83,3 +83,7 @@ Let's design a specific minimal price history/estimating process where a cloud f
 Prompt 20: Simplify Collection Proof
 
 this design is a little too far reaching. we hardly need tests, scheduling, or all this other production stuff until we've verified that the basics work: that we can harvest and process the ebay repsonses. let's trim it down to the bare minimum to prove that we can do the basic data collection
+
+Prompt 21: Implement Collection Script
+
+can this be doen anonymously, or do we need a user? let's implement the simplest thing so that we can try it out
