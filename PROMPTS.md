@@ -103,3 +103,19 @@ we've merged these changes - the UX_DESIGN.md doesn't include all the screens in
 Prompt 24: Design intended experience
 
 NO NO NO. You may not take screen captures of the software - which is wrong and shitty - and call that "UX DESIGN" You must use image generation to generate actualy good looking screens, think about the UX flow, think about how the deisgn will work and make the user feel, adn design what we WANT to have not the garbage we do have. try again
+
+Prompt 25: Apply approved flow
+
+thanks, we've applied these changes - now update the implementation plan to reflect the changes in the flow, and apply the UX_DESIGN.md mock ups to existing screens
+
+Prompt 26: Investigate Vinted Integration
+
+Review the markdown for this project to get oriented. Then make a vinted-integration worktree and branch and look into what we can do to integreate with vinted - what API surface is there, etc. Write a VINTED_INTEGRATION.md design doc with the alternatives nad put it up on your branch as a new PR
+
+Prompt 27: Explain seventh milestone
+
+We're reviewing the implementation plan and find #7 a little obscure. make no changes but explain in plain language what #7 is all about
+
+Prompt 28: Investigate main failure
+
+It looks like CI is failing on main. Add a CI badge to the README, and report on why CI is failing without fixing it, in a new worktree for remedying the failure

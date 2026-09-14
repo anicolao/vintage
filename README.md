@@ -1,5 +1,7 @@
 # Vintage
 
+[![CI](https://github.com/anicolao/vintage/actions/workflows/verify-and-preview.yml/badge.svg?branch=main&event=push)](https://github.com/anicolao/vintage/actions/workflows/verify-and-preview.yml?query=branch%3Amain+event%3Apush)
+
 Vintage is an AI-first listing assistant for Vinted sellers. It turns photos into a complete listing draft written in the seller's own style and recommends a price designed to maximize expected revenue.
 
 ## The v0
