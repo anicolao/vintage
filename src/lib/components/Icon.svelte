@@ -1,5 +1,5 @@
 <script lang="ts">
-  export let name: 'style' | 'search' | 'tag' | 'lock' | 'back' | 'camera' | 'plus' | 'close' | 'up' | 'down' | 'check';
+  export let name: 'style' | 'search' | 'tag' | 'lock' | 'back' | 'camera' | 'plus' | 'close' | 'up' | 'down' | 'check' | 'next' | 'logout' | 'photos' | 'cloud' | 'star' | 'replace' | 'trash' | 'more';
   export let size = 24;
 </script>
 <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -13,5 +13,13 @@
   {:else if name === 'close'}<path d="m5 5 14 14M19 5 5 19"/>
   {:else if name === 'up'}<path d="m5 15 7-7 7 7"/>
   {:else if name === 'down'}<path d="m5 9 7 7 7-7"/>
+  {:else if name === 'next'}<path d="m9 5 7 7-7 7"/>
+  {:else if name === 'logout'}<path d="M9 4H4v16h5m4-15h6v14h-6M8 12h8m-3-3 3 3-3 3"/>
+  {:else if name === 'photos'}<rect x="5" y="3" width="16" height="18" rx="2"/><path d="M2 6v15m5-4 4-5 3 3 2-2 3 4"/><circle cx="10" cy="8" r="1"/>
+  {:else if name === 'cloud'}<path d="M6 18a4 4 0 0 1-1-8 7 7 0 0 1 13-2 5 5 0 0 1 0 10Z"/>
+  {:else if name === 'star'}<path d="m12 3 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1Z"/>
+  {:else if name === 'replace'}<path d="M20 8a8 8 0 0 0-14-3L3 8m0-5v5h5m-4 8a8 8 0 0 0 14 3l3-3m0 5v-5h-5"/>
+  {:else if name === 'trash'}<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>
+  {:else if name === 'more'}<circle cx="4" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="20" cy="12" r="1"/>
   {:else}<path d="m4 12 5 5L20 6"/>{/if}
 </svg>

@@ -35,12 +35,13 @@ export async function deliver(command: Command) {
   }
 }
 export function watchDrafts(uid: string, next: (drafts: Descriptor[]) => void, error: (cause: Error) => void) {
-  return onSnapshot(collection(getBackend().db, `${accountPath(uid)}/listings`), snapshot => {
+  return onSnapshot(collection(getBackend().db, `${accountPath(uid)}/listings`), { includeMetadataChanges: true }, snapshot => {
+    if (snapshot.empty && snapshot.metadata.fromCache && navigator.onLine) return;
     next(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Descriptor)).sort((a, b) => (b.updatedAt?.seconds ?? 0) - (a.updatedAt?.seconds ?? 0) || (b.updatedAt?.nanoseconds ?? 0) - (a.updatedAt?.nanoseconds ?? 0) || a.id.localeCompare(b.id)));
   }, error);
 }
-export function watchListing(uid: string, id: string, next: (events: unknown[]) => void, error: (cause: Error) => void) {
+export function watchListing(uid: string, id: string, next: (events: unknown[], confirmed: boolean) => void, error: (cause: Error) => void) {
   return onSnapshot(collection(getBackend().db, `${accountPath(uid)}/listings/${id}/events`), { includeMetadataChanges: true }, snapshot => {
-    next(snapshot.docs.map(d => ({ ...d.data(), id: d.id, createdAt: d.metadata.hasPendingWrites ? null : d.data().createdAt })));
+    next(snapshot.docs.map(d => ({ ...d.data(), id: d.id, createdAt: d.metadata.hasPendingWrites ? null : d.data().createdAt })), !snapshot.metadata.fromCache);
   }, error);
 }

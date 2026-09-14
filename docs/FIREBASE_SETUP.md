@@ -1,6 +1,6 @@
 # Live Firebase review environment
 
-Milestone 0 uses real Firebase services for PR review. Emulators are only used by automated tests. The visual redesign is milestone 1; this increment keeps the original home styling.
+PR review uses real Firebase Auth, Firestore and Storage. Emulators are only used by automated tests. The app uses the approved system-following terracotta-and-linen design, with Your listings leading to photo capture.
 
 ## Provisioned resources
 
@@ -36,7 +36,7 @@ Live builds reject missing Firebase configuration; test builds require both expl
 
 Run `npm run check`, `npm run test:config`, `npm run test:hooks` and `npm run test:foundation`. The foundation command owns Auth, Firestore and Storage emulators, runs the security rules suite, builds the SPA and runs phone/desktop browser scenarios. Rules validation happens before browser scenarios so rule compilation is complete before their 2,000 ms action/assertion limits. No in-test sleeps or increased wait thresholds are used.
 
-`npm run test:e2e:update-snapshots` deliberately updates screenshots after the rules suite passes. Review changes before committing them. Theme variants arrive in milestone 1.
+`npm run test:e2e:update-snapshots` deliberately updates screenshots after the rules suite passes. Review changes before committing them. Baselines cover both system appearances on phone and desktop.
 
 ## PR deployment
 

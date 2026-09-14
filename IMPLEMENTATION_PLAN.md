@@ -1,10 +1,10 @@
 # Vintage v0 implementation plan
 
-Baseline: merged `main` at `a014f07`, inspected on 2026-09-12. This document plans the work; unchecked items are not implemented. Update milestone status and link the implementing PRs as work lands.
+Baseline: merged `main` at `24d62b4`, inspected on 2026-09-14; approved flow and generated concepts from PR #8. The existing-screen alignment described below is delivered by the accompanying implementation PR. This document plans the work; unchecked items are not implemented. Update milestone status and link the implementing PRs as work lands.
 
 ## Intended outcome
 
-A seller signs in with Google, provides existing listing examples, adds item photos and optional context, receives a personalized listing and evidence-based price proposal, edits it, and approves exactly the result shown. The draft survives reloads. Every screen follows the device's light/dark appearance using the terracotta and linen glass design.
+A seller signs in with Google, lands on Your listings, chooses New listing, and takes or selects photos before entering any other information. Anything else? is optional. On first generation, a seller without a ready style supplies existing listing examples, learns their style, and returns to the saved photos to choose Create my draft. A ready style leads directly to generation, editable review, evidence, approval of the exact submitted version, and copying. The draft survives reloads. Every screen follows the device's light/dark appearance using the terracotta and linen glass design.
 
 The v0 ends with a saved approved listing and a copy action. Publishing directly to Vinted, automatic account linking, and autonomous repricing are outside this plan.
 
@@ -21,16 +21,29 @@ The mockups guide composition and visual treatment. They are not screenshot base
 
 | Area | Present on main | Work remaining |
 | --- | --- | --- |
-| Application | Static SvelteKit SPA and one home route | All authenticated routes and listing behavior |
-| Appearance | Original ivory/plum home screen | Terracotta/linen tokens, glass components, system light/dark response |
-| Authentication | Firebase Auth initialized | Google action, auth observer, session and error flows |
-| Persistence | Firestore emulator readiness read | Owned streams, schemas, reducers, subscriptions and writes |
-| Backend | Auth and Firestore emulator configuration | Storage, Functions, commands, real provider adapters |
-| Security | Public read of one readiness document; other access denied | Validated owner access for domain data and photos |
-| Tests | One home scenario, phone and desktop light screenshots | Domain/rules tests, complete flow, dark mode, recovery and isolation |
-| Delivery | Nix environment, CI checks/E2E, GitHub Pages previews | Backend deployment, environment configuration, production routing and pilot |
+| Application | SvelteKit SPA with Your listings, new/resume photo routes and account controls | Seller examples, learning, generation, review and approved-listing surfaces |
+| Appearance | System light/dark, terracotta/linen glass, local fonts, phone/desktop layouts | Apply each new approved concept as its feature ships; verify composited contrast |
+| Authentication | Live Google sign-in, sign-out, auth observer and owner isolation | Session-expiry and cross-device recovery hardening |
+| Persistence | Owner-scoped descriptors/events, local command outbox and photo bytes, optimistic Firestore writes | Style/generation/approval commands and projections |
+| Photos | Capture/picker, JPEG/PNG/WebP/HEIC preview, inspection, replacement, ordering and recovery | Server analysis derivatives, generation readiness and orphan cleanup |
+| Review delivery | Live Firebase Auth, Firestore, Storage and PR Hosting previews from milestone 0 | Deploy Functions with server features; continue real phone checks per PR |
+| Verification | Four phone/desktop light/dark projects, replay, configuration and owner-rule tests | Extend scenarios to the later pipeline stages |
 
-The E2E guide describes future capabilities: Storage/Functions orchestration, unit/rules scripts and automated wait-policy enforcement do not yet exist. Current Playwright starts the Vite development server, not a production build. Reconcile documentation with each implemented milestone.
+### Approved flow and delivery boundaries
+
+```text
+Sign in → Your listings → New listing → Photos + Anything else?
+                                      → Create my draft
+                                        ├─ Style ready → Building draft → Review ↔ Evidence
+                                        │                               → Approval pending → Approved → Copy
+                                        └─ No ready style → Paste examples → Learn style → Back to photos
+```
+
+Returning listings resume their saved stage. Photo inspection closes to the editor. Account closes to its invoking screen; example management entered from account returns there. Completing background work must never redirect away from active editing. An unavailable item or route returns to Your listings, with account switching where appropriate.
+
+The accompanying existing-screen alignment uses concepts 05–09 and 14–15: empty and populated home, camera-first entry, compact photo inspection, account identity/privacy/sign-out, quiet offline state, and shared unavailable-link recovery. Listing cards use real photos and counts, and **Untitled item** until an actual title exists. There is no generated identification at capture time.
+
+Milestone 4 adds the working Your listing style row and example screens; milestone 5 adds the working Create my draft action. Do not ship inert buttons, sample listing cards, placeholder style profiles or milestone notices to imitate unfinished portions of a mockup. Preserve the already-approved sign-in and populated photo composition while applying the new surrounding surfaces.
 
 ## Live Firebase is required from the first PR
 
@@ -52,24 +65,24 @@ Each milestone is a reviewable increment; split it into smaller PRs when necessa
 | 1. Appearance and shared controls | 0 | Live preview follows system appearance with the approved palette |
 | 2. Identity and durable draft foundation | 1 | Sign in, create a draft, reload and resume it |
 | 3. Photo capture | 2 | Store, order and recover photos and optional context |
-| 4. Seller examples and style | 2; history-input decision | Persist examples and a traceable style profile |
+| 4. Seller examples and style | 2, 3 for item-return flow | Paste examples, learn style and return to the saved item or account |
 | 5. Durable generation using fixtures | 3, 4 | Generate a complete fixed proposal through backend events |
 | 6. Review and approval | 5 | Edit, price, approve and copy a complete listing |
 | 7. Real generation and pricing | 6; provider/data decisions | Produce and evaluate proposals from real seller inputs |
 | 8. Pilot readiness | 7 | Validate and harden the already-deployed complete flow for the pilot |
 
-Milestones 3 and 4 can proceed independently after 2. Resolve integration questions while building the fixture flow; do not let fixtures conceal missing production capabilities. Milestone 6 is a complete review journey on live Firebase with labelled sample generation, backed by deterministic emulator tests; real AI and market evidence remain milestone 7 work.
+Milestone 4 builds on the existing photo flow and must preserve the item when entered from generation. Resolve integration questions while building the fixture flow; do not let fixtures conceal missing production capabilities. Milestone 6 is a complete review journey on live Firebase with labelled sample generation, backed by deterministic emulator tests; real AI and market evidence remain milestone 7 work.
 
 ## Decisions and dependencies
 
 | Decision | Proposed starting point | Resolve by | Evidence needed |
 | --- | --- | --- | --- |
-| Seller-history input | Seller pastes titles/descriptions or uploads a documented structured export; normalize behind an ingestion adapter | 4 | A real seller can supply representative examples; agreed format and empty-history experience |
+| Seller-history input | Approved: seller pastes their own listing titles and descriptions; one complete example is enough to begin; structured exports are outside this flow | 4 | Validate title/description inline, retain partial edits, allow more examples later; no silent generic personalized draft |
 | Market evidence | Adapter with source references, retrieval time, currency, item attributes and available outcomes | 7 | A usable source and representative comparable records; distinguish asking prices from completed sales |
 | AI provider/model | Server-side multimodal adapter behind the shared proposal schema | 7 | Trial results on representative items, latency/cost measurements and validated structured output |
 | Launch market | One agreed locale and currency for the pilot; retain typed currency in every monetary value | 4 for fixtures, 7 for pilot | Seller market and available comparable coverage; GBP in mockups is illustrative |
 | Deployment | Firebase Hosting previews with live Auth, Firestore and Storage; deploy backend changes with each feature PR | 0, before the first implementation PR is ready for review | Project/region/bucket configuration, deployment credentials, preview auth domains, PR isolation strategy and successful cloud read/write/reload |
-| Photo limits and HEIC support | Explicit file/count limits and server normalization; validate chosen decoder with phone fixtures | 3 | Successful JPEG, PNG, WebP and HEIC uploads, orientation handling, and recoverable invalid-file errors |
+| Photo limits and HEIC support | Current: up to 8 photos, 10 MB each, JPEG/PNG/WebP/HEIC; browser HEIC display preview; server analysis normalization remains milestone 3 work | 3 | Successful JPEG, PNG, WebP and HEIC uploads, orientation handling, and recoverable invalid-file errors |
 
 Google login establishes Vintage identity; it does not supply Vinted history. Update onboarding copy with the chosen import mechanism before milestone 4. Do not claim an import is occurring without seller input or an implemented integration.
 
@@ -99,7 +112,7 @@ Initial implementation and cloud provisioning were included in [PR #3](https://g
 - [x] Keep item photography untinted. Use real UI elements and approved assets, not mockup screenshots as application backgrounds.
 - [x] Extend Playwright to phone-light, phone-dark, desktop-light and desktop-dark projects; preserve the existing pinned renderer and zero-pixel threshold.
 
-Production UI corrections and current acceptance evidence are tracked in [Draft foundation](./docs/DRAFT_FOUNDATION.md).
+Foundation and photo behavior landed in [PR #5](https://github.com/anicolao/vintage/pull/5). The approved expanded flow in [PR #8](https://github.com/anicolao/vintage/pull/8) guides the accompanying existing-screen alignment; see [Draft foundation](./docs/DRAFT_FOUNDATION.md) for persistence details.
 
 **Done when:** the live Firebase preview still passes sign-in and persistence checks, and the home screen matches the approved visual direction in all four projects; keyboard focus survives an appearance change; text, focus and controls meet the UX contrast/touch-target requirements; fallback surfaces remain usable. Review intentional screenshots before committing them.
 
@@ -115,32 +128,38 @@ Production UI corrections and current acceptance evidence are tracked in [Draft 
 - [x] Add the domain unit-test runner and extend milestone 0 rules tests and CI. Keep live review/production configuration separate from emulator tests; deploy new domain rules and indexes with this PR.
 - [x] Extend milestone 0 routing to the live draft routes; a direct reload of `/listings/[id]` must serve the SPA and restore the cloud-backed draft.
 
-Production UI corrections and current acceptance evidence are tracked in [Draft foundation](./docs/DRAFT_FOUNDATION.md).
+Foundation and photo behavior landed in [PR #5](https://github.com/anicolao/vintage/pull/5). The approved expanded flow in [PR #8](https://github.com/anicolao/vintage/pull/8) guides the accompanying existing-screen alignment; see [Draft foundation](./docs/DRAFT_FOUNDATION.md) for persistence details.
 
 **Done when:** a seller can sign in, create one durable draft, reload its direct URL and resume; repeated actions do not duplicate events; another user cannot read or alter it. Sign-out removes the previous user's state from the UI. Reducer and rule tests demonstrate the ownership and replay contract.
 
 ## 3. Photo capture and recovery
 
-Photo entry, uploads, local recovery and optimistic context edits are included in the milestone 1–2 UX correction PR. Server analysis derivatives and generation gating remain outstanding.
+Photo entry, uploads, local recovery and optimistic context edits are included in the milestone 1–2 UX correction PR. Server analysis derivatives, orphan cleanup and generation request readiness remain outstanding. The accompanying screen alignment adds cover-photo cards, camera-first empty entry, filmstrip inspection, Make cover, removal with undo, and account/recovery sheets.
 
 - [x] Extend the live Storage setup with the photo repository and owner-scoped photo rules, accepted types and bounded sizes. Deploy these rules with capture; extend automated emulator scripts to include Storage.
 - [x] Implement file/camera input, thumbnail progress, image inspection, removal, replacement and accessible reordering. Add optional context and persist edits.
 - [x] Upload immutable originals under the designed owner/listing/photo path. Append `photo/uploaded` only after confirmation, recording digest, dimensions, type, byte count and display order.
 - [ ] Introduce and deploy Cloud Functions for live photo normalization, with a matching Functions emulator for tests. Preserve originals and create oriented analysis derivatives with stable metadata. Test HEIC decoding rather than relying on browser preview support.
 - [x] Define recovery for selected but unfinished files: persist local upload input where supported and request reselection when bytes are unavailable after reload. Preserve acknowledged photos and context in either case; do not promise seamless background upload on mobile.
-- [ ] Handle navigation during active uploads, failures, retries and orphaned uploads. Prevent generation until at least one valid photo exists and all selected photos are durably ready.
+- [x] Keep navigation and local editing usable during uploads. Show Saved on this phone when offline, retain thumbnails, and offer useful invalid-file replacement and retry actions.
+- [ ] Add bounded cleanup for orphaned uploads and analysis derivatives, preserving recoverable local intent.
+- [ ] With milestone 5, accept generation intent locally when a usable photo exists. Show Waiting for photos to sync and keep editing/navigation available; server generation starts only after its pinned input photos are durable. Later edits belong to a subsequent input version.
 
 **Done when:** the photo scenario verifies stored objects, thumbnail order and context after reload, recovery from an interrupted upload, removal/replacement, invalid files and keyboard/touch reordering. Storage tests reject cross-user access and invalid uploads. Add replay and isolation assertions now, not only at release.
 
 ## 4. Seller examples and style profile
 
-- [ ] Implement the agreed seller-input flow and normalize examples with source IDs, copy, attributes, currency, price and available outcomes. Define import bounds, validation, duplicate handling and replacement behavior.
-- [ ] Extend the event schema with explicit recoverable import failure/retry states. Persist requested/progress/completed states and the versioned style profile with its source references.
-- [ ] Use an idempotent server command for ingestion/profile production; establish command claiming and durable work execution for reuse in generation.
-- [ ] Implement the learning screen and resume behavior on live Firebase. Use deterministic examples/profile output in emulator tests; until real style generation lands, label any review-only sample profile clearly and persist it through deployed commands.
-- [ ] Define empty-history behavior: ask for examples or offer a clearly identified generic draft if accepted as a product adjustment. Never label a generic draft as written in the seller's established style.
+Use concepts 10–11 and the style row in concept 09. Google identity does not supply Vinted history.
 
-**Done when:** supplied examples produce a persisted traceable profile, progress survives reload, retry does not duplicate work, and the UI transitions to capture. Extend the authentication/style scenario and prove another account cannot access the examples or profile.
+- [ ] Implement Your listing style with pasted **Title** and **Description**, **Add another example**, and **Learn my style**. Require at least one complete example; further examples are optional. Persist partial input, validate inline, and support editing/removal with undo.
+- [ ] Add the account row with actual example count and readiness. Accept an item-return destination when entered from Create my draft; preserve photos, context and editor position. Account entry returns to account.
+- [ ] Normalize source IDs and copy behind the ingestion boundary. Do not require prices, attributes or sales outcomes the input form does not collect. Structured export and automatic history import are not part of this agreed interaction.
+- [ ] Persist recoverable requested/progress/completed/failed states and versioned profile/source references. Use idempotent server commands and durable execution reusable by generation.
+- [ ] Render real stages: Reading [count] examples, Finding your tone, Saving your style. Show pasted excerpts, not invented imported photographs. No fake percentage or countdown. Allow Back to photos/Back to account while learning continues.
+- [ ] On completion offer Continue to photos or Back to account; do not automatically generate or redirect a seller who is editing elsewhere. Changed examples invalidate readiness for the next personalized generation. Offline submission records intent and says Will start when connected.
+- [ ] Retain examples on failure and retry without duplicate work. Until real style generation lands, label review-only sample output; never claim a generic draft was written in the seller's style.
+
+**Done when:** live Firebase persists examples and a traceable profile; first-use and account-entry paths return correctly, survive reload and theme changes, and never lose the item. Test one-example validation, editing/removal, offline submission, real progress, retry, and cross-user isolation. A seller without examples can return to photos, but cannot silently receive a supposedly personalized generic draft.
 
 ## 5. Durable generation with deterministic fixtures
 
@@ -149,7 +168,9 @@ Photo entry, uploads, local recovery and optimistic context edits are included i
 - [ ] Implement durable stages, retries, failure states and stage-specific idempotent event IDs. Handle duplicate requests, stale versions, worker interruption and late results against changed inputs.
 - [ ] Pin photo digests, seller-context version, profile version and input fingerprints for every request. Define how a new generation interacts with existing edits and selected price before exposing regeneration.
 - [ ] Build `FixtureListingGenerator` using checked-in item photos, seller examples and a complete proposal. Validate it with the production schema; use controlled stages and clocks, not artificial sleeps.
-- [ ] Render progress from subscribed events with live status announcements and recoverable errors. Add a development-only event inspector and redacted fixture export.
+- [ ] Add Create my draft to photo entry: unavailable only when no usable photo exists, with Add a photo to continue. Route a missing/invalidated style to milestone 4 and retain the item; a ready style records generation intent immediately.
+- [ ] Render concept 03 progress from subscribed stages, including Waiting for photos to sync, Keep editing and Your listings. Return to the saved stage on reload; completion updates the home card to Ready to review without stealing focus.
+- [ ] Show in-place failed-stage recovery with Try again and Back to photos. Before regenerating over edited content, require Replace proposal? with a precise explanation of which edits change. Remove temporary development diagnostics as each phase is completed.
 - [ ] Deploy the command handlers/workers for live review and verify cloud persistence and recovery with the labelled sample provider. Separately run Auth, Firestore, Storage and Functions emulators through one owned test command; keep real provider calls out of deterministic E2E.
 
 **Done when:** the live preview progresses to a labelled sample proposal through deployed Functions, and emulator tests produce the exact fixture proposal. Both paths survive reload/browser closure, recover from worker failure and reject stale or unauthorized commands. Repeated delivery produces one logical result. The generation and replay scenarios assert persisted events and projections.
@@ -160,8 +181,10 @@ Photo entry, uploads, local recovery and optimistic context edits are included i
 - [ ] Append edits and price choices durably, show save state/errors, and implement field undo to the latest AI proposal. Specify field conflict handling across tabs/devices.
 - [ ] Render the recommended list price, expected sale range, comparable groups and rationale. Provide an accessible price control, evidence sheets and a text alternative to charts.
 - [ ] Make chart labels describe the plotted quantity accurately. Expected revenue, sale probability and time to sale are separate measures; do not copy ambiguous mockup axes. Recompute estimates from validated model data when price changes, with unavailable states where unsupported.
-- [ ] Flush pending edits before approval. Validate the stream version and write one immutable approval containing the exact resolved copy, attributes, photo order and selected price; use a server command if needed to enforce the consistency boundary.
-- [ ] Implement success, copy-listing feedback/fallback, approved-listing access and a new-item action. Define approved listings as immutable snapshots.
+- [ ] Record the exact reviewed copy, attributes, photo order and selected price locally as an immutable submitted version, then immediately show Approval pending with navigation available. Sync prerequisites and validate stream version through the server command. Mark Approved only after confirmation; on conflict require review of the newer version, never approve stale content silently.
+- [ ] Implement concept 12 evidence sheets with source links, observation dates, asking/sold/estimate distinctions, relevant differences and missing-evidence recovery. Photo/style evidence reuses this sheet with actual photos or pasted excerpts. Close/Escape restore review values, price, scroll position and invoking focus.
+- [ ] Implement concept 13 approved-listing access as a read-only snapshot with Ready to copy, approved photo/price, View full listing and Copy listing. Show Copied feedback, or selectable full text when clipboard access fails. Your listings returns home; New listing there opens photos. No automatic publishing.
+- [ ] Extend home cards to Creating draft, Ready to review, Approval pending and Approved only when those states exist; resume the actual saved stage.
 
 **Done when:** the reviewer can complete the entire sample journey on live Firebase, and the deterministic fixture journey passes in emulators. The approval test compares the payload to the values actually displayed, then reloads and verifies the same result. Failed saves, concurrent edits and double approval cannot silently approve stale data. Keyboard operation, focus in evidence sheets, both themes and copy behavior are verified.
 
@@ -195,14 +218,14 @@ As the corresponding runners land, required CI commands become:
 ```sh
 npm run check
 npm run test:hooks
-npm run test:unit
+npm run test:domain
 npm run test:rules
 npm run lint:e2e
 npm run build
 npm run test:e2e
 ```
 
-`test:unit`, `test:rules` and `lint:e2e` must be added; they are not current commands. Use the pinned Nix environment. Add automated E2E wait-policy enforcement with the test infrastructure: no sleeps or timeout delays, and at most 2,000 ms for each in-test action/assertion/wait. Process startup has its own allowance. Fixed stages must advance through observable events; real provider latency is evaluated outside deterministic E2E.
+`test:domain`, `test:rules`, `test:config`, `test:hooks`, `check`, `build` and `test:e2e` exist. `lint:e2e` and later pipeline unit suites still need to be added. Use the pinned Nix environment. Add automated E2E wait-policy enforcement with the test infrastructure: no sleeps or timeout delays, and at most 2,000 ms for each in-test action/assertion/wait. Process startup has its own allowance. Fixed stages must advance through observable events; real provider latency is evaluated outside deterministic E2E.
 
 Run browser scenarios against the built SPA with emulator configuration supplied at build time, and separately verify production base paths/deep links. Preserve one worker, no retries, fixed identity/time/fixtures, event-based synchronization, local fonts and zero-pixel screenshot comparisons. Keep baselines for both appearances at 393 × 852 and 1280 × 1000; generate scenario documentation without one project overwriting another's evidence.
 
@@ -216,8 +239,8 @@ For every implementation PR, review readiness additionally requires:
 - A live phone/browser smoke check and results in the PR description. Document sample AI output explicitly until real providers land.
 - A verbatim prompt entry staged with every commit, following `AGENTS.md` and the pre-commit hook.
 
-Live smoke checks are a separate verification lane from deterministic emulator E2E and its zero-pixel baselines. Use observable completion and report live latency/failures; never replace a required live check with a passing emulator test. Documentation-only PRs such as this plan do not provision infrastructure, but every runnable implementation preview must satisfy this delivery contract.
+Live smoke checks are a separate verification lane from deterministic emulator E2E and its zero-pixel baselines. Use observable completion and report live latency/failures; never replace a required live check with a passing emulator test. Documentation-only PRs do not provision infrastructure, but every runnable implementation preview must satisfy this delivery contract.
 
-## First implementation PR
+## Next implementation sequence
 
-Start with milestone 0: a deployed PR preview of the existing home with working Google login, live Firestore persistence, verified Cloud Storage access and deployed owner rules. Establish the deployment and live smoke-check contract in that PR. Then deliver the terracotta/linen themes in milestone 1 and durable listing behavior in milestone 2; both must remain usable against the same live Firebase service contract.
+Complete review of this existing-screen alignment against the generated UX concepts in both appearances. Remaining milestone 3 work is server analysis normalization and orphan cleanup; retain responsive local editing while it lands. Then implement milestone 4's explicit example entry and learning return paths, followed by milestone 5 generation, milestone 6 evidence/approval/copy, and real provider validation in milestone 7. Every runnable PR continues to use live Firebase from its first review deployment.

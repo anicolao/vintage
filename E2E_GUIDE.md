@@ -2,11 +2,11 @@ Current production coverage follows the sign-in and photo-entry screens in `UX_D
 
 # End-to-End Testing Guide
 
-## Current milestone 0 coverage
+## Current automated coverage
 
 `npm run test:foundation` runs the Firestore/Storage owner-rule suite and phone/desktop browser scenarios against Auth, Firestore and Storage emulators using the non-production `demo-vintage` project. Playwright builds the static SPA in E2E mode before serving it. The browser signs in through the Auth emulator's Google popup using the same production SDK path, uploads/reloads item photos, saves context and signs out. No test-auth adapter is shipped in the app.
 
-PR review deployments use live Firebase, separately from this test command. See [live setup and smoke checks](./docs/FIREBASE_SETUP.md). Functions, listing events, AI fixtures and the full scenario catalogue below remain the target contract for later milestones. The current projects are phone/desktop light; dark mode is milestone 1.
+PR review deployments use live Firebase, separately from this test command. See [live setup and smoke checks](./docs/FIREBASE_SETUP.md). Functions, AI fixtures and the later generation/review scenarios below remain planned. The current projects are phone-light, phone-dark, desktop-light and desktop-dark. Listing events, photo recovery and account isolation are implemented.
 
 ## Contract
 
@@ -100,7 +100,7 @@ Scenario directories use a stable numeric prefix. Screenshots use the helper-gen
 
 ### 001 — Google auth and seller style
 
-Verify the signed-out screen, emulator authentication, user ownership, seeded existing-listing import, visible import progress, style profile completion, and transition to photo capture.
+Verify sign-in, Your listings and camera-first entry. When milestone 4 lands, verify explicit pasted examples, real learning progress and return to the saved photos or account; a ready style bypasses setup. Style completion never silently starts generation.
 
 ### 002 — Add photos
 
@@ -124,17 +124,9 @@ Create two emulator users. Verify each user sees their own listing streams and S
 
 ## Deterministic authentication
 
-Production uses Firebase Google Account login. E2E creates a fixed Auth emulator user and enters the application through an E2E-only auth adapter selected at build time. The adapter signs in through the Auth emulator and then follows the same `onAuthStateChanged` path as Google login.
+Production uses Firebase Google Account login. Automated tests use the Auth emulator's Google popup through the same production SDK and auth-observer path. The helper enters a fixed seller identity in the emulator UI. No test-auth adapter is shipped in the app.
 
-The fixed identity is:
-
-```text
-uid: seller-alex-e2e
-email: alex.seller@example.test
-displayName: Alex Seller
-```
-
-The test build exposes the adapter only when `VITE_E2E=true` and every Firebase endpoint targets localhost. A startup invariant rejects the E2E adapter with production Firebase configuration.
+Test builds require explicit E2E and emulator flags, the `demo-vintage` project and localhost endpoints. Live PR builds use `firebase.review.json`, live Google login and a PR-specific workspace.
 
 ## Emulator reset and seed
 

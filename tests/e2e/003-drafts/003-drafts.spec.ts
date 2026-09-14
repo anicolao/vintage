@@ -6,21 +6,28 @@ test('photo entry follows the approved flow and resumes the saved item', async (
   await resetAuth(request); await page.goto('/'); await signIn(page, context);
   const steps=new TestStepHelper(page,testInfo);
   steps.setMetadata('Listings and photo entry','Start a listing with photos and optional context, persisted to the backend.');
+  await expect(page.getByRole('heading', {name: 'Your first listing'})).toBeVisible();
   await steps.step('listings',{description:'Start a new listing without a name form',verifications:[{spec:'New listing opens the photo flow',check:async()=>expect(page.getByRole('link',{name:'New listing',exact:true})).toBeVisible()}]});
   await page.getByRole('link', {name:'New listing',exact:true}).click();
   await expect(page.getByRole('heading', { name: 'Show us the item' })).toBeVisible();
   await expect(page.getByLabel('Draft name')).toHaveCount(0);
   const url=page.url();
+  await steps.step('first-photo',{description:'Camera-first entry with optional context',verifications:[{spec:'Take photo is the primary capture action',check:async()=>expect(page.getByRole('button',{name:'Take photo',exact:true})).toBeVisible()}]});
   await page.getByLabel('Choose item photos').setInputFiles('static/images/wardrobe.png');
   await expect(page.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
-  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync', 'synced');
   await page.getByLabel('Anything else?').fill('Rare 1990s piece, fits oversized');
   await page.getByLabel('Anything else?').blur();
-  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync', 'synced');
   await page.reload();
   await expect(page.getByLabel('Anything else?')).toHaveValue('Rare 1990s piece, fits oversized');
   await expect(page.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
-  await steps.step('photo-entry',{description:'Photo and context restored after reload',verifications:[{spec:'The approved step header is visible',check:async()=>expect(page.getByText('1 of 3 · Add photos',{exact:true})).toBeVisible()},{spec:'The photo opens for inspection',check:async()=>expect(page.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled()}]});steps.generateDocs();
+  await steps.step('photo-entry',{description:'Photo and context restored after reload',verifications:[{spec:'The approved step header is visible',check:async()=>expect(page.getByText('1 of 3 · Add photos',{exact:true})).toBeVisible()},{spec:'The photo opens for inspection',check:async()=>expect(page.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled()}]});
+  await page.getByRole('link',{name:'Your listings',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Untitled item'})).toBeVisible();
+  await expect(page.locator('.listing-cover img')).toBeVisible();
+  await steps.step('populated-listings',{description:'Real cover photo and photo count identify the saved draft',verifications:[{spec:'The draft has one photo',check:async()=>expect(page.locator('.stage-chip')).toContainText('Draft · 1 photo')}]});
+  await page.locator('.listing-row').click();
   await page.getByLabel('Anything else?').focus();
   await page.emulateMedia({colorScheme:testInfo.project.use.colorScheme==='dark'?'light':'dark'});
   await expect(page.getByLabel('Anything else?')).toBeFocused();
@@ -28,35 +35,46 @@ test('photo entry follows the approved flow and resumes the saved item', async (
   expect(page.url()).toBe(url);
   await page.getByRole('button',{name:'Inspect photo 1'}).click();
   await expect(page.getByRole('dialog').getByAltText('Item photo 1')).toBeVisible();
+  await page.emulateMedia({colorScheme:testInfo.project.use.colorScheme});
+  await steps.step('inspection',{description:'Image-first inspection and compact glass controls',verifications:[{spec:'The first photo is identified as the cover',check:async()=>expect(page.getByText('Cover photo',{exact:true})).toBeVisible()}]});
   await page.getByRole('button',{name:'Close photo',exact:true}).click();
   await page.getByRole('button',{name:'Your account'}).click();
+  await steps.step('account',{description:'Account identity and privacy in a focused sheet',verifications:[{spec:'The signed-in identity is visible',check:async()=>expect(page.locator('.account-email')).toContainText('@')}]});
   await page.getByRole('button',{name:'Sign out',exact:true}).click();
   await expect(page.getByLabel('Anything else?')).toHaveCount(0);
   await signIn(page,context,'second.seller@example.test','Second Seller');
-  await expect(page.getByRole('heading',{name:'Item unavailable'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Listing unavailable'})).toBeVisible();
+  await steps.step('unavailable-listing',{description:'An inaccessible listing has a clear return path',verifications:[{spec:'Switch account is offered without exposing the other item',check:async()=>expect(page.getByRole('button',{name:'Switch account',exact:true})).toBeVisible()}]});
+  steps.generateDocs();
 });
 
 test('photo controls reorder, remove and reject unsupported files', async ({page,context,request}) => {
   await resetAuth(request);await page.goto('/');await signIn(page,context); await page.getByRole('link', {name:'New listing',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Show us the item'})).toBeVisible();
   await page.getByLabel('Choose item photos').setInputFiles(['static/images/wardrobe.png','static/images/wardrobe.png']);
+  await expect(page.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
   await expect(page.getByRole('button',{name:'Inspect photo 2'})).toBeEnabled();
-  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync', 'synced');
   await page.getByRole('button',{name:'Inspect photo 1'}).click();
+  await page.getByRole('button',{name:'Photo order',exact:true}).click();
   await page.getByRole('button',{name:'Move later'}).click();
   await expect(page.getByText('Photo 2 of 2',{exact:true})).toBeVisible();
+  const replacementPicker = page.waitForEvent('filechooser', { timeout: 2_000 });
   await page.getByRole('button',{name:'Replace photo'}).click();
-  await page.getByLabel('Choose item photos').setInputFiles('static/images/wardrobe.png');
-  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
+  await (await replacementPicker).setFiles('static/images/wardrobe.png');
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync', 'synced');
   await page.getByRole('button',{name:'Inspect photo 2'}).click();
   await expect(page.getByText('Photo 2 of 2',{exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Remove photo'}).click();
   await expect(page.getByRole('button',{name:'Inspect photo 2'})).toHaveCount(0);
-  await page.reload();await expect(page.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
+  await page.getByRole('button',{name:'Undo',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Inspect photo 2'})).toBeEnabled();
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync', 'synced');
+  await page.reload();await expect(page.getByRole('button',{name:'Inspect photo 2'})).toBeEnabled();
   await page.getByLabel('Choose item photos').setInputFiles({name:'bad.txt',mimeType:'text/plain',buffer:Buffer.from('not a photo')});
   await expect(page.getByRole('alert')).toContainText('Choose a JPEG');
   await page.getByRole('button',{name:'Remove',exact:true}).click();
-  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync', 'synced');
 });
 
 test('HEIC original has a readable preview after reload', async ({page,context,request}) => {
@@ -64,7 +82,7 @@ test('HEIC original has a readable preview after reload', async ({page,context,r
   await expect(page.getByRole('heading',{name:'Show us the item'})).toBeVisible();
   await page.getByLabel('Choose item photos').setInputFiles('tests/fixtures/sample.heic');
   await expect(page.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
-  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync', 'synced');
   await page.reload();
   await expect(page.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
   await page.getByRole('button',{name:'Inspect photo 1'}).click();
@@ -75,7 +93,7 @@ test('offline edits and navigation apply immediately and sync after reconnect', 
   await resetAuth(request); await page.goto('/'); await signIn(page,context);
   await expect(page.getByRole('heading',{name:'Your listings'})).toBeVisible();
   await page.getByRole('link',{name:'New listing',exact:true}).click();
-  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync', 'synced');
   const first = page.url();
   await context.setOffline(true);
   await page.getByLabel('Anything else?').fill('Written offline');
@@ -88,19 +106,19 @@ test('offline edits and navigation apply immediately and sync after reconnect', 
   expect(page.url()).not.toBe(first);
   await page.getByLabel('Anything else?').fill('Second offline listing');
   await context.setOffline(false);
-  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync', 'synced');
   await page.reload();
   await expect(page.getByLabel('Anything else?')).toHaveValue('Second offline listing');
   await page.goto(first);
   await expect(page.getByLabel('Anything else?')).toHaveValue('Written offline');
   await expect(page.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
-  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync', 'synced');
 });
 
 test('selected photo bytes recover when the page closes before upload', async ({page,context,request}) => {
   await resetAuth(request); await page.goto('/'); await signIn(page,context);
   await page.getByRole('link',{name:'New listing',exact:true}).click();
-  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync', 'synced');
   const url=page.url();
   await context.setOffline(true);
   await page.getByLabel('Choose item photos').setInputFiles('static/images/wardrobe.png');
@@ -109,7 +127,37 @@ test('selected photo bytes recover when the page closes before upload', async ({
   await context.setOffline(false);
   const resumed=await context.newPage();await resumed.goto(url);
   await expect(resumed.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
-  await expect(resumed.getByText('Saved',{exact:true})).toBeVisible();
+  await expect(resumed.locator('main[data-sync]')).toHaveAttribute('data-sync', 'synced');
   await resumed.reload();
   await expect(resumed.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
+});
+
+
+test('account dismissal restores focus and unavailable links recover', async ({page,context,request}) => {
+  await resetAuth(request); await page.goto('/'); await signIn(page,context);
+  await page.getByRole('button',{name:'Your account',exact:true}).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button',{name:'Your account',exact:true})).toBeFocused();
+  await page.goto('/not-a-vintage-page');
+  await expect(page.getByRole('heading',{name:'Page unavailable'})).toBeVisible();
+  await page.getByRole('link',{name:'Your listings',exact:true}).last().click();
+  await expect(page.getByRole('heading',{name:'Your listings',exact:true})).toBeVisible();
+});
+
+test('offline sign-out explains retained work and keeps it recoverable', async ({page,context,request}) => {
+  await resetAuth(request); await page.goto('/'); await signIn(page,context);
+  await page.getByRole('link',{name:'New listing',exact:true}).click();
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync','synced');
+  await context.setOffline(true);
+  await page.getByLabel('Anything else?').fill('Keep this local detail');
+  await expect(page.getByText('Saved on this phone',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Your account',exact:true}).click();
+  await page.getByRole('button',{name:'Sign out',exact:true}).click();
+  await expect(page.getByText(/Some changes are saved only on this device/)).toBeVisible();
+  await page.getByRole('button',{name:'Keep working',exact:true}).click();
+  await page.getByRole('button',{name:'Close account',exact:true}).click();
+  await expect(page.getByLabel('Anything else?')).toHaveValue('Keep this local detail');
+  await context.setOffline(false);
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync','synced');
 });

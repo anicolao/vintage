@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import type { Photo } from '$lib/events/contracts';
   import { photoUrl } from '$lib/repositories/photos';
-  import Icon from './Icon.svelte';
   export let photo: Photo;
   export let position: number;
   export let open: (photo: Photo, url: string) => void;
@@ -12,6 +11,6 @@
 </script>
 {#if error}<button class="photo-tile glass" onclick={load}>{error}. Try again</button>
 {:else}<button class="photo-tile glass" onclick={() => open(photo, url)} disabled={!url} aria-label={`Inspect photo ${position}`}>
-  {#if url}<img src={url} alt={`Item photo ${position}`} />{:else}<span>Loading photo…</span>{/if}
-  <span class="photo-number">{position}</span>
+  {#if url}<img src={url} alt="" />{:else}<span>Loading photo…</span>{/if}
+
 </button>{/if}
