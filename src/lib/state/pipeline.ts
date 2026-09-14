@@ -30,6 +30,7 @@ const cloudWorkflows=writable<Record<string,Workflow>>({});
 export const pipelineIntents=writable<Intent[]>([]);
 export const pipelineError=writable('');
 export const pipelineSaving=writable(0);
+export const pipelineResolution=writable('');
 export const connection=writable(true);
 let uid=''; let epoch=0; let sending=false; let persisting=Promise.resolve();
 let database:Promise<IDBDatabase>;
@@ -162,7 +163,13 @@ async function deliverQueue() {
   } finally {inFlightId='';}
 }
 export async function useLatest() {
-  await changeQueue(uid,()=>[]);pipelineError.set('');
+  let target='';
+  await changeQueue(uid,items=>{
+    const conflict=items.find(i=>i.error);if(!conflict)return items;
+    target='listingId' in conflict.request ? conflict.request.listingId : 'style';
+    return items.filter(i=>('listingId' in i.request ? i.request.listingId : 'style')!==target);
+  });
+  pipelineError.set('');pipelineResolution.set(`${target}/${crypto.randomUUID()}`);void flush();
 }
 export function watchWorkflow(owner:string,id:string) {
   const current=epoch;
