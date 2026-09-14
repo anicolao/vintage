@@ -2,18 +2,18 @@ import { writable, get } from 'svelte/store';
 import { app, dispatch } from './app';
 import { settings } from '../firebase';
 import { uploadPhoto, retain, retained, type PendingPhoto } from '../repositories/photos';
-export interface PhotoJob { photo: PendingPhoto; url: string; progress: number; error: string; running: boolean; replace: string | null }
+export interface PhotoJob { photo: PendingPhoto; url: string; progress: number; error: string; running: boolean; replace: string | null; retryable: boolean }
 export const photoJobs = writable<PhotoJob[]>([]);
 let processing = false;
 const update = () => photoJobs.update(jobs => [...jobs]);
 export async function restorePhotos(uid: string, id: string) {
   const photos = await retained(uid, id);
-  photoJobs.update(jobs => [...jobs, ...photos.filter(p => !jobs.some(j => j.photo.id === p.id)).map(photo => ({ photo, url: URL.createObjectURL(photo.file), progress: 0, error: '', running: false, replace: photo.replace ?? null }))]);
+  photoJobs.update(jobs => [...jobs, ...photos.filter(p => !jobs.some(j => j.photo.id === p.id)).map(photo => ({ photo, url: URL.createObjectURL(photo.file), progress: 0, error: '', running: false, retryable: false, replace: photo.replace ?? null }))]);
   void processPhotos();
 }
 export async function addPhoto(file: File, uid: string, listingId: string, replace: string | null) {
   const photo = { id: crypto.randomUUID(), uid, listingId, workspace: settings.workspace, file, replace };
-  const job: PhotoJob = { photo, url: URL.createObjectURL(file), progress: 0, error: '', running: false, replace };
+  const job: PhotoJob = { photo, url: URL.createObjectURL(file), progress: 0, error: '', running: false, retryable: false, replace };
   await retain(photo);
   photoJobs.update(jobs => [...jobs, job]);
   void processPhotos();
@@ -41,8 +41,17 @@ export async function processPhotos() {
           : { type: 'photo/uploaded', payload: { photo } }, job.photo.listingId);
         await retain(job.photo, true); URL.revokeObjectURL(job.url);
         photoJobs.update(jobs => jobs.filter(j => j !== job));
-      } catch (cause) { job.error = cause instanceof Error ? cause.message : 'Upload failed. Try again.'; }
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : '';
+        job.retryable = !/Choose |could not be read|too large|conflicting upload/.test(message);
+        job.error = job.retryable ? 'Photo could not sync. Check your connection and try again.' : message;
+      }
       finally { job.running = false; update(); }
     }
   } finally { processing = false; }
+}
+
+export function resumePhotoUploads() {
+  photoJobs.update(jobs => jobs.map(job => { if (job.retryable) job.error = ''; return job; }));
+  void processPhotos();
 }

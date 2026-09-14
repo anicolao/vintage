@@ -119,3 +119,7 @@ We're reviewing the implementation plan and find #7 a little obscure. make no ch
 Prompt 28: Investigate main failure
 
 It looks like CI is failing on main. Add a CI badge to the README, and report on why CI is failing without fixing it, in a new worktree for remedying the failure
+
+Prompt 29: Apply approved flow
+
+thanks, we've applied these changes - now update the implementation plan to reflect the changes in the flow, and apply the UX_DESIGN.md mock ups to existing screens

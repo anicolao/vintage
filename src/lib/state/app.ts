@@ -5,8 +5,8 @@ import { settings } from '../firebase';
 import { allocate, queued, settle } from '../events/outbox';
 import type { Command, Descriptor, DraftAction } from '../events/contracts';
 import { deliver, watchDrafts } from '../repositories/drafts';
-interface AppState { user: User | null; resolved: boolean; ready: boolean; error: string; drafts: Descriptor[]; commands: Command[]; sending: boolean }
-const empty = (): AppState => ({ user: null, resolved: false, ready: false, error: '', drafts: [], commands: [], sending: false });
+interface AppState { user: User | null; resolved: boolean; ready: boolean; error: string; drafts: Descriptor[]; commands: Command[]; sending: boolean; listingsLoaded: boolean }
+const empty = (): AppState => ({ user: null, resolved: false, ready: false, error: '', drafts: [], commands: [], sending: false, listingsLoaded: false });
 export const app = writable<AppState>(empty());
 let generation = 0;
 const inFlight = new Map<string, Promise<void>>();
@@ -55,7 +55,7 @@ export function startSession() {
       const command = await allocate(user.uid, settings.workspace, 'account/created', {}, user.uid);
       if (epoch !== generation) return;
       stopDrafts = watchDrafts(user.uid, drafts => {
-        if (epoch === generation) app.update(s => ({ ...s, drafts, ready: true }));
+        if (epoch === generation) app.update(s => ({ ...s, drafts, ready: true, listingsLoaded: true }));
       }, cause => { if (epoch === generation) app.update(s => ({ ...s, error: explain(cause) })); });
       await refresh(user.uid, epoch);
       if (epoch === generation) void retryDelivery();
