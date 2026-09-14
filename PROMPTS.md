@@ -127,3 +127,35 @@ thanks, we've applied these changes - now update the implementation plan to refl
 Prompt 30: Remove footer artifact
 
 the button at the bottom of the main page has rounded corners but the transparency of the container is wrong or something bercause there is a white corner cutting into the background. this button is labeled "New Listing" and the behaviour is very obbvious in light mode; dark mode has a similar rectangular artifact. otherwise this looks pretty good
+
+Prompt 31: Implement next milestones
+
+ok merged to main, let's do the next 2 milestones on a new PR
+
+Prompt 32: Verify durable saving
+
+ok merged to main, let's do the next 2 milestones on a new PR
+
+Prompt 33: Follow approved design
+
+first of all, we are creating a new product and we don't ever want you to keep 'legacy' 'fallback' or 'old implementation' around as we make progress. for example, the 'Connection checks' is 100% ceritified garbage - consturction dust from a previous phase that should be long ago deleted. Secondly, you are *IMPLEMENTING PRODUCTION CODE* and that means *FOLLOWING THE UX_DESIGN* not implementing hyour own marketing bullshit on every page. we have a design for a reason, follow it. Finally the finished product has approximately the right colours but none of the other important ux touches. Fix it
+
+Prompt 34: Confirm appearance switching
+
+> The new live preview is ready: https://vintage-review-anicolao--pr-5-hnn9v3fr.web.app . Please sign in on your phone, create a draft, save details, and reload its URL. Also try changing the phone’s light/dark setting while editing. Do the draft and appearance behave as expected?
+
+yes light and dark mode switching seems to work
+
+Prompt 35: Preserve optimistic flow
+
+> The approved signed-in screen is photo entry; my named-draft form was the wrong flow. Should this correction include working photo capture/upload (the next milestone), or should I restrict it to correcting milestones 1–2 and leave photo functionality for the next PR?
+
+let's continue to have the intermediate screen that lets the user start a new listing, but the new listing shoudl begin with the photo, and not with a name for the listing. let's make the flow go right to the photo screen adn support taking a photo and filling in "anything else..." under the photo. Also, we should never have the UI wait for the network; firestore should be eagerly responding to all of our writes and the UI shoudl update optimistically to keep it fast.
+
+Prompt 36: Investigate Vinted Integration
+
+Review the markdown for this project to get oriented. Then make a vinted-integration worktree and branch and look into what we can do to integreate with vinted - what API surface is there, etc. Write a VINTED_INTEGRATION.md design doc with the alternatives nad put it up on your branch as a new PR
+
+Prompt 37: Rebase merge requests
+
+use a new work tree to rebase and merge PRs 6&7
