@@ -1,14 +1,16 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { app } from '$lib/state/app';
+  import { photoJobs } from '$lib/state/photos';
+  import { reduceListing } from '$lib/events/listing.mjs';
   import { watchListing } from '$lib/repositories/drafts';
-  import { enqueue, locallyPersisted, workflows, pipelineIntents, connection, listingFields, type Workflow, type ListingField, type Copy, type Snapshot } from '$lib/state/pipeline';
+  import { enqueue, locallyPersisted, workflows, pipelineSaving, pipelineIntents, connection, listingFields, type Workflow, type ListingField, type Copy, type Snapshot } from '$lib/state/pipeline';
   import type { Photo } from '$lib/events/contracts';
   import AccountMenu from './AccountMenu.svelte';
   import PhotoTile from './PhotoTile.svelte';
   import Icon from './Icon.svelte';
   import PipelineStatus from './PipelineStatus.svelte';
   export let id:string;export let uid:string;export let workflow:Workflow;
+  let capturedPhotos:Photo[]=[];
   let values:Copy;let fieldBases:Partial<Copy>={};let price='';let activeField='';let seenVersion=-1;let baseVersion=0;let error='';
   let evidenceDialog:HTMLDialogElement;let evidence='market';let inspected='';let inspectedAlt='';let full=false;let copied=false;let manual=false;let copyArea:HTMLTextAreaElement;
   $: current=$workflows[id] || workflow;
@@ -21,9 +23,12 @@
   }
   $: approved=current.approved;
   $: submitted=current.status==='approved' || current.status==='approval-pending';
-  $: photos=submitted ? approved?.photos || [] : current.input?.photos || [];
+  $: pendingGeneration=$pipelineIntents.find(i=>i.request.kind==='generate' && i.request.listingId===id);
+  $: pinnedIds=pendingGeneration?.request.kind==='generate' ? pendingGeneration.request.photoIds : [];
+  $: queuedPhoto=$photoJobs.find(j=>j.photo.uid===uid && j.photo.listingId===id && pinnedIds.includes(j.photo.id));
+  $: photos=submitted ? approved?.photos || [] : pendingGeneration ? capturedPhotos.filter(p=>pinnedIds.includes(p.id)) : current.input?.photos || [];
   $: text=approved ? `${approved.copy.title}\n\n${approved.copy.description}\n\n${listingFields.slice(2).map(f=>`${label(f)}: ${approved.copy[f]}`).join('\n')}\n\n£${(approved.price.minor/100).toFixed(2)}` : '';
-  onMount(()=>watchListing(uid,id,events=>{baseVersion=events.filter(e=>(e as {createdAt:unknown}).createdAt).length;},()=>error='The latest photo version could not be checked. Try again.'));
+  onMount(()=>watchListing(uid,id,events=>{capturedPhotos=reduceListing(events,id,uid).photos;baseVersion=events.filter(e=>(e as {createdAt:unknown}).createdAt).length;},()=>error='The latest photo version could not be checked. Try again.'));
   function label(field:string) {return field[0].toUpperCase()+field.slice(1);}
   async function edit(field:ListingField,value:string) {
     const previousValue=fieldBases[field] ?? values[field];
@@ -44,7 +49,7 @@
   function inspect(photo:Photo,url:string) {evidence='photo';inspected=url;inspectedAlt=`Item photo ${photos.findIndex(p=>p.id===photo.id)+1}`;evidenceDialog.showModal();}
   async function copy() {try{await navigator.clipboard.writeText(text);copied=true;}catch{full=true;manual=true;await tick();copyArea.focus();copyArea.select();}}
 </script>
-<main class="flow-screen review-screen" data-status="ready" data-e2e-layout data-workflow={current.status}>
+<main class="flow-screen review-screen" data-status="ready" data-sync={$pipelineSaving || $pipelineIntents.length ? 'pending' : 'synced'} data-e2e-layout data-workflow={current.status}>
 <header class="step-header glass"><a class="icon-button" href="/" aria-label="Your listings"><Icon name="back"/></a><span>{submitted?(current.status==='approved'?'Approved listing':'Approval pending'):current.status==='generating'?'2 of 3 · Create draft':'3 of 3 · Review'}</span><AccountMenu/></header>
 {#if submitted && approved}
   <div class="approved-intro"><span class="success-orb"><Icon name={current.status==='approved'?'check':'cloud'} size={30}/></span><h1>{current.status==='approved'?'Ready to copy':'Approval pending'}</h1><p>{current.status==='approved'?'Your approved version is saved.':'This exact version is saved on this phone. Approval will be confirmed when it syncs.'}</p></div>
@@ -58,9 +63,10 @@
 {:else if current.status==='generating' || current.status==='failed'}
   <h1>{current.status==='failed'?"We couldn't finish this draft":'Building your draft'}</h1>
   <p class="sample-notice">Sample preview · The proposal is fixed sample copy, not analysis of your item or personal style.</p>
-  {#if photos[0]}<div class="progress-photo"><PhotoTile photo={photos[0]} position={1} open={inspect}/></div>{/if}
+  {#if photos[0]}<div class="progress-photo"><PhotoTile photo={photos[0]} position={1} open={inspect}/></div>{:else if queuedPhoto && !/hei[cf]/i.test(queuedPhoto.photo.file.type)}<img class="progress-local-photo" src={queuedPhoto.url} alt="Selected item"/>{/if}
   <section class="glass flow-card">
     {#if $pipelineIntents.some(i=>i.request.kind==='generate' && i.request.listingId===id)}<p role="status">{$connection?'Waiting for photos to sync':'Will start when connected'}</p>{/if}
+    <p class="supporting">Later photo or context edits are kept for your next proposal.</p>
     <ol class="stage-list">{#each ['Reading photos','Preparing sample proposal','Saving your draft'] as name,index}<li class:stage-done={(current.stage || 0)>index}><span class="stage-number">{#if (current.stage || 0)>index}<Icon name="check" size={18}/>{:else}{index+1}{/if}</span>{name}</li>{/each}</ol>
     {#if current.error}<p role="alert">{current.error}</p>{/if}
   </section>

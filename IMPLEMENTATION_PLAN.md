@@ -1,6 +1,6 @@
 # Vintage v0 implementation plan
 
-Baseline: merged `main` at `0a61360`, inspected on 2026-09-14. This implementation completes the remaining milestone 3 work and milestones 4–6, using the approved generated UX concepts. Real providers and market estimates remain milestone 7; device review gates are listed separately below.
+Baseline: merged `main` at `0a61360`, inspected on 2026-09-14. [PR #11](https://github.com/anicolao/vintage/pull/11) completes the remaining milestone 3 work and milestones 4–6, using the approved generated UX concepts. Real providers and market estimates remain milestone 7; device review gates are listed separately below.
 
 ## Intended outcome
 
