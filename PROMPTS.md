@@ -211,3 +211,7 @@ I'd like to read a .env file that is .gitignore'd instead of usign the environme
 Prompt 50: Rebase merge requests
 
 use a new work tree to rebase and merge PRs 6&7
+
+Prompt 51: Complete sixth milestone
+
+good, implement up to milestone 6 on a new PR

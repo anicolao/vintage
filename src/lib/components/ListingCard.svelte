@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { watchWorkflow, workflows } from '$lib/state/pipeline';
   import { app } from '$lib/state/app';
   import { photoJobs, restorePhotos } from '$lib/state/photos';
   import { watchListing, eventFor } from '$lib/repositories/drafts';
@@ -20,10 +21,15 @@
   $: loadCover(cover);
   $: count = projection.photos.length + jobs.filter(j => !j.replace).length;
   // The creation event is an internal placeholder, never an inferred item name.
-  $: title = ['Item', 'Untitled item', ''].includes(projection.title) ? 'Untitled item' : projection.title;
+  $: workflow = $workflows[id];
+  $: editedAt = workflow?.updatedAt ? Date.parse(workflow.updatedAt)/1000 : updatedAt;
+  $: stage = ({generating:'Creating draft',reviewing:'Ready to review','approval-pending':'Approval pending',approved:'Approved',failed:'Draft needs attention'} as Record<string,string>)[workflow?.status] || 'Draft';
+  $: title = workflow?.approved?.copy.title || workflow?.copy?.title || (['Item', 'Untitled item', ''].includes(projection.title) ? 'Untitled item' : projection.title);
   onMount(() => {
     void restorePhotos(uid, id).catch(() => failed = true);
-    return watchListing(uid, id, next => { events = next; failed = false; }, () => failed = true);
+    const stopWorkflow = watchWorkflow(uid, id);
+    const stopListing = watchListing(uid, id, next => { events = next; failed = false; }, () => failed = true);
+    return () => { stopWorkflow(); stopListing(); };
   });
   onDestroy(() => { active = false; request++; URL.revokeObjectURL(coverUrl); });
   async function loadCover(photo: Photo | undefined) {
@@ -37,8 +43,8 @@
   <div class="listing-cover">
     {#if coverUrl}<img src={coverUrl} alt="" />{:else if jobs[0]?.photo.file.type.startsWith('image/') && !/hei[cf]/i.test(jobs[0].photo.file.type)}<img src={jobs[0].url} alt="" />{:else}<Icon name="camera" size={32} />{/if}
   </div>
-  <div class="listing-summary"><h2>{title}</h2><span class="stage-chip"><span aria-hidden="true">●</span> Draft · {count} {count === 1 ? 'photo' : 'photos'}</span>
-    {#if commands.length || jobs.length}<span class="listing-date">Saved on this phone</span>{:else if failed}<span class="listing-date">Open to retry</span>{:else if updatedAt}<time class="listing-date" datetime={new Date(updatedAt * 1000).toISOString()}>{new Date(updatedAt * 1000).toDateString() === new Date().toDateString() ? 'Today' : new Date(updatedAt * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</time>{/if}
+  <div class="listing-summary"><h2>{title}</h2><span class="stage-chip"><span aria-hidden="true">●</span> {stage} · {count} {count === 1 ? 'photo' : 'photos'}</span>
+    {#if commands.length || jobs.length}<span class="listing-date">Saved on this phone</span>{:else if failed}<span class="listing-date">Open to retry</span>{:else if editedAt}<time class="listing-date" datetime={new Date(editedAt * 1000).toISOString()}>{new Date(editedAt * 1000).toDateString() === new Date().toDateString() ? 'Today' : new Date(editedAt * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</time>{/if}
   </div>
   <Icon name="next" size={18} />
 </a>

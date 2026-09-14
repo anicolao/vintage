@@ -40,15 +40,15 @@ Run `npm run check`, `npm run test:config`, `npm run test:hooks` and `npm run te
 
 ## PR deployment
 
-The Verify and preview workflow checks the code, then builds a live frontend and deploys identical approved backend rules and a Hosting channel. Fork PRs have no deployment credential access. The GitHub Actions job summary and `live-preview` artifact contain the URL, Firebase project, workspace and Git revision. `version.json` is checked after deployment, together with the direct item-route SPA rewrite.
+The Verify and preview workflow checks the code, then builds a live frontend and deploys the approved backend rules, pipeline Functions and a Hosting channel. Fork PRs have no deployment credential access. The GitHub Actions job summary and `live-preview` artifact contain the URL, Firebase project, workspace and Git revision. `version.json` is checked after deployment, together with the direct item-route SPA rewrite.
 
 Repository variables configured for this project:
 
 - `FIREBASE_WORKLOAD_IDENTITY_PROVIDER`: `projects/114604451197/locations/global/workloadIdentityPools/github/providers/vintage`
 - `FIREBASE_SERVICE_ACCOUNT`: `vintage-preview-deploy@vintage-review-anicolao.iam.gserviceaccount.com`
-- `FIREBASE_BACKEND_SHA256`: approved combined digest of `firestore.rules` and `storage.rules`, printed by `node scripts/backend-digest.mjs`
+- `FIREBASE_BACKEND_SHA256`: approved combined digest of `firestore.rules` and `storage.rules`, plus Functions sources/lockfile, printed by `node scripts/backend-digest.mjs`
 
-The Google identity provider accepts only repository ID `1348672645` owned by ID `1145048`. The deployment account has Hosting admin, Rules admin, Auth admin (for preview authorized domains), Firebase viewer and Service Usage Consumer roles in this project. It has no Firestore data-admin or project-owner role. Deployment jobs serialize against the shared backend.
+The Google identity provider accepts only repository ID `1348672645` owned by ID `1145048`. The deployment account has Hosting admin, Rules admin, Auth admin (for preview authorized domains), Firebase viewer and Service Usage Consumer roles in this project. Milestones 3–6 add Functions, Cloud Run, Eventarc and Scheduler deployment roles, plus permission to attach the dedicated pipeline runtime account. It has no Firestore data-admin or project-owner role. Deployment jobs serialize against the shared backend.
 
 The project and Google provider were provisioned once using the authenticated Firebase CLI and Google Cloud APIs. OIDC, IAM, billing, database/bucket creation and bucket CORS are operator-managed configuration; feature PR workflows do not re-provision them. Auth configuration is retained in `firebase.json` for intentional operator deployment with `firebase deploy --only auth`; it is not changed on every PR. Check the deployed preview's hostname in Firebase Auth authorized domains if sign-in reports an unauthorized domain; Hosting channel deployment normally synchronizes this domain.
 
@@ -79,3 +79,14 @@ References: [Google popup authentication](https://firebase.google.com/docs/auth/
 Hosting requires revalidation (`Cache-Control: no-cache`) on all paths, including `/` and rewritten listing URLs. Only content-hashed `/_app/immutable/` assets receive long-lived immutable caching; `/version.json` is not stored. Deployment smoke checks inspect the actual app-route response headers, as a rule matching `/index.html` alone does not cover the incoming route URLs.
 
 A tab already running the app keeps its loaded JavaScript until a document reload. Previously cached HTML can also remain fresh under its earlier headers; a hard reload or a new query string on the preview URL fetches the new document without clearing locally retained drafts or photos.
+
+
+## Pipeline runtime
+
+`nix develop --command node scripts/configure-pipeline.mjs` is the operator-only setup for `vintage-pipeline-runtime@vintage-review-anicolao.iam.gserviceaccount.com`. It preserves existing IAM bindings. The runtime has Firestore data access, event receiving/invocation, and object administration only on the review bucket. The CI deployment account can attach it; there is no service-account key in GitHub or the repository.
+
+Functions use Node 22 in `europe-west1`: `submitCommand`, `executeCommand`, `normalizeOriginal`, and the daily `cleanOrphanPhotos` job. The EU bucket and `eur3` Firestore source produce Eventarc triggers in their respective resource locations. First-time API/service-agent provisioning can require a deployment retry after permissions propagate. Subsequent CI deployments use the existing resources. Container artifacts expire after one day.
+
+Install backend dependencies with `npm ci --prefix functions`. `npm run test:e2e` now owns the Functions emulator as well as Auth/Firestore/Storage. Functions sample output is restricted to this review project and the demo emulator project. See [Pipeline implementation](./PIPELINE.md).
+
+The approved backend digest now includes Functions source and lockfiles as well as rules. Review additive owner-isolated path changes and pass the rules/pipeline suites before updating the repository variable. Older deployments whose backend differs are blocked, protecting newer review data and behavior; existing Hosting previews using the unchanged capture contract remain usable.
