@@ -223,3 +223,7 @@ good, implement up to milestone 6 on a new PR
 Prompt 53: Complete sixth milestone
 
 good, implement up to milestone 6 on a new PR
+
+Prompt 54: Audit production fakery
+
+OK - hardcoded demo data / fakery is TOTALLY UNACCCEPTABLE. Enumerate all such instances in the curernt branch so that we can prioritize removing them and replacing everything with *ACTUAL PRODUTION CODE PATHS*
