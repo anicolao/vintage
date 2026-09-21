@@ -221,3 +221,5 @@ dialog::backdrop { background: rgb(33 28 25 / 25%); backdrop-filter: blur(5px); 
 .language-feedback { display: grid; gap: 12px; }
 .remembered-instruction { display: flex; align-items: center; gap: 12px; overflow-wrap: anywhere; }
 .remembered-instruction p { flex: 1; min-width: 0; }
+.language-feedback summary { min-height: 44px; align-content: center; cursor: pointer; }
+.language-feedback summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }

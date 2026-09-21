@@ -251,3 +251,7 @@ machine crashed, we're back, resume
 Prompt 59: Verify resumed deployment
 
 machine crashed, we're back, resume
+
+Prompt 60: Finish feedback accessibility
+
+machine crashed, we're back, resume

@@ -25,6 +25,8 @@ test('generation, feedback, exact approval and copy survive reload',async({page,
   await expect(page.getByText('Wording updated. Feedback remembered.',{exact:true})).toBeVisible();
   await expect(page.getByLabel('Description',{exact:true})).toHaveValue(/Revised wording/);
   await expect(page.getByLabel('Listing price in GBP')).toHaveValue('42.50');
+  const feedbackTarget=await page.locator('.language-feedback summary').boundingBox();
+  expect(feedbackTarget?.height).toBeGreaterThanOrEqual(44);
   await steps.step('review',{description:'Language feedback beside the editable draft',verifications:[{spec:'Feedback applies to current and future drafts',check:async()=>expect(page.getByText('Applies to this draft and future listings.',{exact:true})).toBeVisible()}]});
   await page.getByRole('button',{name:/Check size, labels and wear/}).click();
   await expect(page.getByRole('heading',{name:'Your photo evidence'})).toBeVisible();
