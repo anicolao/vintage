@@ -7,7 +7,7 @@
   import { watchListing, eventFor } from '$lib/repositories/drafts';
   import { photoJobs, restorePhotos, addPhoto, retryPhoto, discardPhoto, type PhotoJob } from '$lib/state/photos';
   import type { Photo } from '$lib/events/contracts';
-  import { reduceListing } from '$lib/events/listing.mjs';
+  import { reduceListing, retainUnobservedEvents } from '$lib/events/listing.mjs';
   import PhotoTile from './PhotoTile.svelte';
   import AccountMenu from './AccountMenu.svelte';
   import Recovery from './Recovery.svelte';
@@ -43,9 +43,11 @@
   let replacingJob: PhotoJob | null = null;
   $: jobs = $photoJobs.filter(j => j.photo.uid === uid && j.photo.listingId === id);
   $: commands = $app.commands.filter(c => c.streamId === id);
-  $: captureEvents = events.length ? events : duplicateEvents($pipelineIntents,id,uid);
-  $: projection = reduceListing([...captureEvents, ...commands.filter(c => !captureEvents.some(e => (e as { id: string }).id === c.id)).map(eventFor)], id, uid);
-  $: pending = commands.length > 0;
+  $: localCapture = duplicateEvents($pipelineIntents,id,uid);
+  let unobserved:unknown[]=[];
+  $: unobserved=retainUnobservedEvents(unobserved,events,[...localCapture,...commands.map(eventFor)]);
+  $: projection = reduceListing([...events, ...unobserved], id, uid);
+  $: pending = commands.length > 0 || unobserved.length > 0;
   $: empty = projection.photos.length + jobs.length === 0;
   $: usable = projection.photos.length + jobs.filter(j => !j.error).length;
   $: if (!edited) context = commands.filter(c => c.type === 'context/changed').at(-1)?.payload.context ?? projection.context;
@@ -146,7 +148,7 @@
     {#if removed}<div class="undo-notice glass" role="status"><span>Photo removed</span><button class="text-button" disabled={undoing} onclick={undoRemove}>Undo</button></div>{/if}
   {:else}<p role="status">Opening your item…</p>{/if}
   <Status message={error || (pending ? $app.error : '')} error />
-  {#if pending && !$app.sending && $app.error}<button class="secondary" onclick={() => retryDelivery()}>Try again</button>{#if commands.some(c => c.status === 'rejected')}<button class="secondary" onclick={() => discardRejected(id)}>Discard unsaved change</button>{/if}{/if}
+  {#if pending && !$app.sending && $app.error}<button class="secondary" onclick={() => retryDelivery()}>Try again</button>{#if commands.some(c => c.status === 'rejected')}<button class="secondary" onclick={async() => { await discardRejected(id); unobserved=[]; }}>Discard unsaved change</button>{/if}{/if}
   {#if error}<button class="secondary" onclick={() => edited ? saveContext() : location.reload()}>Try again</button>{/if}
   {#if projection.diagnostics.length}<Status message="Some changes could not be displayed." error />{/if}
 </main>{/if}
