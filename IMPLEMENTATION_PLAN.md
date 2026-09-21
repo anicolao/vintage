@@ -4,7 +4,7 @@ Baseline: merged `main` at `0a61360`, inspected on 2026-09-14. [PR #11](https://
 
 ## Intended outcome
 
-A seller signs in with Google, lands on Your listings, chooses New listing, and takes or selects photos before entering any other information. Anything else? is optional. Create my draft goes directly to generation and editable review. Optional language feedback revises the current draft and is remembered for future listings. Review leads to evidence, exact approval and copying. The draft survives reloads. Every screen follows the device's light/dark appearance using the terracotta and linen glass design.
+A seller signs in with Google, lands on Your listings, chooses New listing, and takes or selects photos before entering any other information. Anything else? is optional. Create my draft goes directly to generation and editable review. Optional language feedback revises the current draft and is remembered for future listings. Photo entry and review both offer Save draft. Review leads to evidence, exact approval and copying. Approved listings can be reopened for editing with fresh approval required, or duplicated into independent drafts. The draft survives reloads. Every screen follows the device's light/dark appearance using the terracotta and linen glass design.
 
 The v0 ends with a saved approved listing and a copy action. Publishing directly to Vinted, automatic account linking, and autonomous repricing are outside this plan.
 
@@ -39,7 +39,7 @@ Sign in → Your listings → New listing → Photos + Anything else?
                                                           → Approval pending → Approved → Copy
 ```
 
-Returning listings resume their saved stage. Photo inspection closes to the editor. Account closes to its invoking screen. Completing background work must never redirect away from active editing. An unavailable item or route returns to Your listings, with account switching where appropriate.
+Save draft from Photos or Review returns to Your listings. Edit listing moves Approved back to Review and requires fresh approval. Duplicate listing opens a separate saved Review draft with independent photos. Returning listings resume their saved stage. Photo inspection closes to the editor. Account closes to its invoking screen. Completing background work must never redirect away from active editing. An unavailable item or route returns to Your listings, with account switching where appropriate.
 
 The accompanying existing-screen alignment uses concepts 05–09 and 14–15: empty and populated home, camera-first entry, compact photo inspection, account identity/privacy/sign-out, quiet offline state, and shared unavailable-link recovery. Listing cards use real photos and counts, and **Untitled item** until an actual title exists. There is no generated identification at capture time.
 
@@ -167,13 +167,18 @@ The seller reaches generation directly from photos. Example ingestion, a learned
 - [x] Use a test HTTP provider only from an explicit local Functions emulator build. Its implementation lives under tests and is never deployed.
 - [ ] Complete representative seller-item quality, latency and cost evaluation beyond live smoke checks.
 
-## 6. Review, feedback and exact approval
+## 6. Review, saved drafts and approval lifecycle
 
 - [x] Render editable real proposal copy, uncertain attributes and photo observations tied to input IDs.
 - [x] Support language revisions and remembered instructions, durable manual edits, conflict recovery and exact immutable approval/copy.
+- [x] Add Save draft to photo entry and review. Retain incomplete copy and optional price, persist on the device before returning home, and resume the saved stage.
+- [x] Reopen an approved listing for editing without creating another item. Withdraw current approval while preserving the historical event; require a fresh exact approval before copying.
+- [x] Duplicate an approved listing into an independent unapproved draft with its copy, attributes, price, context and ordered photos. Copy immutable Storage objects into the new listing namespace; atomically publish the descriptor, capture events and workflow.
+- [x] Persist reopen/duplicate/save intent locally and project it immediately. Queue duplicate-dependent edits until its server stream exists; enforce ownership, original-version checks and command idempotency.
+- [x] Retain acknowledged workflow versions on the device before retiring queue entries, so immediate reload cannot use a stale Firestore cache version. Preload navigation modules for offline return from a deep link.
 - [x] Remove the fabricated £48 recommendation. Require a seller-entered GBP asking price before approval; do not imply it is a valuation.
 - [ ] Implement market-backed recommendation, comparable groups, source dates and links, sale ranges and supported estimates. The earlier checked-off sample views did not deliver these capabilities.
-- [ ] Complete a real-phone review of the revised interaction in both appearances.
+- [ ] Complete a real-phone review of feedback, Save draft, Edit listing and Duplicate listing in both appearances, including offline recovery. Automated browser/transaction checks do not replace this gate.
 
 ## 7. Market pricing and provider evaluation
 
@@ -187,7 +192,7 @@ The seller reaches generation directly from photos. Example ingestion, a learned
 
 - [ ] Audit and harden the live deployment already delivered from milestone 0 onward: rules, indexes, Storage, Functions, hosting, Google sign-in domains, direct-route reloads and returning sessions. Rehearse promotion to the pilot environment using the established deployment workflow.
 - [ ] Exercise the complete flow in a staging environment with a real Google account, actual phone photos and real providers. Check phone Safari and Chrome as well as canonical Chromium screenshots.
-- [ ] Complete recovery coverage across capture, generation, review and approval, including connectivity loss, session expiry, account switching and system-theme changes.
+- [ ] Complete recovery coverage across capture, generation, review and approval, including saved drafts, re-approval, duplicate independence, connectivity loss, session expiry, account switching and system-theme changes.
 - [ ] Verify accessibility in both appearances: contrast on composited glass, keyboard flow, screen-reader announcements, zoom/text scaling, reduced motion and solid-surface fallbacks.
 - [ ] Complete operational logs using correlation IDs and durations, avoiding raw item copy/photos in logs. Extend the existing deployment/rollback procedure with failed-command investigation, retry and backward-compatible event/schema changes.
 - [ ] Instrument time to approved draft, approval rate, edits, price acceptance and generation failures/cost. Track realized sale outcomes only when reported or obtained from an implemented source.

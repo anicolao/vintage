@@ -12,7 +12,10 @@ const requestSchema = z.discriminatedUnion('kind', [
   z.object({ kind:z.literal('feedback'), listingId:id, expectedVersion:version, text:z.string().trim().min(1).max(1000), previousCopy:copySchema.pick({title:true,description:true}) }),
   z.object({ kind:z.literal('forget'), listingId:id, expectedVersion:version, instructionId:id }),
   z.object({ kind:z.literal('edit'), listingId:id, expectedVersion:version, field:z.enum(fields), value:z.string().max(5000), previousValue:z.string().max(5000) }),
-  z.object({ kind:z.literal('price'), listingId:id, expectedVersion:version, price:moneySchema }),
+  z.object({ kind:z.literal('price'), listingId:id, expectedVersion:version, price:moneySchema.nullable() }),
+  z.object({ kind:z.literal('save'), listingId:id, expectedVersion:version }),
+  z.object({ kind:z.literal('reopen'), listingId:id, expectedVersion:version }),
+  z.object({ kind:z.literal('duplicate'), listingId:z.string().uuid(), expectedVersion:z.literal(0), sourceListingId:id, sourceVersion:version }),
   z.object({ kind:z.literal('approve'), listingId:id, expectedVersion:version, baseVersion:version, snapshot:snapshotSchema })
 ]);
 export class Conflict extends Error {}
@@ -22,6 +25,7 @@ export class PipelineService {
   async submit(uid,raw) {
     const { workspace, commandId } = z.object({ workspace:z.string().regex(/^(main|pr-[1-9][0-9]*|e2e)$/), commandId:z.string().uuid() }).parse(raw);
     const request=requestSchema.parse(raw.request);
+    if(request.kind==='duplicate') return this.duplicate(uid,workspace,commandId,request);
     const account=this.account(workspace,uid);
     const op=account.collection('operations').doc(commandId);
     const listing=account.collection('listings').doc(request.listingId);
@@ -57,8 +61,11 @@ export class PipelineService {
         input={ photos, context:request.context, baseVersion:descriptor.data().version, instructions };
         input.fingerprint=hash(input);
         state={...state,status:'generating',stage:0,operationId:commandId,input,revision:null,price:state.proposal?.schemaVersion===2 ? state.price : null,error:''}; status='queued';
+      } else if(request.kind==='reopen') {
+        if(state.status!=='approved' || state.proposal?.schemaVersion!==2) throw new Conflict('Open an approved listing before editing it.');
+        state={...state,status:'reviewing',approved:null,revision:null,error:''};
       } else {
-        if (state.status!=='reviewing') throw new Conflict('Open the current review before changing or approving it.');
+        if (!['reviewing','saved'].includes(state.status)) throw new Conflict('Open the current review before changing or approving it.');
         if (request.kind==='feedback') {
           if(state.proposal?.schemaVersion!==2) throw new Conflict('Create a new draft from your photos before applying feedback.');
           if(state.revision?.status==='pending') throw new Conflict('A language revision is already running.');
@@ -78,6 +85,7 @@ export class PipelineService {
           state={...state,copy:copySchema.parse({...state.copy,[request.field]:request.value})};
         }
         if (request.kind==='price') state={...state,price:request.price};
+        if (request.kind==='save') state={...state,status:'saved'};
         if (request.kind==='approve') {
           if(state.revision?.status==='pending') throw new Conflict('Wait for the wording revision before approving.');
           if(state.proposal?.schemaVersion!==2) throw new Conflict('Create a new draft from your photos before approving.');
@@ -91,6 +99,59 @@ export class PipelineService {
       tx.create(op,operation);
       this.record(tx,target,state,commandId,`${request.kind}/requested`);
       return {state,operation:{status,stage:0}};
+    });
+  }
+  async duplicate(uid,workspace,commandId,request) {
+    // The destination UUID is also the idempotency key. Files are immutable and
+    // copied before the atomic descriptor/events/workflow publication.
+    if(commandId!==request.listingId) throw new Conflict('Invalid duplicate request.');
+    const account=this.account(workspace,uid);
+    const source=account.collection('listings').doc(request.sourceListingId);
+    const listing=account.collection('listings').doc(request.listingId);
+    const target=listing.collection('pipeline').doc('state');
+    const op=account.collection('operations').doc(commandId);
+    const prior=await op.get();
+    if(prior.exists) {
+      if(prior.data().requestHash!==hash(request)) throw new Conflict('This request has different content.');
+      return {state:(await target.get()).data(),operation:prior.data()};
+    }
+    const original=(await source.collection('pipeline').doc('state').get()).data();
+    const check=state=>{
+      if(!state || state.status!=='approved' || state.version!==request.sourceVersion || state.proposal?.schemaVersion!==2) throw new Conflict('The original listing changed. Open its latest approved version to duplicate it.');
+    };
+    check(original);
+    if((await listing.get()).exists) throw new Conflict('This destination already exists.');
+    const photos=[];
+    for(const photo of original.approved.photos) {
+      const prefix=`${source.path}/photos/${photo.id}/`;
+      if(photo.path!==prefix+'original' || ![photo.path,prefix+'preview'].includes(photo.previewPath)) throw new Conflict('Photo ownership does not match the original listing.');
+      const path=`${listing.path}/photos/${photo.id}/original`;
+      const previewPath=photo.previewPath===photo.path ? path : path.replace(/original$/,'preview');
+      for(const [from,to] of [[photo.path,path],...(previewPath===path ? [] : [[photo.previewPath,previewPath]])]) {
+        try {await this.bucket.file(from).copy(this.bucket.file(to),{preconditionOpts:{ifGenerationMatch:0}});}
+        catch(error) {if(Number(error.code)!==412)throw error;}
+      }
+      photos.push({...photo,path,previewPath});
+    }
+    return this.db.runTransaction(async tx=>{
+      const [existing,current,descriptor,sourceDescriptor]=await Promise.all([tx.get(op),tx.get(source.collection('pipeline').doc('state')),tx.get(listing),tx.get(source)]);
+      if(existing.exists) {
+        if(existing.data().requestHash!==hash(request))throw new Conflict('This request has different content.');
+        return {state:(await tx.get(target)).data(),operation:existing.data()};
+      }
+      check(current.data());
+      if(!sourceDescriptor.exists || sourceDescriptor.data().ownerUid!==uid || descriptor.exists)throw new Conflict('The listing cannot be duplicated.');
+      const timestamp=FieldValue.serverTimestamp();
+      const captures=[{type:'listing/created',payload:{title:'Item'}},{type:'context/changed',payload:{context:original.input.context}},...photos.map(photo=>({type:'photo/uploaded',payload:{photo}}))];
+      captures.forEach((event,index)=>{
+        const eventId=`${commandId}-${index}`;
+        tx.create(listing.collection('events').doc(eventId),{...event,id:eventId,streamId:listing.id,actorUid:uid,deviceId:'server',clientSeq:index+1,correlationId:commandId,causationId:null,createdAt:timestamp,schemaVersion:2,reducerVersion:1});
+      });
+      const state={...initialWorkflow(),status:'saved',version:1,copy:original.approved.copy,price:original.approved.price,proposal:original.proposal,proposalId:original.approved.proposalId,input:{...original.input,photos,baseVersion:captures.length},sourceListingId:source.id,lastCommandId:commandId,updatedAt:new Date().toISOString()};
+      tx.create(listing,{ownerUid:uid,version:captures.length,lastEventId:`${commandId}-${captures.length-1}`,createdAt:timestamp,updatedAt:timestamp});
+      const operation={uid,workspace,request,requestHash:hash(request),status:'completed',target:target.path,createdAt:timestamp,updatedAt:timestamp};
+      tx.create(op,operation);this.record(tx,target,state,commandId,'duplicate/requested');
+      return {state,operation};
     });
   }
   record(tx,target,state,eventId,type) {

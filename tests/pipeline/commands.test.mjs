@@ -101,3 +101,55 @@ test('revision never overwrites newer wording; failed revisions retain original 
   const after=(await target.get()).data();assert.equal(after.revision.status,'failed');assert.deepEqual(after.copy,state.copy);
   assert.equal((await account.collection('language').doc('state').get()).data().instructions.length,2);
 });
+
+test('save incomplete drafts, reopen approved content, and require fresh exact approval',async()=>{
+  const {uid,listingId,target}=await listing();let state=(await target.get()).data();
+  await submit(uid,{kind:'edit',listingId,expectedVersion:state.version,field:'title',previousValue:state.copy.title,value:''});
+  state=(await target.get()).data();
+  await submit(uid,{kind:'save',listingId,expectedVersion:state.version});
+  state=(await target.get()).data();assert.equal(state.status,'saved');assert.equal(state.price,null);assert.equal(state.copy.title,'');
+  await submit(uid,{kind:'edit',listingId,expectedVersion:state.version,field:'title',previousValue:'',value:'Ready title'});
+  state=(await target.get()).data();await submit(uid,{kind:'price',listingId,expectedVersion:state.version,price:{currency:'GBP',minor:3100}});
+  state=(await target.get()).data();const snapshot=resolvedSnapshot(state);
+  await submit(uid,{kind:'approve',listingId,expectedVersion:state.version,baseVersion:2,snapshot});
+  state=(await target.get()).data();const approvedVersion=state.version;
+  await submit(uid,{kind:'reopen',listingId,expectedVersion:approvedVersion});
+  state=(await target.get()).data();assert.equal(state.status,'reviewing');assert.equal(state.approved,null);assert.deepEqual(state.copy,snapshot.copy);
+  await assert.rejects(()=>submit(uid,{kind:'reopen',listingId,expectedVersion:approvedVersion}));
+  await submit(uid,{kind:'edit',listingId,expectedVersion:state.version,field:'title',previousValue:state.copy.title,value:'Revised title'});
+  state=(await target.get()).data();await assert.rejects(()=>submit(uid,{kind:'approve',listingId,expectedVersion:state.version,baseVersion:2,snapshot}));
+  await submit(uid,{kind:'price',listingId,expectedVersion:state.version,price:null});
+  state=(await target.get()).data();assert.equal(state.price,null);
+  await submit(uid,{kind:'price',listingId,expectedVersion:state.version,price:{currency:'GBP',minor:3500}});
+  state=(await target.get()).data();await submit(uid,{kind:'approve',listingId,expectedVersion:state.version,baseVersion:2,snapshot:resolvedSnapshot(state)});
+  state=(await target.get()).data();assert.equal(state.approved.copy.title,'Revised title');assert.equal(state.approved.price.minor,3500);
+});
+
+test('duplicate approved listings with independent files, replayable capture and isolated edits',async()=>{
+  const {uid,listingId,target,account,photo}=await listing();let state=(await target.get()).data();
+  const targetId=randomUUID();const duplicate={kind:'duplicate',listingId:targetId,expectedVersion:0,sourceListingId:listingId,sourceVersion:state.version};
+  await assert.rejects(()=>submit(uid,duplicate,targetId));
+  await submit(uid,{kind:'price',listingId,expectedVersion:state.version,price:{currency:'GBP',minor:2400}});
+  state=(await target.get()).data();await submit(uid,{kind:'approve',listingId,expectedVersion:state.version,baseVersion:2,snapshot:resolvedSnapshot(state)});
+  const original=(await target.get()).data();duplicate.sourceVersion=original.version;
+  await assert.rejects(()=>submit('another-owner',duplicate,targetId));
+  await Promise.all([submit(uid,duplicate,targetId),submit(uid,duplicate,targetId)]);
+  const cloned=account.collection('listings').doc(targetId);const pipeline=cloned.collection('pipeline').doc('state');
+  let copy=(await pipeline.get()).data();assert.equal(copy.status,'saved');assert.equal(copy.approved,null);assert.equal(copy.version,1);assert.deepEqual(copy.copy,original.approved.copy);assert.deepEqual(copy.price,original.price);
+  assert.notEqual(copy.input.photos[0].path,photo.path);
+  assert.deepEqual((await bucket.file(copy.input.photos[0].path).download())[0],(await bucket.file(photo.path).download())[0]);
+  const {reduceListing}=await import('../../src/lib/events/listing.mjs');
+  const capture=reduceListing((await cloned.collection('events').get()).docs.map(d=>d.data()),targetId,uid);
+  assert.deepEqual(capture.diagnostics,[]);assert.deepEqual(capture.photos,copy.input.photos);assert.equal(capture.version,copy.input.baseVersion);
+  await submit(uid,{kind:'edit',listingId:targetId,expectedVersion:copy.version,field:'title',previousValue:copy.copy.title,value:'Independent title'});
+  await submit(uid,duplicate,targetId);copy=(await pipeline.get()).data();assert.equal(copy.copy.title,'Independent title');assert.equal(copy.version,2);
+  assert.deepEqual((await target.get()).data(),original);
+  await submit(uid,{kind:'approve',listingId:targetId,expectedVersion:copy.version,baseVersion:capture.version,snapshot:resolvedSnapshot(copy)});
+  copy=(await pipeline.get()).data();await submit(uid,{kind:'reopen',listingId:targetId,expectedVersion:copy.version});
+  copy=(await pipeline.get()).data();const generation=randomUUID();
+  await submit(uid,{kind:'generate',listingId:targetId,expectedVersion:copy.version,photoIds:copy.input.photos.map(p=>p.id),context:copy.input.context,replace:true},generation);
+  await service.execute(account.collection('operations').doc(generation));
+  assert.equal((await pipeline.get()).data().status,'reviewing');
+  await submit(uid,{kind:'reopen',listingId,expectedVersion:original.version});
+  const staleId=randomUUID();await assert.rejects(()=>submit(uid,{...duplicate,listingId:staleId},staleId));
+});

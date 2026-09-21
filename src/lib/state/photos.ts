@@ -35,6 +35,7 @@ export async function processPhotos() {
       job.running = true; update();
       try {
         const photo = await uploadPhoto(job.photo, progress => { job.progress = progress; update(); });
+        if (!get(photoJobs).includes(job)) continue;
         if (get(app).user?.uid !== uid) throw new Error('Sign in to finish uploading this photo.');
         await dispatch(job.replace
           ? { type: 'photo/replaced', payload: { photo, photoId: job.replace } }
@@ -54,4 +55,11 @@ export async function processPhotos() {
 export function resumePhotoUploads() {
   photoJobs.update(jobs => jobs.map(job => { if (job.retryable) job.error = ''; return job; }));
   void processPhotos();
+}
+
+export async function discardListingPhotos(uid:string,listingId:string) {
+  const jobs=get(photoJobs).filter(j=>j.photo.uid===uid && j.photo.listingId===listingId);
+  photoJobs.update(all=>all.filter(j=>!jobs.includes(j)));
+  for(const photo of await retained(uid,listingId))await retain(photo,true);
+  for(const job of jobs)URL.revokeObjectURL(job.url);
 }
