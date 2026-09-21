@@ -159,3 +159,55 @@ Review the markdown for this project to get oriented. Then make a vinted-integra
 Prompt 37: Rebase merge requests
 
 use a new work tree to rebase and merge PRs 6&7
+
+Prompt 38: Investigate eBay Integration
+
+Let's make a new worktree to investigate integrating with ebay. What's available? Write EBAY_INTEGRATION.md with a design proposal on the new worktree and put up a PR
+
+Prompt 39: Continue Interrupted Investigation
+
+interrupted by accident, continue
+
+Prompt 40: Rebase merge requests
+
+use a new work tree to rebase and merge PRs 6&7
+
+Prompt 41: Research Completed Auctions
+
+one thing I wanted to see in this design was what access we have to completed auction info which should be the best soruce of pricing fro ebay - the doc seems silent on this - please research and update
+
+Prompt 42: Rebase merge requests
+
+use a new work tree to rebase and merge PRs 6&7
+
+Prompt 43: Design Investigation Prototype
+
+Let's design a specific minimal price history/estimating process where a cloud function wakes up on some schedule, gathers the completed action info, and there's some backend-based webpage that can show us the status and conclusions of that for debugging. call it the EBAY_INVESTIGATION_PROTOTYPE.md and we'll revirew that design before implementing
+
+Prompt 44: Rebase merge requests
+
+use a new work tree to rebase and merge PRs 6&7
+
+Prompt 45: Simplify Collection Proof
+
+this design is a little too far reaching. we hardly need tests, scheduling, or all this other production stuff until we've verified that the basics work: that we can harvest and process the ebay repsonses. let's trim it down to the bare minimum to prove that we can do the basic data collection
+
+Prompt 46: Rebase merge requests
+
+use a new work tree to rebase and merge PRs 6&7
+
+Prompt 47: Implement Collection Script
+
+can this be doen anonymously, or do we need a user? let's implement the simplest thing so that we can try it out
+
+Prompt 48: Rebase merge requests
+
+use a new work tree to rebase and merge PRs 6&7
+
+Prompt 49: Load Local Credentials
+
+I'd like to read a .env file that is .gitignore'd instead of usign the environment. will that work automatically or do you need to update hte script
+
+Prompt 50: Rebase merge requests
+
+use a new work tree to rebase and merge PRs 6&7
