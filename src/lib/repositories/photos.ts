@@ -85,3 +85,14 @@ export async function photoUrl(photo: Photo) {
   await cachePreview(photo.previewPath, blob);
   return URL.createObjectURL(blob);
 }
+
+export async function duplicateCachedPreviews(photos:Photo[],sourceId:string,targetId:string):Promise<Photo[]> {
+  const db=await open();
+  const mapped=photos.map(photo=>({...photo,path:photo.path.replace(`/listings/${sourceId}/`,`/listings/${targetId}/`),previewPath:photo.previewPath.replace(`/listings/${sourceId}/`,`/listings/${targetId}/`)}));
+  await new Promise<void>((resolve,reject)=>{
+    const tx=db.transaction('previews','readwrite');const store=tx.objectStore('previews');
+    photos.forEach((photo,index)=>{const read=store.get(photo.previewPath);read.onsuccess=()=>{if(read.result)store.put(read.result,mapped[index].previewPath);};});
+    tx.oncomplete=()=>resolve();tx.onerror=tx.onabort=()=>reject(tx.error);
+  });
+  return mapped;
+}

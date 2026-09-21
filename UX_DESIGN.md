@@ -12,7 +12,7 @@ The terracotta-and-linen sign-in, photo, generation and review concepts remain t
 
 **Stay in control.** Photos and edits appear immediately, with durable local intent and background synchronization. Generation and language revisions can continue while the seller navigates elsewhere. A connection problem never turns the whole app into a waiting room.
 
-**Understand before approving.** Generated details are editable, uncertainty is visible, and evidence explains the price. Approval preserves exactly the reviewed version. The final action is copying that listing for use in Vinted.
+**Understand before approving.** Generated details are editable, uncertainty is visible, and evidence explains the price. Approval preserves exactly the reviewed version. The seller can save an unfinished draft, return to an approved listing to edit it, or duplicate it for a separate listing. Copying uses only the currently approved version.
 
 ## Journey and screen map
 
@@ -31,6 +31,10 @@ flowchart TD
     Review <-->|Explain| Evidence[Evidence sheet]
     Review -->|Language feedback| Revise[Revise wording and remember feedback]
     Revise --> Review
+    Photos -->|Save draft| Listings
+    Review -->|Save draft| Listings
+    Approved -->|Edit listing; require fresh approval| Review
+    Approved -->|Duplicate listing; new draft| Review
     Review -->|Approve exact version| Approved
     Approved -->|Copy or return| Listings
     Listings <-->|Avatar| Account[Your account]
@@ -45,14 +49,14 @@ Account is also available from the photo and progress headers. Closing it return
 | Sign in | Google authentication | Your listings; resume an authorized deep link when supplied |
 | Your listings, empty | New listing | Photo entry |
 | Your listings, populated | Resume an item or New listing | Its saved stage or photo entry |
-| Photo entry, empty/populated | Take or choose photos; optional Anything else? | Create my draft; Back to Your listings |
+| Photo entry, empty/populated | Take or choose photos; optional Anything else? | Create my draft; Save draft; Back to Your listings |
 | Photo inspection | Open a thumbnail | Close to unchanged editor position |
 | Your account | Avatar | Close to invoking screen; sign out |
 | Building your draft | Create my draft | Review when ready; Your listings while working |
-| Review | Finished proposal or saved review | Edit, inspect evidence, approve |
+| Review | Finished proposal or saved review | Edit, inspect evidence, Save draft, approve |
 | Language feedback | Review wording | Apply to this draft and remember for future listings |
 | Evidence sheet | Photo, feedback or pricing evidence | Close to the exact review position |
-| Approved listing | Confirmed approval or saved approved card | Copy listing; Your listings |
+| Approved listing | Confirmed approval or saved approved card | Copy listing; Edit listing; Duplicate listing; Your listings |
 | Unavailable link | Unknown URL or inaccessible item | Your listings; switch account where relevant |
 | Recoverable states | Offline, failed photo, failed generation or approval | In-place recovery with work retained |
 
@@ -86,7 +90,7 @@ One calm empty card says **Your first listing** and **Start with a photo. Add th
 
 <a href="./docs/mockups/05-your-listings.png"><img src="./docs/mockups/05-your-listings.png" alt="Generated photo-led listing home concepts, light and dark" width="422" /></a>
 
-Each generous glass card has a cover photo, a short title when available, a plain-language stage and a last-edited time. Before a title exists, use **Untitled item** with its actual photo and photo count. Never invent an AI identification before analysis. Stages are **Draft**, **Creating draft**, **Ready to review**, **Approval pending** and **Approved**. Add a small local-only indicator when an item has not synced.
+Each generous glass card has a cover photo, a short title when available, a plain-language stage and a last-edited time. Before a title exists, use **Untitled item** with its actual photo and photo count. Never invent an AI identification before analysis. Stages are **Draft**, **Creating draft**, **Ready to review**, **Approval pending** and **Approved**. Explicitly saved reviews and newly duplicated listings use **Draft**, retaining their actual title, cover and photo count. Reopening an approved listing returns it to **Ready to review** until saved or approved again. Add a small local-only indicator when an item has not synced.
 
 The entire card resumes its actual stage. Keep **New listing** prominent near the bottom safe area without obscuring the final card. A long list scrolls naturally. An empty device awaiting its first fetch shows gentle card placeholders; cached listings remain immediately usable during refresh. An error loading additional work appears inline with retry, alongside the available items.
 
@@ -107,6 +111,8 @@ The first meaningful action is **Take photo**, with **Choose photos** alongside 
 After selection, show the local photo immediately in the two-column grid and retain an **Add photo** tile. Keep the item central, with short guidance to include the front, back, labels and wear. Grid thumbnails may crop to fit; inspection always reveals the whole image. The first photo is the cover. Reordering changes that order locally and syncs in the background.
 
 Tapping **Create my draft** records the request immediately. If files are still syncing, show **Waiting for photos to sync** with **Keep editing** and **Your listings** available. The request must identify the input version it will use; later edits are retained separately and clearly identified as changes for a subsequent draft. No repeat tap creates duplicate work.
+
+**Save draft** is also available below the photo actions, including before the first photo. It retains the current photos and Anything else? on the device and returns to Your listings without starting generation or waiting for upload. Reopening returns to photo entry.
 
 There is no style-readiness gate or required example submission. Create the first draft directly from the photos and optional context, using any previously saved language feedback.
 
@@ -162,6 +168,8 @@ Edits save locally as the seller types. A field-level **Restore suggestion** act
 
 Price is the visual anchor, with an editable listing price, currency, expected sale range and concise rationale. Distinguish a listing price from a predicted sale price. The inherited mockup's “Faster sale / Slower sale” curve is illustrative, not a valid chart specification: an implemented chart must name its measured quantity and horizon, distinguish expected revenue from sale probability and time to sale, and use supported data. Show plain-language uncertainty or unavailable estimates when evidence cannot support a chart. Changing price retains the new value immediately and identifies dependent estimates as updating until recalculated.
 
+**Save draft** sits beside the completion actions as a secondary glass button. It saves the current review, including incomplete title/description and an empty price, and returns to Your listings after device persistence. Automatic saving remains active while typing. It never approves or starts generation. Invalid non-empty prices or device-storage errors stay visible in the editor so unsaved input is not silently lost. Saved reviews reopen at the same editable review, including pending language feedback.
+
 **Approve listing** captures the exact reviewed title, description, attributes, photo order and chosen price. If confirmation needs network work, transition immediately to **Approval pending**, preserve an immutable view of the submitted version, and keep navigation available. Show **Approved** only after confirmation. Failure returns to a recoverable review; concurrent changes require review of the newer version rather than silently approving stale content.
 
 ## 10. Evidence details
@@ -176,9 +184,17 @@ Use the same sheet anatomy for photo observations and language-feedback evidence
 
 <a href="./docs/mockups/13-approved-listing.png"><img src="./docs/mockups/13-approved-listing.png" alt="Generated approved-listing concepts, light and dark" width="422" /></a>
 
-A restrained success mark, item photo and approved price confirm the result. **Ready to copy** leads to **Copy listing**, with **Your listings** as the secondary action. The approved listing is a read-only snapshot, available from its saved card after reload. **View full listing** expands the complete approved text and attributes inline; it does not open an editor.
+A restrained success mark, item photo and approved price confirm the result. **Ready to copy** leads to **Copy listing**, with secondary glass actions **Edit listing**, **Duplicate listing**, and **Your listings** below it. The approved display shows a read-only snapshot, available from its saved card after reload. **View full listing** expands the complete approved text and attributes inline; it does not open an editor.
 
 Copy produces **Copied** feedback. If clipboard access fails, expand selectable full text with **Select listing text** and manual-copy guidance. Always let the seller inspect what is being copied. Approval never publishes automatically; **Paste it into Vinted when you're ready** explains the handoff. Starting another listing remains available from Your listings.
+
+**Edit listing** opens the existing review immediately with its approved copy, attributes, price and photos. The current approval is withdrawn; the earlier approved snapshot remains in the event history. Copy is unavailable until the seller approves the edited version again. The seller may change photos/context, regenerate with confirmation, apply language feedback, or Save draft. No new listing is created.
+
+**Duplicate listing** creates a new unapproved draft and opens its editable review immediately. Retain copy, attributes, price, context, photo order and real generation provenance; clear approval and any completed revision notification. Use a new listing identity and independent photo objects. Edits, photo replacement/removal, language revisions and approval on either listing never change the other. Keep the copied title unchanged until the seller edits it; do not invent a new item identity or append a marketing label.
+
+Both actions first retain device intent and update optimistically, including offline. Repeated taps while recording the intent must not create duplicate work. A duplicate's photos already cached on the device remain inspectable offline; uncached photos load when connected. Show the existing saved-on-device/sync recovery treatment. The server checks ownership and the exact original approved version before duplication; a concurrent source change must be surfaced rather than silently duplicating different content. **Review duplicate conflict** offers **Discard duplicate** with explicit confirmation that its local edits will be removed, or **Keep my edits**. Discard returns to the original listing; it never deletes the original. Approval pending exposes neither Edit nor Duplicate until the original approval is confirmed.
+
+These actions extend the generated review and approved-screen concepts above using their existing typography, glass controls, spacing and system light/dark treatments. The older concept images establish visual treatment; the action labels and transitions specified here govern the updated flow.
 
 ## 12. Offline and recovery
 
@@ -239,6 +255,8 @@ When transparency is reduced or backdrop blur is unavailable, use deliberately o
 - Local photos and edits appear immediately; background work and reconnecting do not erase or duplicate intent.
 - A first draft needs no style setup; feedback revises its language and is remembered for future drafts without blocking navigation.
 - Review exposes uncertainty, real source evidence and editable copy and price.
+- Save draft works before generation and with incomplete review fields, returns home without waiting for network acknowledgement, and resumes after reload.
+- Edit listing withdraws the current approval and requires fresh review; Duplicate listing creates an independent draft and leaves the original unchanged. Both work with durable offline intent.
 - Approval confirms exactly the submitted version; copy and manual-copy recovery use that approved snapshot.
 - System appearance changes preserve work and focus across all screens and sheets.
 - Controls have accessible names and visible focus; touch targets are at least 44 × 44 CSS pixels.

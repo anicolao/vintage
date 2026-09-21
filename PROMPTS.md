@@ -255,3 +255,11 @@ machine crashed, we're back, resume
 Prompt 60: Finish feedback accessibility
 
 machine crashed, we're back, resume
+
+Prompt 61: Update product documentation
+
+ok it's looking better, update docs/PRODUCT
+
+Prompt 62: Extend listing lifecycle
+
+ok it's looking better, we want the user to be able to save a draft and not just approve and also edit and duplicate an approved listing. implement these flows and then update UX_DESIGN.md, IMPLEMENTATION_PLAN.md and PRODUCTION_PATH_AUDIT.md to reflect what's been changed.

@@ -1,6 +1,7 @@
 import { writable, get } from 'svelte/store';
 import type { User } from 'firebase/auth';
 import { observeUser, explain } from '../auth/session';
+import { pipelineIntents, pipelineRestored } from './pipeline';
 import { settings } from '../firebase';
 import { allocate, queued, settle } from '../events/outbox';
 import type { Command, Descriptor, DraftAction } from '../events/contracts';
@@ -17,11 +18,11 @@ async function refresh(uid: string, epoch: number) {
 }
 export async function retryDelivery() {
   const uid = get(app).user?.uid; const epoch = generation;
-  if (!uid) return;
+  if (!uid || !get(pipelineRestored)) return;
   const commands = await queued(uid, settings.workspace);
   if (epoch !== generation) return;
   for (const command of commands) {
-    if (inFlight.has(command.id)) continue;
+    if (inFlight.has(command.id) || get(pipelineIntents).some(i=>i.request.kind==='duplicate' && i.request.listingId===command.streamId)) continue;
     const work = deliver(command).then(() => settle(command)).catch(async () => {
       await settle(command, true);
       if (epoch === generation) app.update(s => ({ ...s, error: 'A change could not sync. You can keep editing and try again.' }));
@@ -61,9 +62,16 @@ export function startSession() {
       if (epoch === generation) void retryDelivery();
     } catch (cause) { if (epoch === generation) app.update(s => ({ ...s, error: explain(cause) })); }
   }, cause => app.update(s => ({ ...s, resolved: true, error: explain(cause) })));
+  let pendingDuplicates:string[]=[];
+  const stopPipeline = pipelineIntents.subscribe(intents => {
+    const next=intents.filter(i=>i.request.kind==='duplicate').map(i=>i.request.listingId);
+    const released=pendingDuplicates.some(id=>!next.includes(id));pendingDuplicates=next;
+    if(released && activeUid)void retryDelivery();
+  });
+  const stopRestore = pipelineRestored.subscribe(ready => { if(ready && activeUid)void retryDelivery(); });
   const online = () => { if (activeUid) void retryDelivery(); };
   window.addEventListener('online', online);
-  return () => { generation++; activeUid = undefined; stopAuth(); stopDrafts(); window.removeEventListener('online', online); app.set(empty()); };
+  return () => { generation++; activeUid = undefined; stopAuth(); stopDrafts(); stopPipeline(); stopRestore(); window.removeEventListener('online', online); app.set(empty()); };
 }
 
 export async function discardRejected(streamId: string) {
@@ -77,4 +85,13 @@ export async function discardRejected(streamId: string) {
     await refresh(uid, epoch);
     if (epoch === generation) app.update(s => ({ ...s, error: '' }));
   } catch { if (epoch === generation) app.update(s => ({ ...s, error: 'Could not remove the local change. Please retry.' })); }
+}
+
+export async function discardLocalDraft(streamId:string) {
+  const uid=get(app).user?.uid;const epoch=generation;if(!uid)return;
+  for(const command of await queued(uid,settings.workspace)) {
+    if(epoch!==generation)throw new Error('Account changed.');
+    if(command.streamId===streamId)await settle(command);
+  }
+  await refresh(uid,epoch);
 }

@@ -1,17 +1,19 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
   import { onMount, tick } from 'svelte';
+  import { duplicateCachedPreviews } from '$lib/repositories/photos';
   import { photoJobs } from '$lib/state/photos';
   import { reduceListing } from '$lib/events/listing.mjs';
   import { watchListing } from '$lib/repositories/drafts';
-  import { enqueue, locallyPersisted, workflows, pipelineSaving, pipelineIntents, connection, instructions, listingFields, type Workflow, type ListingField, type Copy, type Snapshot } from '$lib/state/pipeline';
+  import { enqueue, duplicateEvents, locallyPersisted, workflows, pipelineSaving, pipelineIntents, connection, instructions, listingFields, type Workflow, type ListingField, type Copy, type Snapshot } from '$lib/state/pipeline';
   import type { Photo } from '$lib/events/contracts';
   import AccountMenu from './AccountMenu.svelte';
   import PhotoTile from './PhotoTile.svelte';
   import Icon from './Icon.svelte';
   import PipelineStatus from './PipelineStatus.svelte';
   export let id:string;export let uid:string;export let workflow:Workflow;
-  let capturedPhotos:Photo[]=[];
-  let feedback='';
+  let capturedPhotos:Photo[]=[];let captureEvents:unknown[]=[];
+  let feedback='';let acting=false;
   let values:Copy;let fieldBases:Partial<Copy>={};let price='';let activeField='';let seenVersion=-1;let baseVersion=0;let error='';
   let evidenceDialog:HTMLDialogElement;let inspected='';let inspectedAlt='';let full=false;let copied=false;let manual=false;let copyArea:HTMLTextAreaElement;
   $: current=$workflows[id] || workflow;
@@ -30,7 +32,10 @@
   $: queuedPhoto=$photoJobs.find(j=>j.photo.uid===uid && j.photo.listingId===id && pinnedIds.includes(j.photo.id));
   $: photos=submitted ? approved?.photos || [] : pendingGeneration ? capturedPhotos.filter(p=>pinnedIds.includes(p.id)) : current.input?.photos || [];
   $: text=approved ? `${approved.copy.title}\n\n${approved.copy.description}\n\n${listingFields.slice(2).map(f=>`${label(f)}: ${approved.copy[f]}`).join('\n')}\n\n£${(approved.price.minor/100).toFixed(2)}` : '';
-  onMount(()=>watchListing(uid,id,events=>{capturedPhotos=reduceListing(events,id,uid).photos;baseVersion=events.filter(e=>(e as {createdAt:unknown}).createdAt).length;},()=>error='The latest photo version could not be checked. Try again.'));
+  $: effectiveEvents=captureEvents.length ? captureEvents : duplicateEvents($pipelineIntents,id,uid);
+  $: capturedPhotos=reduceListing(effectiveEvents,id,uid).photos;
+  $: baseVersion=effectiveEvents.filter(e=>(e as {createdAt:unknown}).createdAt).length;
+  onMount(()=>watchListing(uid,id,events=>{captureEvents=events;},()=>error='The latest photo version could not be checked. Try again.'));
   function label(field:string) {return field[0].toUpperCase()+field.slice(1);}
   async function edit(field:ListingField,value:string) {
     const previousValue=fieldBases[field] ?? values[field];
@@ -38,8 +43,37 @@
     try {await enqueue({kind:'edit',listingId:id,expectedVersion:current.version,field,value,previousValue});error='';}catch{error='Not saved on this phone. Keep this page open and try again.';}
   }
   async function choosePrice() {
+    if(price==='') {try {await enqueue({kind:'price',listingId:id,expectedVersion:current.version,price:null});error='';}catch{error='The price could not be saved on this phone.';}return;}
     if(!/^\d{1,6}(\.\d{1,2})?$/.test(price) || Number(price)<=0 || Number(price)>100000) {error='Enter a price between £0.01 and £100,000, using at most two decimal places.';return;}
     try{await enqueue({kind:'price',listingId:id,expectedVersion:current.version,price:{currency:'GBP',minor:Math.round(Number(price)*100)}});error='';}catch{error='The price could not be saved on this phone.';}
+  }
+  async function saveDraft() {
+    if(acting)return;acting=true;
+    try {
+      await locallyPersisted();await tick();
+      if(error || (price!=='' && !validPrice))return;
+      await enqueue({kind:'save',listingId:id,expectedVersion:current.version});
+      await goto('/');
+    } catch {error='Your draft could not be saved on this phone. Keep this page open and try again.';}
+    finally {acting=false;}
+  }
+  async function reopen() {
+    if(acting)return;acting=true;
+    try {await enqueue({kind:'reopen',listingId:id,expectedVersion:current.version});full=false;copied=false;error='';}
+    catch {error='Editing could not be saved on this phone. Try again.';}
+    finally {acting=false;}
+  }
+  async function duplicate() {
+    if(acting)return;acting=true;
+    try {
+      const listingId=crypto.randomUUID();
+      const seed=structuredClone(current);
+      const photos=await duplicateCachedPreviews(seed.approved!.photos,id,listingId);
+      seed.input={...seed.input!,photos,baseVersion:photos.length+2};
+      await enqueue({kind:'duplicate',listingId,expectedVersion:0,sourceListingId:id,sourceVersion:seed.version},seed);
+      await goto(`/listings/${listingId}`);
+    } catch {error='The duplicate could not be saved on this phone. Try again.';}
+    finally {acting=false;}
   }
   async function approve() {
     await locallyPersisted(); await tick();
@@ -72,6 +106,7 @@
   </section>
   {#if current.status==='approved'}<button onclick={copy}>{copied?'Copied':'Copy listing'}<Icon name={copied?'check':'copy'}/></button>{/if}
   {#if manual}<p role="status">Copy is unavailable here. Select the listing text and copy it manually.</p><button class="secondary" onclick={()=>{copyArea.focus();copyArea.select();}}>Select listing text</button>{/if}
+  {#if current.status==='approved'}<button class="secondary" disabled={acting} onclick={reopen}>Edit listing</button><button class="secondary" disabled={acting} onclick={duplicate}>Duplicate listing</button>{/if}
   <a class="button secondary" href="/">Your listings</a><p class="quiet-status">Paste it into Vinted when you're ready.</p>
 {:else if current.status==='generating' || current.status==='failed'}
   <h1>{current.status==='failed'?"We couldn't finish this draft":'Building your draft'}</h1>
@@ -109,6 +144,7 @@
     <p class="supporting">Enter your asking price. Market-backed recommendations are not available yet.</p>
   </section>
   {#if current.input && baseVersion!==current.input.baseVersion}<p role="status">Photos or context changed after this proposal. Create another proposal from the updated photos before approving.</p>{/if}
+  <button class="secondary" disabled={acting} onclick={saveDraft}>Save draft</button>
   <button disabled={!validPrice || !current.price || current.revision?.status==='pending' || (!!current.input && baseVersion!==current.input.baseVersion)} onclick={approve}>Approve listing<Icon name="check"/></button><a class="text-link" href={`/listings/${id}?view=photos`}>Edit photos or create another proposal</a>
 {/if}
 {#if error}<p role="alert">{error}</p>{/if}<PipelineStatus/>

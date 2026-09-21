@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { workflows, enqueue, emptyWorkflow } from '$lib/state/pipeline';
+  import { workflows, enqueue, emptyWorkflow, pipelineIntents, duplicateEvents } from '$lib/state/pipeline';
   import PipelineStatus from './PipelineStatus.svelte';
   import { onMount, onDestroy, tick } from 'svelte';
   import { app, dispatch, retryDelivery, discardRejected } from '$lib/state/app';
@@ -43,7 +43,8 @@
   let replacingJob: PhotoJob | null = null;
   $: jobs = $photoJobs.filter(j => j.photo.uid === uid && j.photo.listingId === id);
   $: commands = $app.commands.filter(c => c.streamId === id);
-  $: projection = reduceListing([...events, ...commands.filter(c => !events.some(e => (e as { id: string }).id === c.id)).map(eventFor)], id, uid);
+  $: captureEvents = events.length ? events : duplicateEvents($pipelineIntents,id,uid);
+  $: projection = reduceListing([...captureEvents, ...commands.filter(c => !captureEvents.some(e => (e as { id: string }).id === c.id)).map(eventFor)], id, uid);
   $: pending = commands.length > 0;
   $: empty = projection.photos.length + jobs.length === 0;
   $: usable = projection.photos.length + jobs.filter(j => !j.error).length;
@@ -58,12 +59,24 @@
     return () => { stop(); window.removeEventListener('online', connection); window.removeEventListener('offline', connection); };
   });
   onDestroy(() => { void saveContext(); });
+  let contextSaving:Promise<void>=Promise.resolve();
   async function saveContext() {
+    await contextSaving;
+    if(!edited || $app.user?.uid!==uid)return;
+    contextSaving=persistContext();
+    await contextSaving;
+    if(edited && !error)await saveContext();
+  }
+  async function persistContext() {
     if (saving || !edited || $app.user?.uid !== uid) return;
     const value = context; saving = true; error = '';
     try { await dispatch({ type: 'context/changed', payload: { context: value } }, id); if (context === value) edited = false; }
     catch { error = 'Not saved on this phone. Your details could not be saved. Try again.'; }
-    finally { saving = false; if (edited && !error) void saveContext(); }
+    finally { saving = false; }
+  }
+  async function saveDraft() {
+    await saveContext();
+    if(!error)await goto('/');
   }
   function changed() { edited = true; void saveContext(); }
   async function addFiles(input: HTMLInputElement) {
@@ -128,6 +141,7 @@
     <section class="context-card glass"><label for="item-context">Anything else?</label><input id="item-context" bind:value={context} oninput={changed} onblur={saveContext} maxlength="2000" placeholder={empty ? 'Fit, provenance, or an unpictured detail' : 'e.g. Rare 1990s piece, fits oversized'} /></section>
     <button class="create-draft" disabled={!usable || $workflows[id]?.status === 'generating'} onclick={() => generate()}>Create my draft<Icon name="next"/></button>
     {#if !usable}<p class="quiet-status">Add a photo to continue</p>{/if}
+    <button class="secondary" onclick={saveDraft}>Save draft</button>
     <PipelineStatus/>
     {#if removed}<div class="undo-notice glass" role="status"><span>Photo removed</span><button class="text-button" disabled={undoing} onclick={undoRemove}>Undo</button></div>{/if}
   {:else}<p role="status">Opening your item…</p>{/if}
@@ -147,4 +161,4 @@
   {/if}
 </dialog>
 
-<dialog class="account-sheet glass" bind:this={replaceDialog} aria-labelledby="replace-title"><h2 id="replace-title">Replace proposal?</h2><p>A new proposal will replace your title, description, attributes and selected price. Your photos and context will stay saved.</p><button onclick={() => { replaceDialog.close(); void generate(true); }}>Replace proposal</button><button class="secondary" onclick={() => replaceDialog.close()}>Keep editing</button></dialog>
+<dialog class="account-sheet glass" bind:this={replaceDialog} aria-labelledby="replace-title"><h2 id="replace-title">Replace proposal?</h2><p>A new proposal will replace your title, description and attributes. Your photos, context and selected price will stay saved.</p><button onclick={() => { replaceDialog.close(); void generate(true); }}>Replace proposal</button><button class="secondary" onclick={() => replaceDialog.close()}>Keep editing</button></dialog>
