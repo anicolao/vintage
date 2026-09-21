@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { orderEvents, reduceListing, validateEvent } from '../../src/lib/events/listing.mjs';
+import { orderEvents, reduceListing, validateEvent, retainUnobservedEvents } from '../../src/lib/events/listing.mjs';
 const event = (id, type = 'listing/created', payload = { title: 'Linen jacket' }, extra = {}) => ({ id, streamId:'draft', actorUid:'alice', deviceId:'device', clientSeq:1, correlationId:id, causationId:null, createdAt:{seconds:1,nanoseconds:0}, schemaVersion:2, reducerVersion:1, type, payload, ...extra });
 test('replay is pure, ordered and idempotent', () => {
   const created = event('a'); const context = event('b','context/changed',{context:'Saved context'}, { schemaVersion:2 });
@@ -40,4 +40,18 @@ test('photo replacement preserves current order and removal wins over an unfinis
   events.splice(4,0,event('dd','photo/removed',{photoId:'one'}));
   const state=reduceListing(events,'draft','alice');
   assert.deepEqual(state.photos.map(p=>p.id),['two']);assert.deepEqual(state.diagnostics,[]);
+});
+
+test('capture stays mounted when acknowledgement retires intent before the query observes creation',()=>{
+  const creation=event('create',undefined,undefined,{createdAt:null});
+  const context=event('context','context/changed',{context:'Selected item'}, {createdAt:null,clientSeq:2});
+  let retained=retainUnobservedEvents([],[],[creation,context]);
+  // The outbox is settled, but the initial subscription is still empty.
+  retained=retainUnobservedEvents(retained,[],[]);
+  let state=reduceListing(retained,'draft','alice');
+  assert.equal(state.status,'draft');assert.equal(state.context,'Selected item');assert.equal(state.version,0);
+  const observed=[{...creation,createdAt:{seconds:1,nanoseconds:0}},{...context,createdAt:{seconds:2,nanoseconds:0}}];
+  retained=retainUnobservedEvents(retained,observed,[]);
+  state=reduceListing([...observed,...retained],'draft','alice');
+  assert.deepEqual(retained,[]);assert.equal(state.status,'draft');assert.equal(state.context,'Selected item');assert.equal(state.version,2);assert.deepEqual(state.diagnostics,[]);
 });

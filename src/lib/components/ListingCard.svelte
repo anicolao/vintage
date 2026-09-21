@@ -5,7 +5,7 @@
   import { photoJobs, restorePhotos } from '$lib/state/photos';
   import { watchListing, eventFor } from '$lib/repositories/drafts';
   import { photoUrl } from '$lib/repositories/photos';
-  import { reduceListing } from '$lib/events/listing.mjs';
+  import { reduceListing, retainUnobservedEvents } from '$lib/events/listing.mjs';
   import type { Photo } from '$lib/events/contracts';
   import Icon from './Icon.svelte';
   export let id: string;
@@ -15,8 +15,10 @@
   let coverUrl = ''; let active = true; let request = 0;
   let failed = false;
   $: commands = $app.commands.filter(c => c.streamId === id);
-  $: captureEvents = events.length ? events : duplicateEvents($pipelineIntents,id,uid);
-  $: projection = reduceListing([...captureEvents, ...commands.filter(c => !captureEvents.some(e => (e as {id: string}).id === c.id)).map(eventFor)], id, uid);
+  $: localCapture = duplicateEvents($pipelineIntents,id,uid);
+  let unobserved:unknown[]=[];
+  $: unobserved=retainUnobservedEvents(unobserved,events,[...localCapture,...commands.map(eventFor)]);
+  $: projection = reduceListing([...events, ...unobserved], id, uid);
   $: jobs = $photoJobs.filter(j => j.photo.uid === uid && j.photo.listingId === id);
   $: cover = projection.photos[0];
   $: loadCover(cover);

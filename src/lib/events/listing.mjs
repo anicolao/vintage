@@ -75,3 +75,12 @@ export function reduceListing(rawEvents, streamId, actorUid) {
   }
   return state;
 }
+
+/** Keep locally observed intent until the subscription observes the same event.
+ * A write acknowledgement can retire its outbox entry before that callback runs.
+ * @param {any[]} retained @param {any[]} observed @param {any[]} pending
+ */
+export function retainUnobservedEvents(retained, observed, pending) {
+  const observedIds=new Set(observed.map(event=>event.id));
+  return [...new Map([...retained,...pending].map(event=>[event.id,event])).values()].filter(event=>!observedIds.has(event.id));
+}

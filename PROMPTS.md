@@ -271,3 +271,7 @@ machine crashed, we're back, resume
 Prompt 64: Rebase and merge
 
 looking good, rebase and merge
+
+Prompt 65: Preserve capture continuity
+
+looking good, rebase and merge
