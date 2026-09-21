@@ -1,42 +1,26 @@
-# Examples, generation and approval
+# Generation, feedback and approval
 
-A labelled sample journey backed by durable Functions and owner-scoped events.
+Photo-first generation with language feedback and exact approval. AI transport is isolated in the test process.
 
-## Paste one complete example
+## Language feedback beside the editable draft
 
-![Paste one complete example](./screenshots/000-examples-desktop-light-linux.png)
-
-**Verifications:**
-
-- [x] The original item return path is retained
-
-## Traceable sample profile with explicit return
-
-![Traceable sample profile with explicit return](./screenshots/001-style-ready-desktop-light-linux.png)
+![Language feedback beside the editable draft](./screenshots/000-review-desktop-light-linux.png)
 
 **Verifications:**
 
-- [x] The seller chooses when to return to photos
+- [x] Feedback applies to current and future drafts
 
-## Editable proposal with honest price limitations
+## Observations reference the supplied photo
 
-![Editable proposal with honest price limitations](./screenshots/002-review-desktop-light-linux.png)
-
-**Verifications:**
-
-- [x] Sale estimates are unavailable without market evidence
-
-## Missing market evidence is explicit
-
-![Missing market evidence is explicit](./screenshots/003-evidence-desktop-light-linux.png)
+![Observations reference the supplied photo](./screenshots/001-evidence-desktop-light-linux.png)
 
 **Verifications:**
 
-- [x] No invented comparables appear
+- [x] Actual observation text is rendered
 
 ## Offline approval preserves the immutable submitted version
 
-![Offline approval preserves the immutable submitted version](./screenshots/004-approval-pending-desktop-light-linux.png)
+![Offline approval preserves the immutable submitted version](./screenshots/002-approval-pending-desktop-light-linux.png)
 
 **Verifications:**
 
@@ -44,7 +28,7 @@ A labelled sample journey backed by durable Functions and owner-scoped events.
 
 ## Reload restores the approved copy and exact price
 
-![Reload restores the approved copy and exact price](./screenshots/005-approved-desktop-light-linux.png)
+![Reload restores the approved copy and exact price](./screenshots/003-approved-desktop-light-linux.png)
 
 **Verifications:**
 

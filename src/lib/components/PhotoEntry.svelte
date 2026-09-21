@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { style, workflows, enqueue, emptyWorkflow } from '$lib/state/pipeline';
+  import { workflows, enqueue, emptyWorkflow } from '$lib/state/pipeline';
   import PipelineStatus from './PipelineStatus.svelte';
   import { onMount, onDestroy, tick } from 'svelte';
   import { app, dispatch, retryDelivery, discardRejected } from '$lib/state/app';
@@ -19,13 +19,12 @@
   async function generate(replace = false) {
     await saveContext();
     if (error || !usable) return;
-    if ($style.status !== 'ready') { await goto(`/style?item=${encodeURIComponent(id)}`); return; }
     const workflow = $workflows[id] || emptyWorkflow();
     if (workflow.proposal && !replace) { replaceDialog.showModal(); return; }
     const ids = projection.photos.filter(p => !jobs.some(j => j.replace === p.id)).map(p => p.id);
     ids.push(...jobs.filter(j => !j.error).map(j => j.photo.id));
     try {
-      await enqueue({ kind: 'generate', listingId: id, expectedVersion: workflow.version, photoIds: ids, context, styleVersion: $style.version, replace });
+      await enqueue({ kind: 'generate', listingId: id, expectedVersion: workflow.version, photoIds: ids, context, replace });
       await goto(`/listings/${id}`);
     } catch { error = 'Your request could not be saved on this phone. Try again.'; }
   }
@@ -148,4 +147,4 @@
   {/if}
 </dialog>
 
-<dialog class="account-sheet glass" bind:this={replaceDialog} aria-labelledby="replace-title"><h2 id="replace-title">Replace proposal?</h2><p>A new sample proposal will replace your title, description, attributes and selected price. Your photos and context will stay saved.</p><button onclick={() => { replaceDialog.close(); void generate(true); }}>Replace proposal</button><button class="secondary" onclick={() => replaceDialog.close()}>Keep editing</button></dialog>
+<dialog class="account-sheet glass" bind:this={replaceDialog} aria-labelledby="replace-title"><h2 id="replace-title">Replace proposal?</h2><p>A new proposal will replace your title, description, attributes and selected price. Your photos and context will stay saved.</p><button onclick={() => { replaceDialog.close(); void generate(true); }}>Replace proposal</button><button class="secondary" onclick={() => replaceDialog.close()}>Keep editing</button></dialog>

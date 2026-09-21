@@ -227,3 +227,23 @@ good, implement up to milestone 6 on a new PR
 Prompt 54: Audit production fakery
 
 OK - hardcoded demo data / fakery is TOTALLY UNACCCEPTABLE. Enumerate all such instances in the curernt branch so that we can prioritize removing them and replacing everything with *ACTUAL PRODUTION CODE PATHS*
+
+Prompt 55: Replace style onboarding
+
+let's start by removing the "learn my style"step, I would prefer for the user to be able to give feedback on the language used
+
+Prompt 56: Remember language feedback
+
+> Should language feedback apply only to the current listing, or also be remembered for future listings?
+
+Apply now and remember for future listings
+
+Prompt 57: Implement real generation
+
+> The current generator is still the fixed sample identified in the audit. Should this change also replace it with real AI so language feedback can rewrite the draft, or first remove onboarding and save feedback while we replace generation next?
+
+Replace generation and apply feedback now
+
+Prompt 58: Resume after crash
+
+machine crashed, we're back, resume

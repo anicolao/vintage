@@ -10,27 +10,33 @@ export const listingFields = ['title','description','category','brand','size','c
 export type ListingField = typeof listingFields[number];
 export type Copy = Record<ListingField,string>;
 export interface Money { currency:'GBP'; minor:number }
-export interface Example { id:string; title:string; description:string }
-export interface Proposal { sample:true; copy:Copy; confidence:Record<ListingField,number>; observations:string[]; pricing:{recommended:Money;expectedSaleRange:null;rationale:string}; evidence:{id:string;kind:string;label:string;sourceIds:string[];unavailable:boolean}[] }
-export interface Snapshot { copy:Copy; price:Money; photos:Photo[]; proposalId:string; sample:true }
-export interface Workflow { version:number; status:string; proposal:Proposal|null; proposalId:string; copy:Copy|null; price:Money|null; approved:Snapshot|null; input:{photos:Photo[];context:string;examples:Example[];baseVersion:number}|null; error:string; stage?:number; updatedAt?:string; lastCommandId?:string }
-export interface Style { version:number; examples:Example[]; profile:{sample:true;summary:string}|null; status:string; stage:number; error:string; lastCommandId?:string }
+export interface Model {provider:'vertex-ai';model:string;promptVersion:string}
+export interface Instruction {id:string;text:string}
+export interface Proposal {schemaVersion:2;copy:Copy;confidence:Record<ListingField,number>;observations:{text:string;photoIds:string[]}[];model:Model;inputFingerprint:string}
+export interface Snapshot {copy:Copy;price:Money;photos:Photo[];proposalId:string;model:Model}
+export interface Workflow {version:number;status:string;proposal:Proposal|null;proposalId:string;copy:Copy|null;price:Money|null;approved:Snapshot|null;input:{photos:Photo[];context:string;instructions:Instruction[];baseVersion:number}|null;revision?:{id:string;status:string;text:string}|null;error:string;stage?:number;updatedAt?:string;lastCommandId?:string}
 export type Request =
-  | {kind:'examples';examples:Example[];previousExamples:Example[];expectedVersion:number}
-  | {kind:'learn';expectedVersion:number}
-  | {kind:'generate';listingId:string;expectedVersion:number;photoIds:string[];context:string;styleVersion:number;replace:boolean}
+  | {kind:'feedback';listingId:string;expectedVersion:number;text:string;previousCopy:Pick<Copy,'title'|'description'>}
+  | {kind:'forget';listingId:string;expectedVersion:number;instructionId:string}
+  | {kind:'generate';listingId:string;expectedVersion:number;photoIds:string[];context:string;replace:boolean}
   | {kind:'edit';listingId:string;expectedVersion:number;field:ListingField;value:string;previousValue:string}
   | {kind:'price';listingId:string;expectedVersion:number;price:Money}
   | {kind:'approve';listingId:string;expectedVersion:number;baseVersion:number;snapshot:Snapshot};
 interface Intent { commandId:string;request:Request;error:string;delivering?:boolean }
-const emptyStyle = ():Style=>({version:0,examples:[],profile:null,status:'empty',stage:0,error:''});
 export const emptyWorkflow = ():Workflow=>({version:0,status:'draft',proposal:null,proposalId:'',copy:null,price:null,approved:null,input:null,error:''});
-const cloudStyle=writable<Style>(emptyStyle());
 const cloudWorkflows=writable<Record<string,Workflow>>({});
 export const pipelineIntents=writable<Intent[]>([]);
+const cloudInstructions=writable<Instruction[]>([]);
+export const instructions=derived([cloudInstructions,pipelineIntents],([$cloud,$intents])=>{
+  let result=[...$cloud];
+  for(const {request,commandId} of $intents){
+    if(request.kind==='feedback' && !result.some(i=>i.id===commandId))result=[...result.filter(i=>i.text!==request.text),{id:commandId,text:request.text}];
+    if(request.kind==='forget')result=result.filter(i=>i.id!==request.instructionId);
+  }
+  return result;
+});
 export const pipelineError=writable('');
 export const pipelineSaving=writable(0);
-export const pipelineResolution=writable('');
 export const connection=writable(true);
 let uid=''; let epoch=0; let sending=false; let persisting=Promise.resolve();
 let database:Promise<IDBDatabase>;
@@ -58,17 +64,6 @@ async function readQueue(owner:string) {
   const db=await openDB();
   return new Promise<Intent[]>((resolve,reject)=>{const r=db.transaction('queues').objectStore('queues').get(`${settings.workspace}/${owner}`);r.onsuccess=()=>resolve(r.result || []);r.onerror=()=>reject(r.error);});
 }
-export const style=derived([cloudStyle,pipelineIntents],([$cloud,$intents])=>{
-  let state={...$cloud};
-  for (const intent of $intents.filter(i=>!('listingId' in i.request))) {
-    const r=intent.request;
-    if ($cloud.lastCommandId===intent.commandId) continue;
-    if (r.kind==='examples') state={...state,examples:r.examples,profile:null,status:'needs-learning'};
-    if (r.kind==='learn') state={...state,status:'learning',stage:0};
-    state.version++;
-  }
-  return state;
-});
 export const workflows=derived([cloudWorkflows,pipelineIntents],([$cloud,$intents])=>{
   const all={...$cloud};
   for (const intent of $intents) {
@@ -76,8 +71,9 @@ export const workflows=derived([cloudWorkflows,pipelineIntents],([$cloud,$intent
     let state={...(all[r.listingId] || emptyWorkflow())};
     if ($cloud[r.listingId]?.lastCommandId===intent.commandId) continue;
     if (r.kind==='edit' && state.copy) state.copy={...state.copy,[r.field]:r.value};
+    if (r.kind==='feedback') state={...state,revision:{id:intent.commandId,status:'pending',text:r.text}};
     if (r.kind==='price') state.price=r.price;
-    if (r.kind==='generate') state={...state,status:'generating',stage:0};
+    if (r.kind==='generate') state={...state,status:'generating',stage:0,revision:null};
     if (r.kind==='approve') state={...state,status:'approval-pending',approved:r.snapshot};
     state.version++;all[r.listingId]=state;
   }
@@ -90,16 +86,14 @@ export async function enqueue(request:Request) {
   const work=persisting.then(async()=>{
     const intents=await changeQueue(owner, previous=>{
       const intents=[...previous];
-      const server='listingId' in request ? get(cloudWorkflows)[request.listingId] || emptyWorkflow() : get(cloudStyle);
-      const matching=intents.filter(i=>('listingId' in request ? 'listingId' in i.request && i.request.listingId===request.listingId : !('listingId' in i.request)) && i.commandId!==server.lastCommandId);
-      if (request.kind==='examples' || request.kind==='edit' || request.kind==='price') request={...request,expectedVersion:server.version+matching.length};
+      const server=get(cloudWorkflows)[request.listingId] || emptyWorkflow();
+      const matching=intents.filter(i=>(i.request.listingId===request.listingId) && i.commandId!==server.lastCommandId);
+      if (request.kind==='edit' || request.kind==='price' || request.kind==='feedback' || request.kind==='forget') request={...request,expectedVersion:server.version+matching.length};
       const last=intents.at(-1);
       if (last && !last.delivering && !last.error &&
-        ((request.kind==='examples' && last.request.kind==='examples') ||
-         (request.kind==='edit' && last.request.kind==='edit' && request.listingId===last.request.listingId && request.field===last.request.field))) {
+        (request.kind==='edit' && last.request.kind==='edit' && request.listingId===last.request.listingId && request.field===last.request.field)) {
         request={...request,expectedVersion:last.request.expectedVersion};
         if(request.kind==='edit' && last.request.kind==='edit') request.previousValue=last.request.previousValue;
-        if(request.kind==='examples' && last.request.kind==='examples') request.previousExamples=last.request.previousExamples;
         intents[intents.length-1]={...last,request};
       } else intents.push({commandId:crypto.randomUUID(),request,error:''});
       return intents;
@@ -140,13 +134,13 @@ async function deliverQueue() {
         const ready=claimed.find(i=>i.commandId===intent.commandId);
         if (!ready) continue;
         intent.request=ready.request;
-        const result=await httpsCallable<{workspace:string;commandId:string;request:Request},{state:Style|Workflow}>(getBackend().functions,'submitCommand')({workspace:settings.workspace,commandId:intent.commandId,request:intent.request});
+        const result=await httpsCallable<{workspace:string;commandId:string;request:Request},{state:Workflow}>(getBackend().functions,'submitCommand')({workspace:settings.workspace,commandId:intent.commandId,request:intent.request});
         if (current!==epoch) break;
         const server=result.data.state;
         if ('listingId' in intent.request) {
           const listingId=intent.request.listingId;
           cloudWorkflows.update(all=>({...all,[listingId]:(all[listingId]?.version ?? -1)>server.version ? all[listingId] : server as Workflow}));
-        } else cloudStyle.update(state=>state.version>server.version ? state : server as Style);
+        }
         // Chain removals with enqueues so rapid input cannot resurrect a settled request.
         const remove=persisting.then(async()=>{
           await changeQueue(owner,items=>items.filter(i=>i.commandId!==intent.commandId));
@@ -166,10 +160,10 @@ export async function useLatest() {
   let target='';
   await changeQueue(uid,items=>{
     const conflict=items.find(i=>i.error);if(!conflict)return items;
-    target='listingId' in conflict.request ? conflict.request.listingId : 'style';
-    return items.filter(i=>('listingId' in i.request ? i.request.listingId : 'style')!==target);
+    target=conflict.request.listingId;
+    return items.filter(i=>i.request.listingId!==target);
   });
-  pipelineError.set('');pipelineResolution.set(`${target}/${crypto.randomUUID()}`);void flush();
+  pipelineError.set('');void flush();
 }
 export function watchWorkflow(owner:string,id:string) {
   const current=epoch;
@@ -182,13 +176,13 @@ export function watchWorkflow(owner:string,id:string) {
 export function startPipeline() {
   channel=new BroadcastChannel('vintage-pipeline');
   channel.onmessage=async event=>{const owner=uid;const current=epoch;if(event.data.owner!==owner)return;const intents=await readQueue(owner);if(current===epoch){pipelineIntents.set(intents);void flush();}};
-  let stopStyle=()=>{};
+  let stopInstructions=()=>{};
   const stop=app.subscribe(state=>{
     if ((state.user?.uid || '')===uid) {void flush();return;}
-    uid=state.user?.uid || '';const current=++epoch;stopStyle();pipelineIntents.set([]);cloudStyle.set(emptyStyle());cloudWorkflows.set({});pipelineError.set('');
+    uid=state.user?.uid || '';const current=++epoch;stopInstructions();cloudInstructions.set([]);pipelineIntents.set([]);cloudWorkflows.set({});pipelineError.set('');
     if (!uid) return;
     const owner=uid;
-    stopStyle=onSnapshot(doc(getBackend().db,`${accountPath(uid)}/style/state`),s=>{if(current===epoch){const next=(s.data() || emptyStyle()) as Style;cloudStyle.update(state=>state.version>next.version ? state:next);}},()=>pipelineError.set('Your listing examples could not be opened. Try again.'));
+    stopInstructions=onSnapshot(doc(getBackend().db,`${accountPath(uid)}/language/state`),snapshot=>{if(current===epoch)cloudInstructions.set(snapshot.data()?.instructions || []);},()=>pipelineError.set('Saved language feedback could not be opened. Try again.'));
     void readQueue(owner).then(intents=>{if(current===epoch){pipelineIntents.set(intents);void flush();}}).catch(()=>pipelineError.set('Device storage is unavailable. Your unsynced work could not be opened.'));
   });
   const stopPhotos=photoJobs.subscribe(()=>void flush());
@@ -196,5 +190,5 @@ export function startPipeline() {
   const leaving=(event:BeforeUnloadEvent)=>{if(get(pipelineSaving)>0){event.preventDefault();event.returnValue='';}};
   window.addEventListener('beforeunload',leaving);
   window.addEventListener('online',online);window.addEventListener('offline',online);
-  return ()=>{channel?.close();channel=undefined;stop();stopStyle();stopPhotos();uid='';epoch++;window.removeEventListener('beforeunload',leaving);window.removeEventListener('online',online);window.removeEventListener('offline',online);};
+  return ()=>{channel?.close();channel=undefined;stop();stopInstructions();stopPhotos();uid='';epoch++;window.removeEventListener('beforeunload',leaving);window.removeEventListener('online',online);window.removeEventListener('offline',online);};
 }

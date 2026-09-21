@@ -21,9 +21,9 @@
   $: loadCover(cover);
   $: count = projection.photos.length + jobs.filter(j => !j.replace).length;
   // The creation event is an internal placeholder, never an inferred item name.
-  $: workflow = $workflows[id];
+  $: workflow = $workflows[id]?.proposal && $workflows[id].proposal?.schemaVersion!==2 ? undefined : $workflows[id];
   $: editedAt = workflow?.updatedAt ? Date.parse(workflow.updatedAt)/1000 : updatedAt;
-  $: stage = ({generating:'Creating draft',reviewing:'Ready to review','approval-pending':'Approval pending',approved:'Approved',failed:'Draft needs attention'} as Record<string,string>)[workflow?.status] || 'Draft';
+  $: stage = ({generating:'Creating draft',reviewing:'Ready to review','approval-pending':'Approval pending',approved:'Approved',failed:'Draft needs attention'} as Record<string,string>)[workflow?.status || 'draft'] || 'Draft';
   $: title = workflow?.approved?.copy.title || workflow?.copy?.title || (['Item', 'Untitled item', ''].includes(projection.title) ? 'Untitled item' : projection.title);
   onMount(() => {
     void restorePhotos(uid, id).catch(() => failed = true);
