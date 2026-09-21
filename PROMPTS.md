@@ -247,3 +247,7 @@ Replace generation and apply feedback now
 Prompt 58: Resume after crash
 
 machine crashed, we're back, resume
+
+Prompt 59: Verify resumed deployment
+
+machine crashed, we're back, resume
