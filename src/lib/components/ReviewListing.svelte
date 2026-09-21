@@ -62,7 +62,7 @@
 </script>
 <main class="flow-screen review-screen" data-status="ready" data-sync={$pipelineSaving || $pipelineIntents.length ? 'pending' : 'synced'} data-e2e-layout data-workflow={current.status}>
 <header class="step-header glass"><a class="icon-button" href="/" aria-label="Your listings"><Icon name="back"/></a><span>{submitted?(current.status==='approved'?'Approved listing':'Approval pending'):current.status==='generating'?'2 of 3 · Create draft':'3 of 3 · Review'}</span><AccountMenu/></header>
-{#if current.proposal && current.proposal.schemaVersion!==2}
+{#if current.proposal && current.proposal.schemaVersion!==2 && !['generating','failed'].includes(current.status)}
   <h1>Create a new draft</h1><p>This draft was created with a retired generator. Start again from your photos to get an analysed proposal.</p><a class="button" href={`/listings/${id}?view=photos`}>Back to photos</a>
 {:else if submitted && approved}
   <div class="approved-intro"><span class="success-orb"><Icon name={current.status==='approved'?'check':'cloud'} size={30}/></span><h1>{current.status==='approved'?'Ready to copy':'Approval pending'}</h1><p>{current.status==='approved'?'Your approved version is saved.':'This exact version is saved on this phone. Approval will be confirmed when it syncs.'}</p></div>
