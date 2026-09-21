@@ -73,7 +73,7 @@ service cloud.firestore {
             && photoIdAt(event.payload.photoIds, 4) && photoIdAt(event.payload.photoIds, 5)
             && photoIdAt(event.payload.photoIds, 6) && photoIdAt(event.payload.photoIds, 7));
       }
-      match /style/{id} { allow read: if owner(uid); }
+      match /language/{id} { allow read: if owner(uid); }
       match /workflowEvents/{id} { allow read: if owner(uid); }
       match /operations/{id} { allow read: if owner(uid); }
       allow read: if owner(uid);

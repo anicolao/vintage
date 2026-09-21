@@ -10,7 +10,7 @@ The terracotta-and-linen sign-in, photo, generation and review concepts remain t
 
 **Recognize your work.** Item photographs anchor listing cards, editing and review. The seller can tell what each item needs and return to it without remembering a generated name or where they stopped.
 
-**Stay in control.** Photos and edits appear immediately, with durable local intent and background synchronization. Learning and generation can continue while the seller navigates elsewhere. A connection problem never turns the whole app into a waiting room.
+**Stay in control.** Photos and edits appear immediately, with durable local intent and background synchronization. Generation and language revisions can continue while the seller navigates elsewhere. A connection problem never turns the whole app into a waiting room.
 
 **Understand before approving.** Generated details are editable, uncertainty is visible, and evidence explains the price. Approval preserves exactly the reviewed version. The final action is copying that listing for use in Vinted.
 
@@ -26,22 +26,19 @@ flowchart TD
     Resume --> Review[Review listing and price]
     Resume --> Approved[Approved listing]
     Photos <-->|Inspect or arrange| Inspect[Photo inspection]
-    Photos -->|Create my draft| Style{Style ready?}
-    Style -->|Yes| Build
-    Style -->|No| Examples[Your listing examples]
-    Examples --> Learn[Learning your style]
-    Learn -->|Ready: return to photos| Photos
+    Photos -->|Create my draft| Build
     Build -->|Ready| Review
     Review <-->|Explain| Evidence[Evidence sheet]
+    Review -->|Language feedback| Revise[Revise wording and remember feedback]
+    Revise --> Review
     Review -->|Approve exact version| Approved
     Approved -->|Copy or return| Listings
     Listings <-->|Avatar| Account[Your account]
-    Account <-->|Manage examples| Examples
     Account -->|Sign out| SignIn
     Recovery[Unavailable link] --> Listings
 ```
 
-Account is also available from the photo and progress headers. Closing it returns to its invoking screen. Back from a supporting screen restores the item, scroll position and focus. Learning entered from an item returns to that item; learning entered from account returns to account. Completing learning does not silently submit a generation request: the seller returns to photos and chooses **Create my draft**.
+Account is also available from the photo and progress headers. Closing it returns to its invoking screen. Back from a supporting screen restores the item, scroll position and focus. Language feedback belongs beside the draft being reviewed, never in a prerequisite setup screen.
 
 | Surface | Entry and main action | Return or continuation |
 | --- | --- | --- |
@@ -50,12 +47,11 @@ Account is also available from the photo and progress headers. Closing it return
 | Your listings, populated | Resume an item or New listing | Its saved stage or photo entry |
 | Photo entry, empty/populated | Take or choose photos; optional Anything else? | Create my draft; Back to Your listings |
 | Photo inspection | Open a thumbnail | Close to unchanged editor position |
-| Your account | Avatar | Close to invoking screen; examples; sign out |
-| Listing examples | First generation without a style, or account | Learn my style; Back preserves examples and item |
-| Learning your style | Submitted examples | Continue editing; return when ready |
+| Your account | Avatar | Close to invoking screen; sign out |
 | Building your draft | Create my draft | Review when ready; Your listings while working |
 | Review | Finished proposal or saved review | Edit, inspect evidence, approve |
-| Evidence sheet | Photo, style or pricing evidence | Close to the exact review position |
+| Language feedback | Review wording | Apply to this draft and remember for future listings |
+| Evidence sheet | Photo, feedback or pricing evidence | Close to the exact review position |
 | Approved listing | Confirmed approval or saved approved card | Copy listing; Your listings |
 | Unavailable link | Unknown URL or inaccessible item | Your listings; switch account where relevant |
 | Recoverable states | Offline, failed photo, failed generation or approval | In-place recovery with work retained |
@@ -76,7 +72,7 @@ The [original generation prompts](./docs/mockups/GENERATION.md) and [extension p
 
 Keep the approved restrained brand composition, natural garment imagery, neutral Google control and privacy reassurance. This is the one introductory surface; working screens use short task copy.
 
-Google signs the seller into Vintage. It does not grant access to their Vinted history. Explain that learning uses examples the seller supplies. Cancelling authentication leaves sign-in usable. Failure appears beside the action with **Try again**, without discarding the destination of an item link. Show a quiet authentication indicator while resolving a session, not a flash of another user's listings.
+Google signs the seller into Vintage. It does not grant access to their Vinted history. Language preferences come from feedback the seller gives while reviewing drafts. Cancelling authentication leaves sign-in usable. Failure appears beside the action with **Try again**, without discarding the destination of an item link. Show a quiet authentication indicator while resolving a session, not a flash of another user's listings.
 
 ## 2. Your listings
 
@@ -112,7 +108,7 @@ After selection, show the local photo immediately in the two-column grid and ret
 
 Tapping **Create my draft** records the request immediately. If files are still syncing, show **Waiting for photos to sync** with **Keep editing** and **Your listings** available. The request must identify the input version it will use; later edits are retained separately and clearly identified as changes for a subsequent draft. No repeat tap creates duplicate work.
 
-If seller style is missing, open listing examples with the item preserved. The proposed v0 input is pasted titles and descriptions from the seller's own listings, matching the plan's manual-input direction. At least one example is required for personalized generation. The seller can leave setup and keep their item; no generic draft is silently presented as personalized.
+There is no style-readiness gate or required example submission. Create the first draft directly from the photos and optional context, using any previously saved language feedback.
 
 ## 4. Photo inspection and arrangement
 
@@ -128,29 +124,21 @@ Closing preserves editor context. Cancelling a picker changes nothing. Never use
 
 <a href="./docs/mockups/09-account.png"><img src="./docs/mockups/09-account.png" alt="Generated account sheet concepts, light and dark" width="422" /></a>
 
-A focused glass sheet contains Google identity, **Your listing style**, its example count/readiness, privacy information and **Sign out**. It has a visible close button as well as dismissal gestures. There is no appearance selector or technical connection panel.
+A focused glass sheet contains Google identity, privacy information and **Sign out**. It has a visible close button as well as dismissal gestures. There is no appearance selector or technical connection panel.
 
-Keep privacy reassurance inline: **Your photos and drafts are private to your account.** Explain that examples shape drafts and approval does not publish to Vinted. This does not need another navigation destination.
+Keep privacy reassurance inline: **Your photos and drafts are private to your account.** Approval does not publish to Vinted. This does not need another navigation destination.
 
 Sign-out must account for local work. When work is fully synced, sign out directly. If changes exist only on this device, present **Keep working** and **Sign out** with an explicit explanation that those changes remain on this device for this account and cannot yet be opened elsewhere. Do not erase recoverable work or expose it to the next signed-in account.
 
-## 6. Your listing examples
+## 6. Language feedback during review
 
-<a href="./docs/mockups/10-style-examples.png"><img src="./docs/mockups/10-style-examples.png" alt="Generated seller example entry concepts, light and dark" width="422" /></a>
+Below the editable description, use an inline glass card labelled **How should it sound?**, a free-text field and **Apply feedback**. The seller can request changes to phrasing, tone or length while looking at the actual draft. Explain **Applies to this draft and future listings.** Feedback is optional; the first draft requires no setup.
 
-**Make it sound like you** explains why examples are useful at the point they become relevant. Ask for one existing title and description, with **Add another example** and **Learn my style**. More examples can be supplied later; no arbitrary multi-example gate. Preserve typed examples and item context when leaving the screen.
+Persist the instruction and exact title/description being revised locally before showing pending work. Synchronize in the background. Apply a real language revision to title and description only; retain photos, attributes and the selected price. Pin the source version and feedback so a late response cannot overwrite newer edits. Keep the original copy on failure, with retry and navigation available. Show saved feedback and let the seller remove remembered instructions; removal affects subsequent requests, not an approved snapshot.
 
-Existing examples appear as compact editable cards. Each supports removal with undo. Validate missing title or description next to the field, without clearing other input. Do not ask for Vinted credentials or claim an import is occurring. Account entry uses neutral supporting copy; item entry adds **Your photos are saved** only when local persistence has succeeded.
+Do not claim feedback was applied merely because it was saved. The revision must actually use it, and future generation must include the remembered instructions. No generic profile, fixed response or simulated learning stage is an acceptable implementation. Direct manual editing remains available.
 
-This manual example-entry interaction is a proposed design decision in this PR. Structured export ingestion can be designed separately if chosen; it is not an additional hidden path in this flow.
-
-## 7. Learning your style
-
-<a href="./docs/mockups/11-learning-style.png"><img src="./docs/mockups/11-learning-style.png" alt="Generated style-learning concepts, light and dark" width="422" /></a>
-
-Show actual work: **Reading [count] examples**, **Finding your tone**, **Saving your style**. Use completed ticks, one current stage and quiet pending stages. No invented percentage or completion time. Preserve the operation across reloads.
-
-**Back to photos** is available for item entry; account entry offers **Back to account**. Completion offers **Continue to photos** or **Back to account**, and a quiet ready indicator appears if the seller has already left. Do not redirect away from active editing. Failure retains examples with **Try again**; offline submission says **Will start when connected**. A changed example set requires a newly learned profile before the next personalized generation.
+The former example-entry and learning screens are removed from the product flow. Their mockups are no longer implementation references. The existing review concept supplies the glass, spacing and typography for this inline addition; it does not depict the new feedback interaction.
 
 ## 8. Building your draft
 
@@ -158,7 +146,7 @@ Show actual work: **Reading [count] examples**, **Finding your tone**, **Saving 
 | --- | --- |
 | <a href="./docs/mockups/03-building-draft-light.png"><img src="./docs/mockups/03-building-draft-light.png" alt="Generated draft-building concept, light" width="211" /></a> | <a href="./docs/mockups/03-building-draft-dark.png"><img src="./docs/mockups/03-building-draft-dark.png" alt="Generated draft-building concept, dark" width="211" /></a> |
 
-Keep the photo and genuine stage visible: reading photos, applying seller style, comparing the market and building the price strategy. Progress resumes from persisted operation state, with no simulated timers. **Your listings** remains available while work continues. A ready card returns the seller to review; completion must not steal focus from another task.
+Keep the photo and genuine stage visible: reading photos, applying saved language feedback, comparing the market and building the price strategy. Progress resumes from persisted operation state, with no simulated timers. **Your listings** remains available while work continues. A ready card returns the seller to review; completion must not steal focus from another task.
 
 If generation fails, the same progress card explains **We couldn't finish this draft**, retains the item and offers **Try again** and **Back to photos**. Retry resumes or creates an explicitly new attempt without duplicating approval or losing edits. When a new proposal would replace an edited one, show **Replace proposal?** and explain which edits would be replaced before proceeding.
 
@@ -170,7 +158,7 @@ If generation fails, the same progress card explains **We couldn't finish this d
 
 Use one scrollable review with two clear groups: **Listing proposal** and **Recommended price**. Show ordered photos, editable title and description, and category, brand, size, colour, material and condition. Mark uncertain inferences with text such as **Check size**, linked to the relevant photo. Do not bury uncertainty in an icon or present guessed facts as confirmed.
 
-Edits save locally as the seller types. A field-level **Restore suggestion** action returns to the generated value. **Written in your style** opens evidence from the examples actually used; it appears only when that claim is supported.
+Edits save locally as the seller types. A field-level **Restore suggestion** action returns to the generated value. Language feedback changes wording through the interaction above. Only claim personalization when saved instructions were actually used.
 
 Price is the visual anchor, with an editable listing price, currency, expected sale range and concise rationale. Distinguish a listing price from a predicted sale price. The inherited mockup's “Faster sale / Slower sale” curve is illustrative, not a valid chart specification: an implemented chart must name its measured quantity and horizon, distinguish expected revenue from sale probability and time to sale, and use supported data. Show plain-language uncertainty or unavailable estimates when evidence cannot support a chart. Changing price retains the new value immediately and identifies dependent estimates as updating until recalculated.
 
@@ -182,7 +170,7 @@ Price is the visual anchor, with an editable listing price, currency, expected s
 
 Evidence opens in a near-full-height glass sheet above the review. Lead with the question being answered, such as **Why £48?**, followed by the observation and inspectable sources. Price evidence distinguishes **Asking**, **Sold** and modeled estimates, with currency, source links and observation dates. Explain why each comparable matters and where it differs; include higher-value matches when relevant. Values and sources pictured here are illustrative, never production fixture evidence.
 
-Use the same sheet anatomy for photo observations and seller-style evidence, replacing comparable rows with the actual referenced photo or example excerpts. Missing evidence says **Evidence unavailable** with retry when appropriate; it never invents sources. Close and Escape restore edited values, selected price, scroll position and focus on the invoking row.
+Use the same sheet anatomy for photo observations and language-feedback evidence, replacing comparable rows with the actual referenced photo or instructions. Missing evidence says **Evidence unavailable** with retry when appropriate; it never invents sources. Close and Escape restore edited values, selected price, scroll position and focus on the invoking row.
 
 ## 11. Approved listing and copying
 
@@ -208,7 +196,7 @@ Use one quiet contextual status: **Saved on this phone** and **Photos will sync 
 | Upload interrupted | Keep the local thumbnail; indicate pending sync; retry automatically and offer manual retry after persistent failure |
 | Local storage cannot retain a photo or edit | Explicit **Not saved on this phone** near the affected content; retain the in-memory value and explain the risk before leaving |
 | Session expired | Preserve recoverable local work and offer **Sign in again**; hide private content until the account is re-established |
-| Learning or generation failed | In-place stage error with retry and a route back to the retained input |
+| Generation or language revision failed | In-place stage error with retry and a route back to the retained input |
 | Approval pending or failed | Preserve the submitted version; never display confirmed approval prematurely |
 | Copy unavailable | Expand selectable approved text with manual-copy guidance |
 
@@ -249,7 +237,7 @@ When transparency is reduced or backdrop blur is unavailable, use deliberately o
 - Returning sellers recognize and resume drafts from photos and stage labels.
 - Every surface in the map has a defined entry, primary action and return path in both appearances.
 - Local photos and edits appear immediately; background work and reconnecting do not erase or duplicate intent.
-- Seller examples have an explicit input mechanism, truthful learning status and a return to the original item.
+- A first draft needs no style setup; feedback revises its language and is remembered for future drafts without blocking navigation.
 - Review exposes uncertainty, real source evidence and editable copy and price.
 - Approval confirms exactly the submitted version; copy and manual-copy recovery use that approved snapshot.
 - System appearance changes preserve work and focus across all screens and sheets.

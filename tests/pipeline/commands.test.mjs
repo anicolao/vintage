@@ -20,35 +20,23 @@ after(async()=>{await db?.terminate();if(app)await deleteApp(app);});
 const submit=(uid,request,commandId=randomUUID())=>service.submit(uid,{workspace:'e2e',commandId,request});
 async function seller() {
   const uid=`pipeline-${randomUUID()}`;const account=service.account('e2e',uid);await account.set({ownerUid:uid});
-  const examples=[{id:randomUUID(),title:'My cotton shirt',description:'Soft cotton, relaxed fit. Small mark shown in the photos.'}];
-  await submit(uid,{kind:'examples',expectedVersion:0,examples,previousExamples:[]});
-  const commandId=randomUUID();await submit(uid,{kind:'learn',expectedVersion:1},commandId);
-  await service.execute(account.collection('operations').doc(commandId));
-  return {uid,account,style:(await account.collection('style').doc('state').get()).data()};
+  return {uid,account};
 }
 async function listing() {
-  const sellerData=await seller();const {uid,account,style}=sellerData;
+  const sellerData=await seller();const {uid,account}=sellerData;
   const listingId=randomUUID();const path=`${account.path}/listings/${listingId}`;
   const bytes=readFileSync('static/images/wardrobe.png');const photo={id:randomUUID(),path:'',previewPath:'',digest:digest(bytes),type:'image/png',size:bytes.length,width:100,height:100};
   photo.path=`${path}/photos/${photo.id}/original`;photo.previewPath=photo.path;
   await bucket.file(photo.path).save(bytes,{resumable:false,contentType:'image/png'});
   await db.doc(path).set({ownerUid:uid,version:2});
   await db.doc(`${path}/events/photo`).set({type:'photo/uploaded',payload:{photo}});
-  const request={kind:'generate',listingId,expectedVersion:0,photoIds:[photo.id],context:'',styleVersion:style.version,replace:false};
+  const request={kind:'generate',listingId,expectedVersion:0,photoIds:[photo.id],context:'',replace:false};
   const commandId=randomUUID();await submit(uid,request,commandId);
   const op=account.collection('operations').doc(commandId);
   await service.execute(op);await service.execute(op);
   const target=db.doc(`${path}/pipeline/state`);
   return {...sellerData,listingId,target,photo,request,commandId,op};
 }
-test('examples validate, invalidate readiness, and reject stale or cross-owner commands',async()=>{
-  const {uid,style,account}=await seller();assert.equal(style.status,'ready');assert.equal(style.profile.sample,true);
-  await assert.rejects(()=>submit(uid,{kind:'examples',expectedVersion:0,examples:[],previousExamples:[]}));
-  await submit(uid,{kind:'examples',expectedVersion:style.version,examples:[],previousExamples:style.examples});
-  assert.equal((await account.collection('style').doc('state').get()).data().profile,null);
-  await assert.rejects(()=>submit(uid,{kind:'learn',expectedVersion:style.version+1}));
-  await assert.rejects(()=>submit('another-owner',{kind:'learn',expectedVersion:0}));
-});
 test('durable generation is idempotent; edits and approval preserve exact reviewed content',async()=>{
   const {uid,account,listingId,target,request,commandId,photo}=await listing();
   const generated=(await target.get()).data();assert.equal(generated.status,'reviewing');assert.equal(generated.version,4);
@@ -70,13 +58,46 @@ test('durable generation is idempotent; edits and approval preserve exact review
   assert.equal((await account.collection('operations').doc(approval).get()).data().status,'completed');
 });
 test('interrupted worker resumes a pinned request without overwriting edits or double stages',async()=>{
-  const {uid,listingId,target,account,style,photo}=await listing();
+  const {uid,listingId,target,account,photo}=await listing();
   const commandId=randomUUID();const version=(await target.get()).data().version;
-  await submit(uid,{kind:'generate',listingId,expectedVersion:version,styleVersion:style.version,photoIds:[photo.id],context:'',replace:true},commandId);
+  await submit(uid,{kind:'generate',listingId,expectedVersion:version,photoIds:[photo.id],context:'',replace:true},commandId);
   const op=account.collection('operations').doc(commandId);
   const generator=service.generator;service.generator={generate(){throw new Error('interrupted provider');}};
   try{await assert.rejects(()=>service.execute(op));}finally{service.generator=generator;}
-  assert.equal((await op.get()).data().stage,2);
+  assert.equal((await op.get()).data().stage,1);
   await service.execute(op);await service.execute(op);
   const state=(await target.get()).data();assert.equal(state.status,'reviewing');assert.equal(state.proposalId,commandId);assert.equal(state.version,version+4);
+});
+
+test('feedback changes wording, remembers instructions, preserves price, and forgetting affects future requests',async()=>{
+  const {uid,account,listingId,target,photo}=await listing();
+  let state=(await target.get()).data();
+  const previousCopy={title:state.copy.title,description:state.copy.description};
+  await submit(uid,{kind:'price',listingId,expectedVersion:state.version,price:{currency:'GBP',minor:3500}});
+  state=(await target.get()).data();
+  const commandId=randomUUID();const feedback={kind:'feedback',listingId,expectedVersion:state.version,text:'Keep it concise.',previousCopy};
+  await submit(uid,feedback,commandId);await submit(uid,feedback,commandId);
+  await service.execute(account.collection('operations').doc(commandId));
+  state=(await target.get()).data();assert.equal(state.revision.status,'applied');assert.match(state.copy.description,/Revised wording/);assert.equal(state.price.minor,3500);
+  assert.equal((await account.collection('language').doc('state').get()).data().instructions.length,1);
+  const next=randomUUID();await submit(uid,{kind:'generate',listingId,expectedVersion:state.version,photoIds:[photo.id],context:'',replace:true},next);
+  assert.equal((await account.collection('operations').doc(next).get()).data().input.instructions[0].text,'Keep it concise.');
+  await service.execute(account.collection('operations').doc(next));state=(await target.get()).data();
+  await submit(uid,{kind:'forget',listingId,expectedVersion:state.version,instructionId:commandId});
+  assert.deepEqual((await account.collection('language').doc('state').get()).data().instructions,[]);
+  await assert.rejects(()=>submit('another-owner',feedback));
+});
+test('revision never overwrites newer wording; failed revisions retain original text and instructions',async()=>{
+  const {uid,account,listingId,target}=await listing();let state=(await target.get()).data();
+  const previousCopy={title:state.copy.title,description:state.copy.description};
+  const commandId=randomUUID();await submit(uid,{kind:'feedback',listingId,expectedVersion:state.version,text:'Shorter.',previousCopy},commandId);
+  state=(await target.get()).data();
+  await submit(uid,{kind:'edit',listingId,expectedVersion:state.version,field:'title',previousValue:state.copy.title,value:'New manual title'});
+  await service.execute(account.collection('operations').doc(commandId));state=(await target.get()).data();
+  assert.equal(state.copy.title,'New manual title');assert.equal(state.revision.status,'conflict');
+  const failing=randomUUID();await submit(uid,{kind:'feedback',listingId,expectedVersion:state.version,text:'No adjectives.',previousCopy:{title:state.copy.title,description:state.copy.description}},failing);
+  const provider=service.generator;service.generator={revise(){throw new Error('provider failed');}};
+  try{await assert.rejects(()=>service.execute(account.collection('operations').doc(failing)));await assert.rejects(()=>service.execute(account.collection('operations').doc(failing)));await service.execute(account.collection('operations').doc(failing));}finally{service.generator=provider;}
+  const after=(await target.get()).data();assert.equal(after.revision.status,'failed');assert.deepEqual(after.copy,state.copy);
+  assert.equal((await account.collection('language').doc('state').get()).data().instructions.length,2);
 });

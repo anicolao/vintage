@@ -43,7 +43,7 @@ Routes render projections and dispatch commands. Domain behavior resides in pure
 
 ## Identity and ownership
 
-Google Account login is provided through Firebase Authentication using `GoogleAuthProvider`. The Firebase `uid` is the stable owner ID for every listing, event stream, photo, style profile, and generation request.
+Google Account login is provided through Firebase Authentication using `GoogleAuthProvider`. The Firebase `uid` is the stable owner ID for every listing, event stream, photo, language instruction, and generation request.
 
 The auth observer is the entry point for client state. After login, the client subscribes only to streams owned by that `uid`. Firestore and Storage rules enforce the same ownership boundary independently of the UI.
 
@@ -79,7 +79,7 @@ Firestore paths are:
 
 ```text
 users/{uid}
-users/{uid}/events/{eventId}                       account/style stream
+users/{uid}/events/{eventId}                       account/language feedback stream
 users/{uid}/listings/{listingId}
 users/{uid}/listings/{listingId}/events/{eventId} listing stream
 users/{uid}/commands/{commandId}                  command status
@@ -94,7 +94,7 @@ account/created
 history/import-requested
 history/import-progressed
 history/import-completed
-style/profile-generated
+feedback/completed
 
 listing/created
 photo/upload-requested
@@ -139,22 +139,13 @@ Original photos are stored at `users/{uid}/listings/{listingId}/photos/{photoId}
 
 Cloud Functions create normalized analysis derivatives with stable dimensions and orientation. Generation inputs reference immutable photo versions by digest, making AI results reproducible from captured evidence.
 
-## Existing-listing style profile
+## Language feedback
 
-The history-ingestion command captures normalized listing examples with title, description, attributes, price, status, and available outcome data. A style-profile function derives a versioned profile containing:
-
-- common title patterns;
-- description structure and formatting;
-- recurring vocabulary;
-- treatment of measurements, fit, condition, and flaws;
-- typical detail level; and
-- pricing behavior by category and condition.
-
-The profile and its source listing IDs are recorded through `style/profile-generated`. Draft generation receives a bounded selection of representative source listings plus the current profile. The proposal records which examples influenced it.
+There is no seller-history ingestion or required style setup. Review accepts free-text language instructions. The server remembers them under the authenticated account and revises the exact title/description the seller saw. Revision preserves facts, price, attributes and photos; concurrent manual wording changes win over late model responses. Future generation pins the current instruction set. The seller can forget instructions for future requests. See [the current pipeline contract](./docs/PIPELINE.md).
 
 ## AI generation contract
 
-`generateListing({ uid, listingId, expectedVersion })` is a callable command. The function verifies ownership and stream version, writes `generation/requested`, and moves through durable stages. Its structured result follows a versioned schema:
+`generateListing({ uid, listingId, expectedVersion })` is a callable command. The function verifies ownership and stream version, writes `generation/requested`, and moves through durable stages. The current runtime schema is `functions/shared/proposal.mjs`; the richer pricing contract below remains a target until market-backed pricing is implemented:
 
 ```ts
 interface ListingProposal {
@@ -182,7 +173,7 @@ interface Proposed<T> {
   value: T;
   confidence: number;
   evidence: string[];
-  source: 'photo' | 'seller-context' | 'seller-history' | 'market' | 'combined';
+  source: 'photo' | 'seller-context' | 'language-feedback' | 'market' | 'combined';
 }
 ```
 
@@ -190,7 +181,7 @@ The pricing engine optimizes expected seller revenue across candidate list price
 
 ## Commands and consistency
 
-The client writes simple user-intent events directly when rules can validate them. AI and import operations use callable Functions because they require credentials, privileged writes, and idempotent orchestration.
+The client writes simple user-intent events directly when rules can validate them. AI generation and feedback operations use callable Functions because they require credentials, privileged writes, and idempotent orchestration.
 
 Each command has a stable command ID and expected stream version. A Firestore transaction claims the command and records its correlation ID. Retries continue the same command. Function stages append idempotent events, and the client renders progress from those events.
 
@@ -217,17 +208,12 @@ A development-only event inspector shows ordered raw events, replay diagnostics,
 
 ## Determinism boundaries
 
-Production AI is variable; the application contract is deterministic. The generation adapter has two implementations:
-
-- production provider, selected in deployed Functions; and
-- fixture provider, selected in the Firebase Functions emulator for tests.
-
-E2E fixtures map a stable photo digest and style-profile fixture to a checked-in `ListingProposal`. Event IDs, clocks, user identity, generated progress, and image derivatives are fixed in E2E mode. This allows exact behavioral and visual assertions around the complete asynchronous flow.
+Production AI is variable; the application contract is deterministic. Deployed Functions always call Vertex AI. Automated tests run a loopback-only HTTP model server outside the Functions deployment directory. The adapter rejects a test endpoint outside the explicit demo Functions emulator environment. There is no deployed fixture provider or fixed listing proposal.
 
 ## v0 acceptance
 
 - Google authentication establishes one durable user workspace.
-- Existing listing examples produce a traceable seller style profile.
+- Optional language feedback revises real wording and influences subsequent drafts.
 - Photos upload to Firebase Storage and appear in event-replayed order.
 - Generation progress and results survive reload.
 - Draft fields carry confidence and evidence.

@@ -7,6 +7,6 @@
   export let id:string;export let uid:string;
   onMount(()=>watchWorkflow(uid,id));
   $: workflow=$workflows[id] || emptyWorkflow();
-  $: photos=$page.url.searchParams.get('view')==='photos' && workflow.status!=='approved' && workflow.status!=='approval-pending';
+  $: photos=$page.url.searchParams.get('view')==='photos' && (workflow.proposal?.schemaVersion!==2 || (workflow.status!=='approved' && workflow.status!=='approval-pending'));
 </script>
 {#if photos || workflow.status==='draft'}<PhotoEntry {id} {uid}/>{:else}<ReviewListing {id} {uid} {workflow}/>{/if}

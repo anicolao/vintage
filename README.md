@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/anicolao/vintage/actions/workflows/verify-and-preview.yml/badge.svg?branch=main&event=push)](https://github.com/anicolao/vintage/actions/workflows/verify-and-preview.yml?query=branch%3Amain+event%3Apush)
 
-Vintage is an AI-first listing assistant for Vinted sellers. It turns photos into a complete listing draft written in the seller's own style and recommends a price designed to maximize expected revenue.
+Vintage is a listing assistant for Vinted sellers. It creates drafts from photos, revises wording from seller feedback, and remembers language instructions for future listings. Sellers currently enter their asking price; market-backed recommendations remain planned.
 
 ## The v0
 
@@ -10,7 +10,7 @@ The first version focuses on one complete workflow:
 
 1. The seller provides photos of an item and, optionally, a one-line description.
 2. Vintage studies the seller's existing Vinted listings to understand their language, structure, level of detail, and selling approach.
-3. AI examines the photos, identifies relevant item details, and creates a listing proposal that matches the seller's established style.
+3. AI examines the photos, identifies relevant item details, and creates a listing proposal using any remembered language feedback.
 4. Vintage recommends a pricing strategy based on the item, comparable listings, demand signals, and the tradeoff between sale price and likelihood of sale.
 5. The seller reviews, edits, and approves the listing and price.
 
@@ -74,7 +74,7 @@ We will evaluate the product using:
 
 ## Project status
 
-The production UI follows the approved photo-first design through pasted examples, durable sample generation, review, exact approval and copying. It uses system appearance, live Google authentication, owner-scoped Firebase data and optimistic device persistence. See [Pipeline implementation](./docs/PIPELINE.md), [Product UI and saved items](./docs/DRAFT_FOUNDATION.md) and [Firebase setup](./docs/FIREBASE_SETUP.md). Real AI personalization and market pricing remain milestone 7; the review preview labels sample output explicitly.
+The production UI follows the approved photo-first design through real photo generation, remembered language feedback, review, exact approval and copying. It uses system appearance, live Google authentication, owner-scoped Firebase data and optimistic device persistence. See [Pipeline implementation](./docs/PIPELINE.md), [Product UI and saved items](./docs/DRAFT_FOUNDATION.md) and [Firebase setup](./docs/FIREBASE_SETUP.md). Generation and wording revisions use Vertex AI. Market-backed pricing remains outstanding; sellers enter their asking price.
 
 ## Recording prompts
 

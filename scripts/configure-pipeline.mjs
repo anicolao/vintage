@@ -10,6 +10,7 @@ async function api(url,method='GET',body) {
   const data=await response.json();if(!response.ok)throw new Error(`${response.status}: ${data.error?.message || 'Cloud configuration failed'}`);return data;
 }
 const project='vintage-review-anicolao';
+await api(`https://serviceusage.googleapis.com/v1/projects/${project}/services/aiplatform.googleapis.com:enable`,'POST',{});
 const runtime=`vintage-pipeline-runtime@${project}.iam.gserviceaccount.com`;
 const deploy=`vintage-preview-deploy@${project}.iam.gserviceaccount.com`;
 const base=`https://iam.googleapis.com/v1/projects/${project}/serviceAccounts`;
@@ -17,7 +18,7 @@ try{await api(`${base}/${runtime}`);}catch(e){if(!e.message.startsWith('404'))th
 const url=`https://cloudresourcemanager.googleapis.com/v1/projects/${project}`;
 const policy=await api(`${url}:getIamPolicy`,'POST',{options:{requestedPolicyVersion:3}});
 const add=(role,member)=>{let b=policy.bindings.find(x=>x.role===role&&!x.condition);if(!b){b={role,members:[]};policy.bindings.push(b);}if(!b.members.includes(member))b.members.push(member);};
-for(const role of ['roles/datastore.user','roles/eventarc.eventReceiver','roles/run.invoker'])add(role,`serviceAccount:${runtime}`);
+for(const role of ['roles/datastore.user','roles/eventarc.eventReceiver','roles/run.invoker','roles/aiplatform.user'])add(role,`serviceAccount:${runtime}`);
 for(const role of ['roles/cloudfunctions.admin','roles/run.admin','roles/eventarc.admin','roles/cloudscheduler.admin'])add(role,`serviceAccount:${deploy}`);
 await api(`${url}:setIamPolicy`,'POST',{policy});
 const saPolicy=await api(`${base}/${runtime}:getIamPolicy`,'POST',{options:{requestedPolicyVersion:3}});
@@ -28,4 +29,4 @@ const bucket=`https://storage.googleapis.com/storage/v1/b/${project}.firebasesto
 const storagePolicy=await api(`${bucket}?optionsRequestedPolicyVersion=3`);storagePolicy.bindings ||= [];
 let storage=storagePolicy.bindings.find(x=>x.role==='roles/storage.objectAdmin');if(!storage){storage={role:'roles/storage.objectAdmin',members:[]};storagePolicy.bindings.push(storage);}if(!storage.members.includes(`serviceAccount:${runtime}`))storage.members.push(`serviceAccount:${runtime}`);
 await api(bucket,'PUT',storagePolicy);
-console.log('Configured dedicated pipeline runtime and CI deployment roles. Existing bindings preserved.');
+console.log('Enabled Vertex AI and configured dedicated pipeline runtime and CI deployment roles. Existing bindings preserved.');

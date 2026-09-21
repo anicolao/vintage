@@ -2,17 +2,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
-import { FixtureListingGenerator } from '../../functions/generator.mjs';
+import { ListingGenerator } from '../../functions/generator.mjs';
 import { normalizePhoto } from '../../functions/photos.mjs';
 import { proposalSchema, moneySchema, snapshotSchema, reduceWorkflow, initialWorkflow } from '../../functions/shared/proposal.mjs';
-test('sample contract is bounded, honest and cannot run in seller production',()=>{
-  const proposal=new FixtureListingGenerator('demo-vintage').generate({photos:[{id:'photo'}],examples:[{id:'source'}]});
-  assert.equal(proposal.sample,true);assert.equal(proposal.pricing.expectedSaleRange,null);assert.deepEqual(proposal.pricing.estimates,[]);
-  assert.deepEqual(proposal.evidence[1].sourceIds,['source']);
-  assert.throws(()=>new FixtureListingGenerator('seller-production'));
-  assert.throws(()=>proposalSchema.parse({...proposal,model:{...proposal.model,provider:'real'}}));
+test('sample contracts are rejected and test transport cannot be enabled in live projects',()=>{
+  const previous=process.env.VINTAGE_AI_TEST_ENDPOINT;
+  process.env.VINTAGE_AI_TEST_ENDPOINT='http://127.0.0.1:9399';
+  try {assert.throws(()=>new ListingGenerator('seller-production'));} finally {if(previous===undefined)delete process.env.VINTAGE_AI_TEST_ENDPOINT;else process.env.VINTAGE_AI_TEST_ENDPOINT=previous;}
+  assert.throws(()=>proposalSchema.parse({sample:true}));
   assert.throws(()=>moneySchema.parse({currency:'GBP',minor:12.5}));
-  assert.throws(()=>moneySchema.parse({currency:'GBP',minor:-1}));
   assert.throws(()=>snapshotSchema.parse({}));
 });
 test('normalizes original HEIC on the server, independently of browser preview',async()=>{
@@ -36,4 +34,22 @@ test('JPEG orientation is applied to analysis dimensions and metadata is strippe
   const result=await normalizePhoto(original,'image/jpeg');
   assert.equal(result.width,24);assert.equal(result.height,12);
   const metadata=await sharp(result.bytes).metadata();assert.equal(metadata.orientation,undefined);
+});
+
+test('provider sends actual photos and remembered wording instructions and validates photo evidence',async()=>{
+  const copy={title:'Red hat',description:'A red hat.',category:'Hats',brand:'',size:'',colour:'Red',material:'',condition:''};
+  let evidenceId='p1';let sent;
+  const generator=new ListingGenerator('demo-vintage',{transport:async(url,options)=>{
+    sent=JSON.parse(options.body);
+    const result={copy,confidence:Object.fromEntries(Object.keys(copy).map(f=>[f,0.5])),observations:[{text:'Red knit.',photoIds:[evidenceId]}]};
+    return {ok:true,json:async()=>({modelVersion:'test-only',candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify(result)}]}}]})};
+  }});
+  const input={photos:[{id:'p1'}],context:'Small mark on cuff.',instructions:[{id:'i1',text:'No enthusiastic adjectives.'}],fingerprint:'f'.repeat(64)};
+  const proposal=await generator.generate(input,[Buffer.from('image-bytes')]);
+  assert.deepEqual(JSON.parse(sent.contents[0].parts[0].text).languageInstructions,['No enthusiastic adjectives.']);
+  assert.equal(sent.contents[0].parts[2].inlineData.data,Buffer.from('image-bytes').toString('base64'));
+  assert.equal(proposal.copy.title,'Red hat');assert.equal('pricing' in proposal,false);
+  evidenceId='unrelated-photo';await assert.rejects(()=>generator.generate(input,[Buffer.from('image-bytes')]));
+  generator.transport=async()=>({ok:true,json:async()=>({candidates:[{finishReason:'MAX_TOKENS'}]})});
+  await assert.rejects(()=>generator.revise({copy,instructions:input.instructions}));
 });

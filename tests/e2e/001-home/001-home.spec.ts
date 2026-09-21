@@ -22,7 +22,7 @@ test('home screen is ready to begin a listing', async ({ page }, testInfo) => {
         spec: 'The product promise is visible',
         check: async () => {
           await expect(page.getByRole('heading', { level: 1 })).toHaveText('List smarter.Earn more.');
-          await expect(page.getByText('Turn a few photos into a listing written like you, with pricing built for value.')).toBeVisible();
+          await expect(page.getByText('Start with photos. Review your draft and tell us how it should sound.')).toBeVisible();
         }
       },
       {
@@ -30,11 +30,11 @@ test('home screen is ready to begin a listing', async ({ page }, testInfo) => {
         check: async () => expect(page.getByRole('button', { name: 'Continue with Google' })).toBeEnabled()
       },
       {
-        spec: 'The seller-learning promise is complete',
+        spec: 'The feedback flow is complete',
         check: async () => {
-          await expect(page.getByText('Your listing style')).toBeVisible();
-          await expect(page.getByText('How you describe condition')).toBeVisible();
-          await expect(page.getByText('Your pricing approach')).toBeVisible();
+          await expect(page.getByText('Draft from your photos')).toBeVisible();
+          await expect(page.getByText('Refine the wording')).toBeVisible();
+          await expect(page.getByText('Remember your feedback')).toBeVisible();
         }
       },
 
