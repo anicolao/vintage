@@ -275,3 +275,11 @@ looking good, rebase and merge
 Prompt 65: Preserve capture continuity
 
 looking good, rebase and merge
+
+Prompt 66: Review project status
+
+review where we are at and suggest next steps, then stop
+
+Prompt 67: Specify market prototype
+
+I think we'd like to prototype some data gathering via our developer account. Write an EBAY_MARKET_DATA_POC.md that specifies some very basic pricing/data gathering, and specifies what we need to configure for a first test
