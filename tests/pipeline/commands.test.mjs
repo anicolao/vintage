@@ -1,3 +1,4 @@
+import { recordDeletion } from '../../functions/ebay-deletion.mjs';
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -152,4 +153,15 @@ test('duplicate approved listings with independent files, replayable capture and
   assert.equal((await pipeline.get()).data().status,'reviewing');
   await submit(uid,{kind:'reopen',listingId,expectedVersion:original.version});
   const staleId=randomUUID();await assert.rejects(()=>submit(uid,{...duplicate,listingId:staleId},staleId));
+});
+
+test('eBay deletion receipts advance a durable revision once per notification',async()=>{
+  const state=db.doc(`_pipelineTests/ebay-deletion-${randomUUID()}`);
+  await Promise.all([recordDeletion(state,'notification-one'),recordDeletion(state,'notification-one')]);
+  assert.equal((await state.get()).data().revision,1);
+  await recordDeletion(state,'notification-two');
+  assert.equal((await state.get()).data().revision,2);
+  const receipts=await state.collection('receipts').get();
+  assert.equal(receipts.size,2);
+  for(const row of receipts.docs)assert.deepEqual(Object.keys(row.data()),['receivedAt']);
 });

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { syncDeletions } from './sync-ebay-deletions.mjs';
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs, parseEnv } from 'node:util';
@@ -185,6 +186,7 @@ export async function main(args = process.argv.slice(2)) {
   try { credentials = parseEnv(await readFile(new URL(`../.env.${config.environment}`, import.meta.url), 'utf8')); }
   catch { throw new Error(`Create .env.${config.environment} in the worktree root with the matching eBay keyset.`); }
   if (['EBAY_APP_ID', 'EBAY_CERT_ID'].some(k => !credentials[k]?.trim() || /[\r\n]/.test(credentials[k]))) throw new Error('The selected environment file needs EBAY_APP_ID and EBAY_CERT_ID.');
+  if (config.environment === 'production') await syncDeletions();
   const parent = new URL('../.cache/ebay/', import.meta.url); await mkdir(parent, { recursive: true, mode: 0o700 });
   const directory = await mkdtemp(fileURLToPath(parent) + 'run-');
   const checkpoint = async report => {
@@ -194,6 +196,10 @@ export async function main(args = process.argv.slice(2)) {
     for (const [name, data] of [['results', results], ['summary', summary], ['analysis-input', bundle]]) await writeFile(`${directory}/${name}.json`, JSON.stringify(data, null, 2) + '\n', { mode: 0o600 });
   };
   const report = await collect(config, credentials, { checkpoint });
+  if (config.environment === 'production') {
+    const cleanup = await syncDeletions();
+    if (cleanup.removed) {console.log('Deletion notification received during collection; cached results removed.');process.exitCode=1;return;}
+  }
   console.log(`${report.environment}: OAuth ${report.authentication}; sold scope ${report.soldScope}; collection ${report.status}.`);
   for (const r of report.requests) console.log(`${r.stage}: HTTP ${r.httpStatus ?? 'unavailable'} — ${r.outcome}`);
   console.log(`Collected ${report.results.length} records. Saved ${directory}/analysis-input.json`);

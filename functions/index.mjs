@@ -1,8 +1,10 @@
+import { defineSecret } from 'firebase-functions/params';
+import { handler as deletionHandler, publicKeyLoader, recordDeletion } from './ebay-deletion.mjs';
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { setGlobalOptions } from 'firebase-functions/v2/options';
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { onRequest, onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { onObjectFinalized } from 'firebase-functions/v2/storage';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
@@ -52,3 +54,13 @@ export const cleanOrphanPhotos=onSchedule({schedule:'every 24 hours',region,time
   }
   await cursor.set({pageToken:response?.nextPageToken || '',updatedAt:new Date()});
 });
+
+const ebayVerificationToken=defineSecret('EBAY_DELETION_VERIFICATION_TOKEN');
+const ebayCredentials=defineSecret('EBAY_NOTIFICATION_CREDENTIALS');
+const deletionState=db.doc('_operations/ebay-deletions');
+const getEbayKey=publicKeyLoader(()=>JSON.parse(ebayCredentials.value()));
+export const ebayAccountDeletion=onRequest({region,invoker:'public',maxInstances:2,timeoutSeconds:60,secrets:[ebayVerificationToken,ebayCredentials]},deletionHandler({
+  token:()=>ebayVerificationToken.value(),getKey:getEbayKey,
+  revision:async()=> (await deletionState.get()).data()?.revision || 0,
+  record:notificationHash=>recordDeletion(deletionState,notificationHash)
+}));

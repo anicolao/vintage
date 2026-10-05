@@ -308,3 +308,25 @@ basic_oauth: HTTP 200 — ok
 sold_search_oauth: HTTP 200 — ok
 sold_search: HTTP 200 — ok
 Collected 0 records. Saved /home/anicolao/projects/vintage/.cache/ebay/run-u5iL2l/analysis-input.json
+
+Prompt 72: Clarify default environment
+
+we put production keys into .env, if we don't pass --environment will it use those by default?
+
+Prompt 73: Diagnose production authentication
+
+hmm. sandbox seems to work but prod says: $ npm run investigate:ebay -- --environment production --query "iphone 13"
+
+> vintage@0.0.0 investigate:ebay
+> node scripts/investigate-ebay.mjs --environment production --query iphone 13
+
+production: OAuth failed; sold scope not_tested; collection failed.
+basic_oauth: HTTP 401 — invalid_credentials
+
+Prompt 74: Explain verification token
+
+it looks like we need to do somethign for account deletion and it watnts a "verification token" where do we get that from?
+
+Prompt 75: Implement deletion endpoint
+
+OK let's implement that as a firebase function and write the token somewhere so taht we can configure it on ebay

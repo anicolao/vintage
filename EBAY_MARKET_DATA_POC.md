@@ -95,3 +95,7 @@ Extend the observed US camera case with additional populated records, formats an
 For a real-data test, configure a separate Production keyset in `.env.production` and explicitly select `--environment production`. Marketplace Insights remains restricted and not open to new users according to eBay's public access notice; Sandbox success does not settle Production access. [Marketplace support](https://developer.ebay.com/api-docs/buy/static/ref-marketplace-supported.html).
 
 The completed-sales acceptance target remains: terms alone discover recent sold records across formats, output is traceable and useful for permitted LLM pricing analysis, and missing/hidden amounts and sampling limits remain explicit. The superseded Trading user-token/manual-ID collector and its XML dependency have been removed. Broader integration questions remain in [EBAY_INTEGRATION.md](EBAY_INTEGRATION.md).
+
+## Production account-deletion configuration
+
+The Firebase callback and locally saved verification token are documented in [EBAY_NOTIFICATIONS.md](docs/EBAY_NOTIFICATIONS.md). Configure these in eBay to finish keyset activation. Production runs check deletion state before and after collection; keep `npm run ebay:sync-deletions -- --watch` running on machines retaining the prototype cache so verified notifications remove cached results.
