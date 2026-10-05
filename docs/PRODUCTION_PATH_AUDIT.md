@@ -1,8 +1,8 @@
 # Production path audit
 
-Updated 2026-09-21 for [PR #11](https://github.com/anicolao/vintage/pull/11). This report separates removed fakery from remaining product capabilities. The [original audit at `7808cb1`](https://github.com/anicolao/vintage/blob/201be0a/docs/PRODUCTION_PATH_AUDIT.md) recorded the fixed generator before its replacement; its source locations describe that historical code, not the current branch.
+Updated 2026-10-05 for [PR #12](https://github.com/anicolao/vintage/pull/12). This report separates removed fakery from remaining product capabilities. The [original audit at `7808cb1`](https://github.com/anicolao/vintage/blob/201be0a/docs/PRODUCTION_PATH_AUDIT.md) recorded the fixed generator before its replacement; its source locations describe that historical code, not the current branch.
 
-The deployed runtime now calls Vertex AI with actual normalized photos, context and remembered language feedback. Fixed jacket copy, the £48 recommendation, style onboarding and sample-only contracts have been removed. Pricing remains manual GBP entry: market retrieval, valuation and sale estimates are still absent. The new draft and approved-listing lifecycle uses real device persistence, Firebase commands and independent Storage files.
+The deployed runtime now calls Vertex AI with actual normalized photos, context and remembered language feedback. Fixed jacket copy, the £48 recommendation, style onboarding and sample-only contracts have been removed. Pricing now combines optional manual GBP entry with live Soldgraph retrieval and Vertex AI comparable selection. Recommendations use actual selected displayed prices; predicted sale outcomes remain absent. The new draft and approved-listing lifecycle uses real device persistence, Firebase commands and independent Storage files.
 
 ## Status of the original findings
 
@@ -14,9 +14,9 @@ P0 denotes a missing capability that blocks the planned complete product; P1 den
 | 2 / P0: fixed item copy | Replaced | Real photo-dependent copy and explicit unknown attributes are validated. Restore suggestion uses the actual model proposal. Representative item-quality evaluation remains open. |
 | 3 / P0: fake style learning | Removed | No example setup, learned-profile claim or readiness gate. Explicit language feedback revises the current wording and is remembered for later requests, with Forget controls. |
 | 4 / P0: fixed uncertainty | Replaced; evaluation open | Validated model confidence and observations are rendered with actual input photo IDs. Model confidence is subjective, not calibrated accuracy; do not present it as such. |
-| 5 / P0: fixed £48 price | Removed | Price starts empty and is seller-entered. Saving a draft permits no price; approval requires a valid positive GBP price. No recommended valuation is claimed. |
-| 6 / P0: market evidence and estimates | **Open** | No asking/sold comparable retrieval, source freshness/relevance calculation, sale ranges, probabilities, expected revenue or time-to-sale model. The eBay investigation scripts on main are research tools, not a connected product pricing path. |
-| 7 / P0: unrelated evidence IDs | Photo path replaced; market evidence open | The real generator receives pinned image bytes and returns validated photo references. Review shows its observations and the real photos. Generation/revision records preserve model and input provenance. Grounding quality still needs evaluation; market provenance depends on item 6. |
+| 5 / P0: fixed £48 price | Removed | Price starts empty; the seller enters it or explicitly adopts a median-based recommendation from at least three selected sold comparables. Saving a draft permits no price; approval requires a valid positive GBP price. |
+| 6 / P0: market evidence and estimates | Retrieval and recommendation integrated; evaluation open | Live Soldgraph UK sold search, 30-day evidence filtering, Vertex AI relevance selection, validated source IDs, displayed-price median and comparable range. Accepted offers and unusable prices are excluded. Predicted sale range, probabilities, expected revenue and time to sale remain unavailable. |
+| 7 / P0: unrelated evidence IDs | Photo and market paths replaced; evaluation open | The real generator receives pinned image bytes and returns validated photo references. Review shows its observations and the real photos. Generation/revision records preserve model and input provenance. Market results preserve query, request ID, dates, links, selection reasons and model identity. Grounding quality still needs evaluation. |
 | 8 / P0: sample-only contracts | Replaced | [proposal.mjs](../functions/shared/proposal.mjs) validates schema version 2, real provider/model metadata and exact snapshots. No `sample: true` contract. |
 | 9 / P0: approving fixture output | Closed for current approvals | Retired proposals require real regeneration. Approval validates exact copy, price, photo version and provenance. Reopening clears current approval; duplicating never copies approval. Historical approval events remain unchanged. |
 | 10 / P1: artificial stages/UI | Removed | Actual derivative preparation, validated inference and durable review completion drive progress. Obsolete setup screens and empty learning stages are deleted. |
@@ -43,8 +43,12 @@ Earlier live checks exercised real photo generation, feedback across two listing
 
 ## Next priorities
 
-1. Implement actual market retrieval and evidence-backed pricing after confirming pilot market/currency and usable sources. Distinguish asking, sold and modeled values; genuine insufficient evidence must remain possible.
+1. Evaluate real comparable relevance and recommendation quality across representative UK items. Define cloud evidence retention/deletion, spend limits and freshness policy; no sale-probability or time-to-sale claim is supported yet.
 2. Evaluate real generation and language revisions on representative items, ambiguity, adversarial input and conflicting feedback. Establish quality, latency and spending thresholds with monitoring.
 3. Complete phone Safari/Chrome checks of draft saving, editing approvals, duplicating, offline recovery and both system appearances. Confirm Google sign-in and isolated ownership in the intended pilot deployment.
 
-The removal of fixed demo output and addition of durable lifecycle actions do not complete market pricing or pilot readiness.
+Live market retrieval is now connected to review. Source coverage, matching quality, retention policy and operational readiness remain explicit gates.
+
+## Market research integration
+
+New generation queues independent background market research. Existing reviews can request it explicitly. The query and one-credit idempotency key survive retries; completed searches are reused for model retries. Results are stored in an owner-readable, server-authored market document, separately from editable workflow versions. Late completion cannot overwrite copy, price or approval. Refresh intents persist on the device; stale item details disable adopting an old recommendation. A failed or insufficient search leaves manual pricing and navigation available. API credentials are held in Secret Manager and used only by the worker. Test HTTP responses remain confined to the guarded emulator test server.

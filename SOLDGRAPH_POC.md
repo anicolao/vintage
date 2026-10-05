@@ -1,6 +1,6 @@
 # Soldgraph sold-listing proof of concept
 
-A local keyword collector for personal pricing research, implemented in [scripts/investigate-soldgraph.mjs](scripts/investigate-soldgraph.mjs). This uses Soldgraph's live eBay sold-listing search independently of the restricted official Marketplace Insights API. It is not integrated into listing generation yet.
+A local keyword collector for personal pricing research, implemented in [scripts/investigate-soldgraph.mjs](scripts/investigate-soldgraph.mjs). This uses Soldgraph's live eBay sold-listing search independently of the restricted official Marketplace Insights API. It is also integrated into the live Firebase product preview: new drafts start background market research, and existing reviews expose Research price / Refresh price evidence.
 
 ## Configuration and first test
 
@@ -44,3 +44,13 @@ The configured key successfully searched `iphone 13`, country `uk`: HTTP 202 fol
 Eight rows were excluded for accepted/unknown offer status and two for missing/invalid prices. Thirty rows had usable GBP prices. Results included iPhone 15, Pro/Max/mini variants and damaged devices, so a broad-query aggregate is **not an iPhone 13 valuation**. The API access and asynchronous collection path are proven; relevance selection and LLM analysis remain the next experiment.
 
 Eight automated tests cover asynchronous completion, deduplication, the one-page budget, price exclusions and decimal/currency handling, empty vs failed responses, unsafe polling URLs, credential redaction, resuming, argument validation and bounded polling. Run `npm run test:soldgraph`; CI runs the same command.
+
+## Product integration
+
+The CLI and deployed worker share `functions/soldgraph.mjs`. `functions/market.mjs` asks Vertex AI for a query based on item details, collects one UK page, and asks the model to select relevant evidence IDs with reasons. Server code computes the median and observed range from validated GBP rows; three matches are required. No price is invented by the model. The seller explicitly chooses whether to use the recommendation.
+
+The operator setup command `nix develop --command node scripts/configure-soldgraph.mjs` publishes `.env`'s key to Secret Manager and grants the existing worker access. Only `executeCommand` binds the secret. Deploy the reviewed Functions contract and update the backend digest before the PR Hosting build. Browser code never receives the key.
+
+Research persists its query, job ID, search result and stable idempotency key in owner-scoped operations. A retry resumes the same search or reuses completed evidence, with at most three worker attempts. New explicit refreshes each consume another search credit. Current results live at the listing's `pipeline/market` document. Those cloud records are not covered by the local eBay deletion watcher; a broader retention/deletion policy remains to be implemented before extending use beyond this personal prototype.
+
+Live product-worker smoke on 5 October 2026: an isolated manually entered iPhone 13 review queued a real Firestore operation. Deployed Vertex AI built the query, Soldgraph supplied evidence, and Vertex AI selected 12 comparables. The worker persisted a ready recommendation (£154.39) while preserving the existing £99.99 manual price and workflow version. Temporary records were deleted. This verifies live worker/secret/provider integration; automated browser tests exercise the authenticated callable and evidence UI. Google sign-in and matching quality on your actual items still need review in the preview.

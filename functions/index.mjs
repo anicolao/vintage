@@ -15,7 +15,9 @@ const db=getFirestore();
 const projectId=app.options.projectId || process.env.GCLOUD_PROJECT;
 const bucketName=projectId==='demo-vintage' ? 'demo-vintage.appspot.com' : 'vintage-review-anicolao.firebasestorage.app';
 const bucket=getStorage().bucket(bucketName);
+const soldgraphKey=defineSecret('SOLDGRAPH_API_KEY');
 const service=new PipelineService(db,bucket,projectId);
+if(projectId!=='demo-vintage')service.market.key=()=>soldgraphKey.value();
 const region='europe-west1';
 if (projectId!=='demo-vintage') setGlobalOptions({serviceAccount:'vintage-pipeline-runtime@vintage-review-anicolao.iam.gserviceaccount.com'});
 export const submitCommand=onCall({region,maxInstances:10,timeoutSeconds:60},async request=>{
@@ -27,7 +29,7 @@ export const submitCommand=onCall({region,maxInstances:10,timeoutSeconds:60},asy
     throw new HttpsError('internal','This change could not sync. Please try again.');
   }
 });
-export const executeCommand=onDocumentCreated({document:'workspaces/{workspace}/accounts/{uid}/operations/{commandId}',region,retry:true,memory:'1GiB',timeoutSeconds:300,maxInstances:5},event=>service.execute(event.data.ref));
+export const executeCommand=onDocumentCreated({document:'workspaces/{workspace}/accounts/{uid}/operations/{commandId}',region,retry:true,memory:'1GiB',timeoutSeconds:540,maxInstances:5,secrets:projectId==='demo-vintage'?[]:[soldgraphKey]},event=>service.execute(event.data.ref));
 export const normalizeOriginal=onObjectFinalized({bucket:bucketName,region,retry:true,memory:'1GiB',timeoutSeconds:120,maxInstances:5},async event=>{
   const file=event.data;
   if (event.time && Date.now()-Date.parse(event.time)>86400000) return;

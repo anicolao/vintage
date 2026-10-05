@@ -10,6 +10,7 @@
   import AccountMenu from './AccountMenu.svelte';
   import PhotoTile from './PhotoTile.svelte';
   import Icon from './Icon.svelte';
+  import MarketPrice from './MarketPrice.svelte';
   import PipelineStatus from './PipelineStatus.svelte';
   export let id:string;export let uid:string;export let workflow:Workflow;
   let capturedPhotos:Photo[]=[];let captureEvents:unknown[]=[];
@@ -141,7 +142,7 @@
     {#if $instructions.length}<details><summary>Remembered feedback</summary>{#each $instructions as instruction}<div class="remembered-instruction"><p>{instruction.text}</p><button class="text-button" aria-label={`Forget instruction: ${instruction.text}`} onclick={()=>forget(instruction.id)}>Forget</button></div>{/each}</details>{/if}
   </section>
   <section class="glass flow-card price-card"><h2>Listing price</h2><label class="price-label" for="listing-price"><span aria-hidden="true">£</span><input id="listing-price" aria-label="Listing price in GBP" inputmode="decimal" bind:value={price} onfocus={()=>activeField='price'} onblur={()=>activeField=''} oninput={choosePrice}/></label>
-    <p class="supporting">Enter your asking price. Market-backed recommendations are not available yet.</p>
+    <MarketPrice {uid} {id} {current} {baseVersion} usePrice={async suggestion=>{price=(suggestion.minor/100).toFixed(2);await choosePrice();}}/>
   </section>
   {#if current.input && baseVersion!==current.input.baseVersion}<p role="status">Photos or context changed after this proposal. Create another proposal from the updated photos before approving.</p>{/if}
   <button class="secondary" disabled={acting} onclick={saveDraft}>Save draft</button>

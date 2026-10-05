@@ -165,3 +165,36 @@ test('eBay deletion receipts advance a durable revision once per notification',a
   assert.equal(receipts.size,2);
   for(const row of receipts.docs)assert.deepEqual(Object.keys(row.data()),['receivedAt']);
 });
+
+test('background price research preserves edits and approval; replay never repeats provider work',async()=>{
+  const {uid,account,listingId,target,commandId}=await listing();
+  const market=target.parent.doc('market');const pending=(await market.get()).data();
+  assert.equal(pending.status,'pending');assert.equal(pending.id,`${commandId}-market`);
+  const state=(await target.get()).data();
+  await submit(uid,{kind:'edit',listingId,expectedVersion:state.version,field:'title',value:'Updated while researching',previousValue:state.copy.title});
+  await submit(uid,{kind:'price',listingId,expectedVersion:state.version+1,price:{currency:'GBP',minor:4200}});
+  const reviewed=(await target.get()).data();
+  await submit(uid,{kind:'approve',listingId,expectedVersion:reviewed.version,baseVersion:2,snapshot:resolvedSnapshot(reviewed)});
+  const approved=(await target.get()).data();
+  const op=account.collection('operations').doc(pending.id);
+  await service.execute(op);await service.execute(op);
+  const result=(await market.get()).data();assert.equal(result.status,'ready');assert.equal(result.suggestedPrice.minor,2500);
+  assert.deepEqual((await target.get()).data(),approved);
+  assert.equal(result.sourceCopy.title,state.copy.title);
+});
+
+test('failed market research leaves review usable; explicit retries pin current copy and enforce ownership',async()=>{
+  const {uid,account,listingId,target,commandId}=await listing();
+  const before=(await target.get()).data();const op=account.collection('operations').doc(`${commandId}-market`);
+  const provider=service.market;service.market={research:async()=>{throw new Error('Provider unavailable');}};
+  try {await assert.rejects(()=>service.execute(op));await assert.rejects(()=>service.execute(op));await service.execute(op);}finally{service.market=provider;}
+  const market=target.parent.doc('market');assert.equal((await market.get()).data().status,'failed');
+  assert.deepEqual((await target.get()).data(),before);
+  const request={kind:'market',listingId,expectedVersion:before.version,copy:before.copy};
+  await assert.rejects(()=>submit('another-owner',request));
+  await assert.rejects(()=>submit(uid,{...request,copy:{...before.copy,title:'Outdated'}}));
+  const retry=randomUUID();await submit(uid,request,retry);await submit(uid,request,retry);
+  assert.deepEqual((await target.get()).data(),before);
+  await service.execute(account.collection('operations').doc(retry));
+  assert.equal((await market.get()).data().status,'ready');
+});

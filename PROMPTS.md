@@ -366,3 +366,7 @@ let's try a PoC with Soldgraph
 Prompt 84: Locate Soldgraph key
 
 it is in .env as SOLDGRAPH_API_KEY
+
+Prompt 85: Integrate preview pricing
+
+aat a glance, these results look good for prototyping. Let's integrate - or have we already integrated? - so that we can test in the PR preview of our actual product

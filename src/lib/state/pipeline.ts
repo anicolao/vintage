@@ -20,6 +20,7 @@ export type Request =
   | {kind:'forget';listingId:string;expectedVersion:number;instructionId:string}
   | {kind:'generate';listingId:string;expectedVersion:number;photoIds:string[];context:string;replace:boolean}
   | {kind:'edit';listingId:string;expectedVersion:number;field:ListingField;value:string;previousValue:string}
+  | {kind:'market';listingId:string;expectedVersion:number;copy:Copy}
   | {kind:'price';listingId:string;expectedVersion:number;price:Money|null}
   | {kind:'save'|'reopen';listingId:string;expectedVersion:number}
   | {kind:'duplicate';listingId:string;expectedVersion:0;sourceListingId:string;sourceVersion:number}
@@ -102,7 +103,7 @@ export const workflows=derived([cloudWorkflows,pipelineIntents],([$cloud,$intent
     if (r.kind==='price') state.price=r.price;
     if (r.kind==='generate') state={...state,status:'generating',stage:0,revision:null};
     if (r.kind==='approve') state={...state,status:'approval-pending',approved:r.snapshot};
-    state.version++;all[r.listingId]=state;
+    if(r.kind!=='market')state.version++;all[r.listingId]=state;
   }
   return all;
 });
@@ -114,7 +115,7 @@ export async function enqueue(request:Request,seed?:Workflow) {
     const intents=await changeQueue(owner, previous=>{
       const intents=[...previous];
       const server=get(cloudWorkflows)[request.listingId] || emptyWorkflow();
-      const matching=intents.filter(i=>(i.request.listingId===request.listingId) && i.commandId!==server.lastCommandId);
+      const matching=intents.filter(i=>(i.request.listingId===request.listingId) && i.commandId!==server.lastCommandId && i.request.kind!=='market');
       if (request.kind==='edit' || request.kind==='price' || request.kind==='feedback' || request.kind==='forget' || request.kind==='save' || request.kind==='reopen') request={...request,expectedVersion:server.version+matching.length};
       const last=intents.at(-1);
       if (last && !last.delivering && !last.error &&
