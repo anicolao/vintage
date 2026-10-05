@@ -16,7 +16,7 @@ npm ci
 npm run investigate:ebay -- \
   --query "Barbour Bedale wax jacket" \
   --query "Le Creuset casserole 24cm" \
-  --marketplace EBAY_GB --days 30 --limit 50
+  --environment production --marketplace EBAY_GB --days 30 --limit 50
 ```
 
 One run should produce a short console summary and `.cache/ebay/run-*/analysis-input.json`, containing real records, source references, descriptive price statistics and instructions for the LLM. Default to the last 30 days and at most 50 unique source records per query. UK is the initial test setting, not a final pilot-market decision. Preserve each record's actual currency.
@@ -42,15 +42,17 @@ If our account cannot access completed-sales search, the experiment records that
 
 ## Configuration for our first test
 
+The user confirmed that the current `.env` keys are **Sandbox** keys. They can support authentication and API mechanics tests for endpoints available in Sandbox, but cannot retrieve real completed sales. Real-market collection requires a Production keyset plus sold-search entitlement; obtaining Production keys alone does not establish that entitlement. Sandbox is a separate test environment with simulated listings and transactions. [eBay environment guide](https://developer.ebay.com/api-docs/static/gs_understand-the-sandbox-and.html).
+
 The worktree `.env` already contains these variable names; only names were inspected while writing this specification:
 
 | Existing variable | Prototype use |
 | --- | --- |
-| `EBAY_APP_ID` | OAuth client ID for the Production application. |
-| `EBAY_CERT_ID` | OAuth client secret for that same keyset. |
+| `EBAY_APP_ID` | OAuth client ID for the selected environment; currently Sandbox. |
+| `EBAY_CERT_ID` | OAuth client secret for that same environment/keyset. |
 | `EBAY_DEV_ID` | Retain the existing value; it is not used in the client-credentials token exchange. |
 
-Confirm in the developer portal that these belong to an enabled **Production** keyset and check its Marketplace Insights entitlement and granted scopes. Do not replace the file or ask the operator to mint a Trading user token for this search flow.
+Keep the current Sandbox keys for development. Make the prototype require an explicit environment selection, using the Sandbox token host for Sandbox and the Production token host for Production, with matching API endpoints. Never send the current Sandbox credentials to Production. For the real-data run, configure a separate enabled **Production** keyset and check its Marketplace Insights entitlement and granted scopes. Do not replace the file or ask the operator to mint a Trading user token for this search flow.
 
 For an entitled application, mint an application access token programmatically using the client-credentials grant at `https://api.ebay.com/identity/v1/oauth2/token`, with HTTP Basic authentication from App ID/Cert ID and the exact scope specified for the chosen method. Keep the token in memory and renew it when needed. The developer portal lists scopes associated with the keyset. [eBay authorization](https://developer.ebay.com/develop/guides/sell/authorization).
 

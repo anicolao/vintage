@@ -287,3 +287,7 @@ I think we'd like to prototype some data gathering via our developer account. Wr
 Prompt 68: Automate sales discovery
 
 this first step sucks. we don't want to have to look up thiings by hand. Instead, let's do a prototype where we search for some terms, the script automatically finds recently completed auctions and returns data for the LLM to analyze. don't limit it to auctions; use any completed sales for pricing. we made a .env file with the appropriate secrets, update the POC doc with this approach
+
+Prompt 69: Clarify sandbox requirements
+
+we set up keys for sandbox, not production - is a production keyset a hard requirement?
