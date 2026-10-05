@@ -99,3 +99,7 @@ The completed-sales acceptance target remains: terms alone discover recent sold 
 ## Production account-deletion configuration
 
 The Firebase callback and locally saved verification token are documented in [EBAY_NOTIFICATIONS.md](docs/EBAY_NOTIFICATIONS.md). Configure these in eBay to finish keyset activation. Production runs check deletion state before and after collection; keep `npm run ebay:sync-deletions -- --watch` running on machines retaining the prototype cache so verified notifications remove cached results.
+
+## Production retest after account-deletion setup
+
+On 5 October 2026, `--environment production --query "iphone 13" --limit 5` passed basic OAuth (HTTP 200), confirming that the configured Production credentials now authenticate. Requesting the Marketplace Insights scope failed with HTTP 400 and `invalid_scope`. The collector reported `access_blocked`; it did not reach the search endpoint or retrieve any sales. The next dependency is Production permission for `https://api.ebay.com/oauth/api_scope/buy.marketplace.insights`, rather than a different keyword or credential format.

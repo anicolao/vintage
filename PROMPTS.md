@@ -330,3 +330,7 @@ it looks like we need to do somethign for account deletion and it watnts a "veri
 Prompt 75: Implement deletion endpoint
 
 OK let's implement that as a firebase function and write the token somewhere so taht we can configure it on ebay
+
+Prompt 76: Retest production access
+
+we think we did it, test prod again
