@@ -283,3 +283,7 @@ review where we are at and suggest next steps, then stop
 Prompt 67: Specify market prototype
 
 I think we'd like to prototype some data gathering via our developer account. Write an EBAY_MARKET_DATA_POC.md that specifies some very basic pricing/data gathering, and specifies what we need to configure for a first test
+
+Prompt 68: Automate sales discovery
+
+this first step sucks. we don't want to have to look up thiings by hand. Instead, let's do a prototype where we search for some terms, the script automatically finds recently completed auctions and returns data for the LLM to analyze. don't limit it to auctions; use any completed sales for pricing. we made a .env file with the appropriate secrets, update the POC doc with this approach

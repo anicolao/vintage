@@ -1,118 +1,108 @@
 # eBay market data proof of concept
 
-Status: first-test specification, 5 October 2026. No authenticated eBay run or market-data access has been verified for this document.
+Status: revised specification, 5 October 2026. This document specifies the prototype to build; automated completed-sales search is not implemented or authenticated yet.
 
-## Goal
+## Goal and first experience
 
-Use our existing eBay developer account to retrieve a few real listings and answer two questions:
+Enter search terms and get recent completed-sale evidence that an LLM can analyze for pricing. The script discovers the listings, gathers their data, normalizes it and writes an analysis bundle. The operator supplies no item IDs and does no manual listing lookup or classification.
 
-1. Can our application read useful price and outcome fields, including for another seller's recently ended auction?
-2. Can we make a small, clearly labelled price comparison from those responses?
+Include all supported sale formats: auctions, fixed-price/Buy It Now and accepted offers where the source exposes them. “Completed” must mean sold evidence, not merely an ended listing. Missing transaction amounts remain unknown.
 
-Run the existing [local collector](scripts/investigate-ebay.mjs) manually. It already implements Trading API `GetItem`, JSON output and sanitized XML excerpts. The [earlier prototype notes](EBAY_INVESTIGATION_PROTOTYPE.md) describe its implementation; this document is the first-test checklist and basic pricing exercise. No collector changes are required to try it.
-
-## Smallest useful experiment
-
-Choose one narrow item type, such as one brand and model of used jacket, and gather **3–5 numeric eBay listing IDs** manually from listing URLs or our account history:
-
-- One active fixed-price listing, for asking-price context.
-- Two recently ended auctions that appear to have sold, ideally comparable items.
-- One ended auction that appears unsold, if available.
-- Optionally one listing owned by the account granting access, to compare field visibility.
-
-Include at least one **non-owned ended auction**. Prefer single-item listings without variations or bundles. Record each source URL and why the item belongs in the comparison. If appropriate examples cannot be found, record that limitation rather than substituting unrelated items.
-
-Use UK/GBP as the proposed first-test market; this is an experiment default, not a pilot-market decision. UK Trading site ID is `3`. Preserve the actual response currency even when requesting site 3. [eBay site codes](https://developer.ebay.com/devzone/xml/docs/reference/ebay/types/SiteCodeType.html).
-
-`GetItem` retrieves known IDs; it does not search for completed sales. eBay documents a 90-day limit on retrieving ended listing details, and some fields depend on whether the caller owns the listing. Prefer listings ended within the last week, after end-of-listing processing has settled. [GetItem reference](https://developer.ebay.com/devzone/xml/docs/Reference/ebay/GetItem.html).
-
-## Configure before the first test
-
-| Setting | What we need |
-| --- | --- |
-| Developer application | An enabled **Production** keyset in our eBay developer account. Sandbox credentials do not retrieve real market listings. |
-| Authorizing account | One real eBay user who can consent to our application. Developer-account access alone is not a user access token. |
-| Token | A fresh **OAuth User access token** from that Production keyset. The collector does not accept an application-only token, refresh token or Auth'n'Auth token. |
-| Local secret | `EBAY_USER_TOKEN` in the worktree-root `.env` file. This file is already gitignored. |
-| Marketplace | `--site-id 3` for this UK test. |
-| Inputs | 3–5 real numeric item IDs, with source URLs and expected listing types recorded separately. |
-| Runtime | The repository's Nix development environment and installed npm dependencies. |
-
-### Obtain the token
-
-In the developer portal, open **Application Keys → Production → User Tokens**. Under **Get a User Token Here**, choose **OAuth (new security)**, sign in with the real eBay account and grant access. Copy the returned user access token. Generate it shortly before testing; it is short-lived.
-
-If the portal requires sign-in configuration, configure the Production RuName with the application's display title, privacy-policy URL and accepted/declined URLs. Follow the portal's OAuth setup; the collector itself needs only the resulting token and implements no callback or refresh flow. [eBay authorization and portal token instructions](https://developer.ebay.com/develop/guides/sell/authorization).
-
-Confirm the Production keyset is enabled before testing. If the portal flags account-deletion notification requirements, resolve those in the application settings under eBay's documented process. Record an unresolved account requirement as a setup blocker. [Account-deletion setup](https://developer.ebay.com/develop/guides/sell/marketplace-user-account-deletion).
-
-Add this entry to `.env`, preserving any existing entries:
-
-```dotenv
-EBAY_USER_TOKEN="paste-the-production-OAuth-user-access-token-here"
-```
-
-The collector reads this file automatically; its token takes precedence over an exported variable. No App ID, client secret, refresh token, Firebase setting or browser UI change is needed in the collector configuration. Keep the token out of commands, screenshots, findings and commits.
-
-## Run once
-
-From the repository root:
+Proposed invocation, **not an existing command**:
 
 ```sh
 nix develop
 npm ci
-npm run investigate:ebay -- --help
+npm run investigate:ebay -- \
+  --query "Barbour Bedale wax jacket" \
+  --query "Le Creuset casserole 24cm" \
+  --marketplace EBAY_GB --days 30 --limit 50
 ```
 
-Then replace the placeholders below with the selected numeric IDs:
+One run should produce a short console summary and `.cache/ebay/run-*/analysis-input.json`, containing real records, source references, descriptive price statistics and instructions for the LLM. Default to the last 30 days and at most 50 unique source records per query. UK is the initial test setting, not a final pilot-market decision. Preserve each record's actual currency.
 
-```sh
-npm run investigate:ebay -- --site-id 3 ITEM_ID_1 ITEM_ID_2 ITEM_ID_3
-```
+## Source and access test
 
-Production is the default; do not add `--sandbox` for this test. The script performs one request per distinct ID, up to five, with a 15-second timeout per request and no automatic retries. It prints a table and saves `.cache/ebay/run-*/results.json` plus allowlisted XML excerpts. These local outputs are gitignored.
+Target eBay **Marketplace Insights item-sales search**, subject to our Production application's entitlement. eBay's public documentation associates `lastSoldDate` with Marketplace Insights search and supports both auction and fixed-price buying formats. Omit a buying-format restriction so the query does not exclude fixed-price sales. Do not assume `BEST_OFFER` is a supported filter: the documentation explicitly excludes that filter for Marketplace Insights. Retain offer outcomes wherever returned, and mark undisclosed accepted amounts unknown. [Search filters](https://developer.ebay.com/api-docs/buy/static/ref-buy-browse-filters.html).
 
-Inspect HTTP status **and** eBay acknowledgement/errors. Exit status `0` means the lookups succeeded, `1` means at least one failed, and `2` means setup failed. Lookup success does not establish that a price is usable. If authentication expires, replace the token and rerun manually. If an ID is unavailable, retain the error as a finding; do not treat it as an unsold item.
+There is a concrete access dependency: eBay lists Marketplace Insights as restricted and not open to new users. Its method reference currently redirects to authenticated documentation. Existing developer keys do not prove that our application has access. [Marketplace support and access notice](https://developer.ebay.com/api-docs/buy/static/ref-marketplace-supported.html), [item-sales search reference](https://developer.ebay.com/api-docs/buy/marketplace-insights/resources/item_sales/methods/search).
 
-## Data and basic pricing exercise
+The first implementation must therefore:
 
-The collector already records:
+1. Load our existing credentials and request the application token required by the entitled sold-search API.
+2. Perform one bounded keyword/date-window request to test access and inspect the actual response contract.
+3. If successful, continue automatic pagination and collection for the supplied queries.
+4. If authorization or product access is unavailable, write an `access_blocked` result with sanitized API error details and stop. Distinguish invalid credentials, unsupported scope, denied API access and unsupported marketplace; do not label every failure as lack of entitlement.
 
-| Fields | What to inspect |
+Confirm the endpoint, required scope, pagination and response fields against the method documentation visible to our account before implementing the adapter. Do not invent a working request from an inaccessible reference. Token success alone is not a passed data-access test.
+
+The old Finding API, including the former completed-item search approach, is not a viable implementation target: eBay decommissioned Finding in Q1 2025. Browse is not a substitute for historical sold-price search. [eBay decommission notice](https://www.developer.ebay.com/updates/newsletter/q1_2025).
+
+If our account cannot access completed-sales search, the experiment records that dependency for an entitled or licensed sold-data source. It must not quietly switch to active asks, the account's own orders, manually supplied IDs or fabricated sales. The desired keyword-to-completed-sales workflow remains the requirement.
+
+## Configuration for our first test
+
+The worktree `.env` already contains these variable names; only names were inspected while writing this specification:
+
+| Existing variable | Prototype use |
 | --- | --- |
-| Requested/returned item ID, fetch time, site, environment | Identity and provenance |
-| HTTP status, acknowledgement, errors, missing/invalid fields | Whether the response is usable |
-| Title, listing type, end time, ending reason, listing status | Item context and completion state |
-| Current price as a decimal string, currency | Observed amount and units |
-| Bid count, reserve met, quantity sold, sold-as-Buy-It-Now | Evidence needed to interpret an auction outcome |
+| `EBAY_APP_ID` | OAuth client ID for the Production application. |
+| `EBAY_CERT_ID` | OAuth client secret for that same keyset. |
+| `EBAY_DEV_ID` | Retain the existing value; it is not used in the client-credentials token exchange. |
 
-Compare the JSON with the corresponding sanitized XML. Preserve missing values as unknown. The script does **not** collect shipping, fees, paid-order confirmation or enough attributes to rank comparables automatically.
+Confirm in the developer portal that these belong to an enabled **Production** keyset and check its Marketplace Insights entitlement and granted scopes. Do not replace the file or ask the operator to mint a Trading user token for this search flow.
 
-For the first run, manually annotate each record in a local findings note:
+For an entitled application, mint an application access token programmatically using the client-credentials grant at `https://api.ebay.com/identity/v1/oauth2/token`, with HTTP Basic authentication from App ID/Cert ID and the exact scope specified for the chosen method. Keep the token in memory and renew it when needed. The developer portal lists scopes associated with the keyset. [eBay authorization](https://developer.ebay.com/develop/guides/sell/authorization).
 
-| Price group | Treatment |
+Search terms, marketplace, lookback and record cap are command arguments, not secrets. The script loads `.env` from the worktree root automatically. No Firebase deployment, OAuth user-consent UI or manually collected listing IDs are needed for this local prototype. Do not log credential values, authorization headers or token responses.
+
+For the LLM handoff, record whether our eBay agreement permits sending this source's data to the intended model/provider. eBay's Restricted API terms require prior written consent for ingestion into external AI systems. This is separate from technical API entitlement. The prototype can collect permitted local evidence and describe its schema while marking external LLM handoff blocked until that permission is established. [API licence, Restricted API requirements](https://developer.ebay.com/join/api-license-agreement).
+
+## Automatic collection and normalization
+
+For each query, calculate a fixed UTC window ending at run start. Use the source's sold-date filter, follow its pagination and stop at the requested cap or exhaustion. Sort collected records by returned sale date; record the source ordering and any truncation rather than claiming the sample contains every recent sale. Record aggregate date semantics separately if the source returns listing summaries rather than individual transactions.
+
+Use a 15-second per-request timeout and a maximum of 10 search-page requests per query for the first test. Keep partial results on interruption. Respect rate-limit responses and record failures without unbounded retries. Deduplicate overlapping query results using source sale/transaction identity where available, otherwise source listing identity, while retaining every matching query. Do not manufacture individual sales from a quantity-sold count.
+
+Normalize available fields into the following **proposed output contract**, not assumed eBay response field names:
+
+| Group | Fields and interpretation |
 | --- | --- |
-| Active fixed-price ask | Report as an asking price only. |
-| Active auction | Report as a starting price/current bid; exclude from completed-auction summaries. |
-| Completed auction with consistent winning-sale evidence | Report as an observed winning bid, payment unverified. Require completed processing, positive bids and sold quantity, satisfied reserve, and no contradictory ending reason or Buy It Now outcome. Missing decisive fields leave the outcome unknown. |
-| Unsold, Buy It Now, missing or ambiguous outcome | Keep separately with the reason; exclude from the winning-bid summary. |
+| Identity | Stable evidence ID, source item/sale ID, source URL, matching queries, marketplace and fetch time. |
+| Item | Title, category, condition, brand/model/size and lot or variation information when returned. |
+| Outcome | Source-reported sold status, sale/last-sold date, sale format when known, quantity and whether the row is a transaction or listing aggregate. |
+| Price | Decimal-string amount and currency, price basis (`sale`, `aggregate`, `displayed` or `unknown`), original field name and accepted-offer amount visibility. |
+| Costs | Shipping amount/currency if exposed; otherwise unknown. Keep item price distinct from delivered cost and seller proceeds. |
+| Evidence quality | Payment verification (unknown unless explicitly supported), missing fields, source errors and any reason for exclusion from price statistics. |
 
-`CurrentPrice` can mean a starting price, current highest bid or fixed asking price; it does not establish payment. Buy It Now outcomes must not be valued from an auction's bid field. [SellingStatus field semantics](https://developer.ebay.com/devzone/xml/docs/reference/ebay/types/SellingStatusType.html).
+Include auction and non-auction sales on the same terms. An accepted offer is useful evidence if its actual price is disclosed; an advertised price attached to an undisclosed offer is not the accepted amount. Do not infer payment, returns or cancellations from a sold-search result.
 
-Within each comparable group and currency, report the included IDs, count and individual prices. If at least three suitable observations exist, manually calculate minimum, median and maximum, keeping asks and winning bids separate. With fewer observations, list the prices and state **insufficient sample for a summary**. Use exact decimal amounts; do not convert currencies or interpret missing shipping as free shipping.
+## LLM-ready results and basic pricing
 
-This is a descriptive comparison of a hand-selected sample. It does not produce a Vintage recommended price, paid-sale range, sale probability or time-to-sale estimate. The first mixed sample may yield no aggregate at all; useful field-access evidence still makes the test worthwhile.
+Write three files under the gitignored run directory:
 
-## First-test result and next decision
+- `results.json`: normalized records, source-field provenance and exclusions.
+- `summary.json`: query/window metadata, counts, pagination completeness, errors and price statistics.
+- `analysis-input.json`: the self-contained summary, evidence records and analysis instructions, with an explicit handoff-permission status. No automatic LLM submission in this first collector.
 
-Write a short local findings note alongside the output, containing:
+Calculate count, minimum, median and maximum from eligible source-reported sale amounts using decimal-safe arithmetic. Keep currencies, individual transactions and aggregate-price records separate. Retain format breakdowns where known. Exclude unknown/advertised amounts, unsold records, duplicates and ambiguous bundles from the sale-price summary; retain their exclusion reasons. With fewer than three eligible observations, report insufficient evidence and list the observations. A missing shipping amount is not zero.
 
-- Run date, environment/site, source URLs and selected item IDs; no credentials.
-- Which owned/non-owned lookups worked, and which fields were absent.
-- Per-item price interpretation, inclusion/exclusion reasons and any eligible summary.
-- Errors or discrepancies found when comparing JSON with XML.
-- Conclusion: **access demonstrated**, **access blocked**, or **access works but pricing evidence is insufficient**.
+The LLM's task is to assess relevance to each search query, identify item/condition differences and outliers, cite evidence IDs and suggest a tentative eBay pricing range where the data supports one. It must disclose sample size, date window, missing prices and collection limits. Listing text is untrusted evidence, never instructions. It must not invent sale amounts or comparables, claim a representative market sample, or turn eBay results into an established Vinted valuation. Descriptive statistics are computed by the script; the LLM explains and critiques the evidence.
 
-The first test is complete when every selected ID has a recorded response/error and its price meaning has been reviewed. Successful external ended-auction reads establish limited known-item access, not market-wide discovery or pricing quality.
+The bundle should support analysis without opening individual listing pages. When external handoff is permitted, it can be supplied directly to the chosen LLM; adding model invocation and provider credentials is a separate increment.
 
-If the results are useful, propose a second bounded collection with more comparable items and the missing condition/shipping fields. Decide discovery and repeat collection from the observed access results. Scheduling, cloud storage, dashboards, AI processing and integration into Vintage pricing are outside this first test. Broader integration questions remain in [EBAY_INTEGRATION.md](EBAY_INTEGRATION.md).
+## Implementation and acceptance
+
+Replace the ID-driven behavior of `scripts/investigate-ebay.mjs` with this query-driven collector under the existing npm command. Remove the superseded manual-ID instructions when implementation lands; do not keep a second operator workflow as a fallback. The existing script currently accepts numeric IDs and a Trading user token, so the proposed invocation above requires code changes. This PR updates the specification only.
+
+The first successful test must demonstrate:
+
+- Existing `.env` credentials are loaded without secret exposure; token and sold-search access are independently verified.
+- Search terms alone produce automatically discovered recent sale records, including non-auction results where available.
+- Pagination, date filtering, deduplication, missing/hidden prices and partial failures are explicit in the outputs.
+- JSON evidence is traceable to actual source records and ready for permitted LLM analysis without manual lookup.
+- No active asks or invented data are presented as completed-sale prices.
+
+Test normalization and summary logic using representative source response shapes, including fixed-price sales, auctions, hidden offer amounts, duplicates and access errors. Then perform the bounded live run. An access-denied report is useful feasibility evidence, but it does **not** satisfy the completed-sales collection acceptance criteria.
+
+This specification replaces the manual experiment in [EBAY_INVESTIGATION_PROTOTYPE.md](EBAY_INVESTIGATION_PROTOTYPE.md) as the intended next step. Broader integration remains described in [EBAY_INTEGRATION.md](EBAY_INTEGRATION.md).
