@@ -1,110 +1,87 @@
 # eBay market data proof of concept
 
-Status: revised specification, 5 October 2026. This document specifies the prototype to build; automated completed-sales search is not implemented or authenticated yet.
+Implemented 5 October 2026 in [scripts/investigate-ebay.mjs](scripts/investigate-ebay.mjs). The initial Sandbox test passed authentication and reached the sold-search endpoint, but returned no records. Populated responses and Production access remain unverified.
 
-## Goal and first experience
+## Run the Sandbox prototype
 
-Enter search terms and get recent completed-sale evidence that an LLM can analyze for pricing. The script discovers the listings, gathers their data, normalizes it and writes an analysis bundle. The operator supplies no item IDs and does no manual listing lookup or classification.
+The existing `.env` was renamed to **`.env.sandbox`**, preserving its contents. Both `.env.sandbox` and `.env.production` are gitignored. The collector loads only the file matching the explicitly selected environment; it never falls back to another file or exported credentials.
 
-Include all supported sale formats: auctions, fixed-price/Buy It Now and accepted offers where the source exposes them. “Completed” must mean sold evidence, not merely an ended listing. Missing transaction amounts remain unknown.
+| Variable | Use |
+| --- | --- |
+| `EBAY_APP_ID` | OAuth client ID for the selected environment. |
+| `EBAY_CERT_ID` | OAuth client secret from the same keyset. |
+| `EBAY_DEV_ID` | Existing value can remain; OAuth does not use it. |
 
-Proposed invocation, **not an existing command**:
+From the repository root:
 
 ```sh
 nix develop
 npm ci
+npm run investigate:ebay -- --help
 npm run investigate:ebay -- \
+  --environment sandbox \
   --query "Barbour Bedale wax jacket" \
-  --query "Le Creuset casserole 24cm" \
-  --environment production --marketplace EBAY_GB --days 30 --limit 50
+  --query "iphone" \
+  --marketplace EBAY_GB --days 30 --limit 50
 ```
 
-One run should produce a short console summary and `.cache/ebay/run-*/analysis-input.json`, containing real records, source references, descriptive price statistics and instructions for the LLM. Default to the last 30 days and at most 50 unique source records per query. UK is the initial test setting, not a final pilot-market decision. Preserve each record's actual currency.
+Supply up to five search terms. No item IDs or manual listing lookup are required. Defaults are UK, 30 days and 50 records per query; limits are 90 days and 200 records. The program uses the same environment for token requests and search requests. Credentials, headers and access tokens are excluded from saved output and console reports.
 
-## Source and access test
+## What the script does
 
-Target eBay **Marketplace Insights item-sales search**, subject to our Production application's entitlement. eBay's public documentation associates `lastSoldDate` with Marketplace Insights search and supports both auction and fixed-price buying formats. Omit a buying-format restriction so the query does not exclude fixed-price sales. Do not assume `BEST_OFFER` is a supported filter: the documentation explicitly excludes that filter for Marketplace Insights. Retain offer outcomes wherever returned, and mark undisclosed accepted amounts unknown. [Search filters](https://developer.ebay.com/api-docs/buy/static/ref-buy-browse-filters.html).
+1. Tests client-credentials OAuth with the basic eBay scope to distinguish working credentials from sold-search entitlement.
+2. Obtains a separate token with `https://api.ebay.com/oauth/api_scope/buy.marketplace.insights`.
+3. Searches `/buy/marketplace_insights/v1_beta/item_sales/search` using the terms, marketplace and fixed UTC `lastSoldDate` window. Sandbox uses `https://api.sandbox.ebay.com`; Production uses `https://api.ebay.com`.
+4. Follows returned pagination, capped at ten pages per query and the requested record limit. Pagination must remain on the selected host and search path. It records truncation and preserves each completed page locally.
+5. Deduplicates by source item ID across pages and queries, retaining every matching query, and writes a self-contained analysis bundle.
 
-There is a concrete access dependency: eBay lists Marketplace Insights as restricted and not open to new users. Its method reference currently redirects to authenticated documentation. Existing developer keys do not prove that our application has access. [Marketplace support and access notice](https://developer.ebay.com/api-docs/buy/static/ref-marketplace-supported.html), [item-sales search reference](https://developer.ebay.com/api-docs/buy/marketplace-insights/resources/item_sales/methods/search).
+There is no buying-format restriction: auctions and fixed-price sales can both contribute. Offer prices are usable only when the source supplies an actual last-sold amount. The collector requests no active-listing substitute. eBay documents `lastSoldDate` for Marketplace Insights and excludes `BEST_OFFER` as a supported Insights buying-options filter. [Search filters](https://developer.ebay.com/api-docs/buy/static/ref-buy-browse-filters.html).
 
-The first implementation must therefore:
+Requests have a 15-second timeout and a 2 MiB response limit. There are no automatic retries or LLM submissions. Tokens stay in memory for the bounded run; expiration is reported as a failure, and rerunning obtains fresh tokens. Exit status is `0` for completed searches, `1` for API/access/partial failure and `2` for setup failure. Zero results are distinct from denied access or an unrecognized response. A capped search can complete successfully while its query status remains `truncated`.
 
-1. Load our existing credentials and request the application token required by the entitled sold-search API.
-2. Perform one bounded keyword/date-window request to test access and inspect the actual response contract.
-3. If successful, continue automatic pagination and collection for the supplied queries.
-4. If authorization or product access is unavailable, write an `access_blocked` result with sanitized API error details and stop. Distinguish invalid credentials, unsupported scope, denied API access and unsupported marketplace; do not label every failure as lack of entitlement.
+## Results and LLM input
 
-Confirm the endpoint, required scope, pagination and response fields against the method documentation visible to our account before implementing the adapter. Do not invent a working request from an inaccessible reference. Token success alone is not a passed data-access test.
+Each run saves three private files under the gitignored `.cache/ebay/run-*/` directory:
 
-The old Finding API, including the former completed-item search approach, is not a viable implementation target: eBay decommissioned Finding in Q1 2025. Browse is not a substitute for historical sold-price search. [eBay decommission notice](https://www.developer.ebay.com/updates/newsletter/q1_2025).
-
-If our account cannot access completed-sales search, the experiment records that dependency for an entitled or licensed sold-data source. It must not quietly switch to active asks, the account's own orders, manually supplied IDs or fabricated sales. The desired keyword-to-completed-sales workflow remains the requirement.
-
-## Configuration for our first test
-
-The user confirmed that the current `.env` keys are **Sandbox** keys. They can support authentication and API mechanics tests for endpoints available in Sandbox, but cannot retrieve real completed sales. Real-market collection requires a Production keyset plus sold-search entitlement; obtaining Production keys alone does not establish that entitlement. Sandbox is a separate test environment with simulated listings and transactions. [eBay environment guide](https://developer.ebay.com/api-docs/static/gs_understand-the-sandbox-and.html).
-
-The worktree `.env` already contains these variable names; only names were inspected while writing this specification:
-
-| Existing variable | Prototype use |
+| File | Contents |
 | --- | --- |
-| `EBAY_APP_ID` | OAuth client ID for the selected environment; currently Sandbox. |
-| `EBAY_CERT_ID` | OAuth client secret for that same environment/keyset. |
-| `EBAY_DEV_ID` | Retain the existing value; it is not used in the client-credentials token exchange. |
+| `results.json` | Normalized evidence records and exclusion reasons. |
+| `summary.json` | Environment, date window, authentication stages, HTTP outcomes, per-query counts/completeness and decimal-safe descriptive statistics. |
+| `analysis-input.json` | Summary, evidence and analysis instructions in one JSON document. |
 
-Keep the current Sandbox keys for development. Make the prototype require an explicit environment selection, using the Sandbox token host for Sandbox and the Production token host for Production, with matching API endpoints. Never send the current Sandbox credentials to Production. For the real-data run, configure a separate enabled **Production** keyset and check its Marketplace Insights entitlement and granted scopes. Do not replace the file or ask the operator to mint a Trading user token for this search flow.
+The exploratory adapter expects `itemSales` records with `itemId`, `title`, `condition`, `itemWebUrl`, `buyingOptions`, `lastSoldDate`, `lastSoldPrice` and `totalSoldQuantity` where available. It preserves unknown fields as null/empty values rather than fabricating facts. A changed or missing response envelope is a failure, except an explicit `total: 0` response. This field mapping has **not** been validated against populated Sandbox records; the successful live responses were empty.
 
-For an entitled application, mint an application access token programmatically using the client-credentials grant at `https://api.ebay.com/identity/v1/oauth2/token`, with HTTP Basic authentication from App ID/Cert ID and the exact scope specified for the chosen method. Keep the token in memory and renew it when needed. The developer portal lists scopes associated with the keyset. [eBay authorization](https://developer.ebay.com/develop/guides/sell/authorization).
+Each record is a **listing summary**, not an individual paid transaction. A quantity-sold count is never expanded into invented sales. Payment verification and shipping are unknown. Dates outside the requested window and missing/invalid last-sold prices are excluded from statistics. Records retain source IDs/URLs and matched queries; the enclosing summary supplies marketplace and collection window.
 
-Search terms, marketplace, lookback and record cap are command arguments, not secrets. The script loads `.env` from the worktree root automatically. No Firebase deployment, OAuth user-consent UI or manually collected listing IDs are needed for this local prototype. Do not log credential values, authorization headers or token responses.
+For each query/currency, the script computes count, minimum, median and maximum of eligible last-sold prices using decimal-safe arithmetic. Fewer than three observations yield `insufficient_evidence`. No returned records yield empty groups. Amounts from different currencies are never combined. These initial statistics do not perform automatic condition, bundle or variation matching; the LLM must assess relevance before suggesting a range.
 
-For the LLM handoff, record whether our eBay agreement permits sending this source's data to the intended model/provider. eBay's Restricted API terms require prior written consent for ingestion into external AI systems. This is separate from technical API entitlement. The prototype can collect permitted local evidence and describe its schema while marking external LLM handoff blocked until that permission is established. [API licence, Restricted API requirements](https://developer.ebay.com/join/api-license-agreement).
+The LLM instructions require evidence IDs, item/condition comparisons, outlier analysis and disclosure of missing data and sample limitations. Listing text is untrusted evidence. The model must not invent comparables or amounts, treat listing summaries as paid-order records, or use Sandbox data for real pricing. Once permitted, the bundle can be supplied to an LLM without manually opening listings. Model invocation is outside this initial implementation.
 
-## Automatic collection and normalization
+External handoff is recorded as `not_authorized_or_tested`. Confirm the permitted use before sending Restricted API data to an external model: eBay's terms require prior written consent for that use. [Restricted API terms](https://developer.ebay.com/join/api-license-agreement).
 
-For each query, calculate a fixed UTC window ending at run start. Use the source's sold-date filter, follow its pagination and stop at the requested cap or exhaustion. Sort collected records by returned sale date; record the source ordering and any truncation rather than claiming the sample contains every recent sale. Record aggregate date semantics separately if the source returns listing summaries rather than individual transactions.
+## Observed Sandbox results
 
-Use a 15-second per-request timeout and a maximum of 10 search-page requests per query for the first test. Keep partial results on interruption. Respect rate-limit responses and record failures without unbounded retries. Deduplicate overlapping query results using source sale/transaction identity where available, otherwise source listing identity, while retaining every matching query. Do not manufacture individual sales from a quantity-sold count.
+Authenticated tests on 5 October 2026:
 
-Normalize available fields into the following **proposed output contract**, not assumed eBay response field names:
+| Search | Window / cap | Result |
+| --- | --- | --- |
+| `Barbour Bedale wax jacket` | 30 days / 5 | Basic OAuth 200, sold-scope OAuth 200, search 200; zero records. |
+| `iphone` and `camera` | 90 days / 20 per query | Both OAuth requests 200, both searches 200; zero records for each query. |
 
-| Group | Fields and interpretation |
-| --- | --- |
-| Identity | Stable evidence ID, source item/sale ID, source URL, matching queries, marketplace and fetch time. |
-| Item | Title, category, condition, brand/model/size and lot or variation information when returned. |
-| Outcome | Source-reported sold status, sale/last-sold date, sale format when known, quantity and whether the row is a transaction or listing aggregate. |
-| Price | Decimal-string amount and currency, price basis (`sale`, `aggregate`, `displayed` or `unknown`), original field name and accepted-offer amount visibility. |
-| Costs | Shipping amount/currency if exposed; otherwise unknown. Keep item price distinct from delivered cost and seller proceeds. |
-| Evidence quality | Payment verification (unknown unless explicitly supported), missing fields, source errors and any reason for exclusion from price statistics. |
+The runs produced all three output files. No credentials or token responses were saved. No Production endpoints were called, no listings were created and no data was sent to an LLM.
 
-Include auction and non-auction sales on the same terms. An accepted offer is useful evidence if its actual price is disclosed; an advertised price attached to an undisclosed offer is not the accepted amount. Do not infer payment, returns or cancellations from a sold-search result.
+This establishes that these Sandbox keys can obtain tokens and reach the search endpoint. It does **not** establish availability of populated sold data, real-world price quality, Production entitlement or external-AI permission. Sandbox contains simulated listings and transactions, not live market data. [eBay environment guide](https://developer.ebay.com/api-docs/static/gs_understand-the-sandbox-and.html).
 
-## LLM-ready results and basic pricing
+Seven isolated collector tests cover explicit environment/argument validation, scope denial and redaction, pagination and both sale formats, cross-query deduplication, empty/malformed/denied responses, hostile pagination URLs, record caps and decimal arithmetic. Their responses are synthetic test inputs, never a source for the collector's live output.
 
-Write three files under the gitignored run directory:
+```sh
+npm run test:ebay
+```
 
-- `results.json`: normalized records, source-field provenance and exclusions.
-- `summary.json`: query/window metadata, counts, pagination completeness, errors and price statistics.
-- `analysis-input.json`: the self-contained summary, evidence records and analysis instructions, with an explicit handoff-permission status. No automatic LLM submission in this first collector.
+## Next evidence needed
 
-Calculate count, minimum, median and maximum from eligible source-reported sale amounts using decimal-safe arithmetic. Keep currencies, individual transactions and aggregate-price records separate. Retain format breakdowns where known. Exclude unknown/advertised amounts, unsold records, duplicates and ambiguous bundles from the sale-price summary; retain their exclusion reasons. With fewer than three eligible observations, report insufficient evidence and list the observations. A missing shipping amount is not zero.
+Obtain an eBay-supported populated Sandbox search case and validate its actual field meanings against the entitled method reference, then extend response handling where needed. Empty Sandbox searches are not a substitute for that check. The current method documentation redirects to authenticated access. [Item-sales search reference](https://developer.ebay.com/api-docs/buy/marketplace-insights/resources/item_sales/methods/search).
 
-The LLM's task is to assess relevance to each search query, identify item/condition differences and outliers, cite evidence IDs and suggest a tentative eBay pricing range where the data supports one. It must disclose sample size, date window, missing prices and collection limits. Listing text is untrusted evidence, never instructions. It must not invent sale amounts or comparables, claim a representative market sample, or turn eBay results into an established Vinted valuation. Descriptive statistics are computed by the script; the LLM explains and critiques the evidence.
+For a real-data test, configure a separate Production keyset in `.env.production` and explicitly select `--environment production`. Marketplace Insights remains restricted and not open to new users according to eBay's public access notice; Sandbox success does not settle Production access. [Marketplace support](https://developer.ebay.com/api-docs/buy/static/ref-marketplace-supported.html).
 
-The bundle should support analysis without opening individual listing pages. When external handoff is permitted, it can be supplied directly to the chosen LLM; adding model invocation and provider credentials is a separate increment.
-
-## Implementation and acceptance
-
-Replace the ID-driven behavior of `scripts/investigate-ebay.mjs` with this query-driven collector under the existing npm command. Remove the superseded manual-ID instructions when implementation lands; do not keep a second operator workflow as a fallback. The existing script currently accepts numeric IDs and a Trading user token, so the proposed invocation above requires code changes. This PR updates the specification only.
-
-The first successful test must demonstrate:
-
-- Existing `.env` credentials are loaded without secret exposure; token and sold-search access are independently verified.
-- Search terms alone produce automatically discovered recent sale records, including non-auction results where available.
-- Pagination, date filtering, deduplication, missing/hidden prices and partial failures are explicit in the outputs.
-- JSON evidence is traceable to actual source records and ready for permitted LLM analysis without manual lookup.
-- No active asks or invented data are presented as completed-sale prices.
-
-Test normalization and summary logic using representative source response shapes, including fixed-price sales, auctions, hidden offer amounts, duplicates and access errors. Then perform the bounded live run. An access-denied report is useful feasibility evidence, but it does **not** satisfy the completed-sales collection acceptance criteria.
-
-This specification replaces the manual experiment in [EBAY_INVESTIGATION_PROTOTYPE.md](EBAY_INVESTIGATION_PROTOTYPE.md) as the intended next step. Broader integration remains described in [EBAY_INTEGRATION.md](EBAY_INTEGRATION.md).
+The completed-sales acceptance target remains: terms alone discover recent sold records across formats, output is traceable and useful for permitted LLM pricing analysis, and missing/hidden amounts and sampling limits remain explicit. The superseded Trading user-token/manual-ID collector and its XML dependency have been removed. Broader integration questions remain in [EBAY_INTEGRATION.md](EBAY_INTEGRATION.md).

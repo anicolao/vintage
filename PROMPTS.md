@@ -291,3 +291,7 @@ this first step sucks. we don't want to have to look up thiings by hand. Instead
 Prompt 69: Clarify sandbox requirements
 
 we set up keys for sandbox, not production - is a production keyset a hard requirement?
+
+Prompt 70: Implement sandbox collector
+
+let's do an initial implementation to see if the script works against the sandbox. we can rename .env to .env.sandbox if that's helpful.
