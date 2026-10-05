@@ -8,6 +8,8 @@ node_modules/
 playwright-report/
 test-results/
 .env
+.env.sandbox
+.env.production
 .env.local
 .env.*.local
 gha-creds-*.json

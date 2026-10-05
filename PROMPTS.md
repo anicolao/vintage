@@ -275,3 +275,98 @@ looking good, rebase and merge
 Prompt 65: Preserve capture continuity
 
 looking good, rebase and merge
+
+Prompt 66: Review project status
+
+review where we are at and suggest next steps, then stop
+
+Prompt 67: Specify market prototype
+
+I think we'd like to prototype some data gathering via our developer account. Write an EBAY_MARKET_DATA_POC.md that specifies some very basic pricing/data gathering, and specifies what we need to configure for a first test
+
+Prompt 68: Automate sales discovery
+
+this first step sucks. we don't want to have to look up thiings by hand. Instead, let's do a prototype where we search for some terms, the script automatically finds recently completed auctions and returns data for the LLM to analyze. don't limit it to auctions; use any completed sales for pricing. we made a .env file with the appropriate secrets, update the POC doc with this approach
+
+Prompt 69: Clarify sandbox requirements
+
+we set up keys for sandbox, not production - is a production keyset a hard requirement?
+
+Prompt 70: Implement sandbox collector
+
+let's do an initial implementation to see if the script works against the sandbox. we can rename .env to .env.sandbox if that's helpful.
+
+Prompt 71: Diagnose empty searches
+
+seems like this returns no records - is that because search isn't working, because it's sandbox, or because the keyword is bad? $ npm run investigate:ebay -- --environment sandbox --query "iphone"
+
+> vintage@0.0.0 investigate:ebay
+> node scripts/investigate-ebay.mjs --environment sandbox --query iphone
+
+sandbox: OAuth passed; sold scope passed; collection complete.
+basic_oauth: HTTP 200 — ok
+sold_search_oauth: HTTP 200 — ok
+sold_search: HTTP 200 — ok
+Collected 0 records. Saved /home/anicolao/projects/vintage/.cache/ebay/run-u5iL2l/analysis-input.json
+
+Prompt 72: Clarify default environment
+
+we put production keys into .env, if we don't pass --environment will it use those by default?
+
+Prompt 73: Diagnose production authentication
+
+hmm. sandbox seems to work but prod says: $ npm run investigate:ebay -- --environment production --query "iphone 13"
+
+> vintage@0.0.0 investigate:ebay
+> node scripts/investigate-ebay.mjs --environment production --query iphone 13
+
+production: OAuth failed; sold scope not_tested; collection failed.
+basic_oauth: HTTP 401 — invalid_credentials
+
+Prompt 74: Explain verification token
+
+it looks like we need to do somethign for account deletion and it watnts a "verification token" where do we get that from?
+
+Prompt 75: Implement deletion endpoint
+
+OK let's implement that as a firebase function and write the token somewhere so taht we can configure it on ebay
+
+Prompt 76: Retest production access
+
+we think we did it, test prod again
+
+Prompt 77: Explain permission process
+
+how do we get that permission?
+
+Prompt 78: Draft support ticket
+
+write us a draft for this support ticket
+
+Prompt 79: Generalize listing purpose
+
+let's remove references to vinted, make it support for people creating listings generally
+
+Prompt 80: Clarify personal use
+
+OK two things: we are building this applicatoin just for our personal use, not for public use. Secondly, you should know the APP ID so don't give us things to fill out. Let's draft again
+
+Prompt 81: Explore pricing alternatives
+
+OK we submitted that ticket. Meanwhile, are tehre any workarounds or alternatives?
+
+Prompt 82: Compare API pricing
+
+is either of these options free to use or are they both paid APIs?
+
+Prompt 83: Prototype Soldgraph collection
+
+let's try a PoC with Soldgraph
+
+Prompt 84: Locate Soldgraph key
+
+it is in .env as SOLDGRAPH_API_KEY
+
+Prompt 85: Integrate preview pricing
+
+aat a glance, these results look good for prototyping. Let's integrate - or have we already integrated? - so that we can test in the PR preview of our actual product

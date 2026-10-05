@@ -1,6 +1,6 @@
 # Vintage v0 implementation plan
 
-Baseline: merged `main` at `0a61360`, inspected on 2026-09-14. [PR #11](https://github.com/anicolao/vintage/pull/11) contains photo processing, real generation, language feedback, review and approval using the approved visual system. Real generation and language feedback replace the sample path; market estimates and full provider evaluation remain outstanding; device review gates are listed separately below.
+Baseline: merged `main` at `0a61360`, inspected on 2026-09-14. [PR #11](https://github.com/anicolao/vintage/pull/11) contains photo processing, real generation, language feedback, review and approval using the approved visual system. Real generation and language feedback replace the sample path; Soldgraph-backed UK comparable research is integrated in PR #12; predictive market estimates and full provider evaluation remain outstanding; device review gates are listed separately below.
 
 ## Intended outcome
 
@@ -176,14 +176,17 @@ The seller reaches generation directly from photos. Example ingestion, a learned
 - [x] Duplicate an approved listing into an independent unapproved draft with its copy, attributes, price, context and ordered photos. Copy immutable Storage objects into the new listing namespace; atomically publish the descriptor, capture events and workflow.
 - [x] Persist reopen/duplicate/save intent locally and project it immediately. Queue duplicate-dependent edits until its server stream exists; enforce ownership, original-version checks and command idempotency.
 - [x] Retain acknowledged workflow versions on the device before retiring queue entries, so immediate reload cannot use a stale Firestore cache version. Preload navigation modules for offline return from a deep link.
-- [x] Remove the fabricated £48 recommendation. Require a seller-entered GBP asking price before approval; do not imply it is a valuation.
-- [ ] Implement market-backed recommendation, comparable groups, source dates and links, sale ranges and supported estimates. The earlier checked-off sample views did not deliver these capabilities.
+- [x] Remove the fabricated £48 recommendation. Require an explicitly chosen GBP asking price before approval; accept manual entry or the real comparable-based suggestion.
+- [x] Integrate Soldgraph sold evidence and Vertex AI comparable selection, a median-based recommendation, observed price range and the glass evidence sheet with real links and dates. Run background research independently of editing; preserve manual prices and flag stale item details.
+- [ ] Validate predictive sale ranges and other outcome estimates before displaying them.
 - [ ] Complete a real-phone review of feedback, Save draft, Edit listing and Duplicate listing in both appearances, including offline recovery. Automated browser/transaction checks do not replace this gate.
 
 ## 7. Market pricing and provider evaluation
 
-- [ ] Agree pilot market/currency and usable market sources. GBP is the currently supported manual entry currency, not an inferred market selection.
-- [ ] Implement market retrieval with provenance, freshness, relevance and deduplication. Distinguish asking, sold and modelled values.
+- [x] Connect the UK/GBP Soldgraph prototype to the live Firebase PR preview. Keep one page per research operation and persist its query, provider job ID and idempotency key across retries.
+- [ ] Validate UK/GBP source coverage on representative personal-use items before treating this as a dependable pricing tool.
+- [x] Retrieve and deduplicate one page of recently sold listings, filter dates/prices/hidden offers, validate AI-selected evidence IDs, and preserve source/model provenance. Distinguish displayed sold prices from verified payments or modeled sale outcomes.
+- [ ] Set a retention/deletion policy for cloud market evidence, evaluate matching quality, and measure latency and consumption beyond smoke tests.
 - [ ] Validate estimates before rendering sale probability, expected revenue or time to sale. Genuine missing evidence stays unavailable; fixed estimates are prohibited.
 - [ ] Evaluate real multimodal proposals and language revisions on representative items, ambiguous labels, adversarial context, conflicting feedback and missing information.
 - [ ] Define operational spend limits, latency/quality targets and monitoring for the pilot.

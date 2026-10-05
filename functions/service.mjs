@@ -1,3 +1,4 @@
+import { MarketResearch } from './market.mjs';
 import { createHash } from 'node:crypto';
 import { FieldValue } from 'firebase-admin/firestore';
 import { z } from 'zod';
@@ -13,6 +14,7 @@ const requestSchema = z.discriminatedUnion('kind', [
   z.object({ kind:z.literal('forget'), listingId:id, expectedVersion:version, instructionId:id }),
   z.object({ kind:z.literal('edit'), listingId:id, expectedVersion:version, field:z.enum(fields), value:z.string().max(5000), previousValue:z.string().max(5000) }),
   z.object({ kind:z.literal('price'), listingId:id, expectedVersion:version, price:moneySchema.nullable() }),
+  z.object({ kind:z.literal('market'), listingId:id, expectedVersion:version, copy:copySchema }),
   z.object({ kind:z.literal('save'), listingId:id, expectedVersion:version }),
   z.object({ kind:z.literal('reopen'), listingId:id, expectedVersion:version }),
   z.object({ kind:z.literal('duplicate'), listingId:z.string().uuid(), expectedVersion:z.literal(0), sourceListingId:id, sourceVersion:version }),
@@ -20,7 +22,7 @@ const requestSchema = z.discriminatedUnion('kind', [
 ]);
 export class Conflict extends Error {}
 export class PipelineService {
-  constructor(db,bucket,projectId, generator = new ListingGenerator(projectId)) { this.db=db; this.bucket=bucket; this.generator=generator; }
+  constructor(db,bucket,projectId, generator = new ListingGenerator(projectId)) { this.db=db; this.bucket=bucket; this.generator=generator; this.market=new MarketResearch(generator); }
   account(workspace,uid) { return this.db.doc(`workspaces/${workspace}/accounts/${uid}`); }
   async submit(uid,raw) {
     const { workspace, commandId } = z.object({ workspace:z.string().regex(/^(main|pr-[1-9][0-9]*|e2e)$/), commandId:z.string().uuid() }).parse(raw);
@@ -42,6 +44,14 @@ export class PipelineService {
       }
       if (!descriptor.exists || descriptor.data().ownerUid !== uid) throw new Conflict('Your saved item is unavailable. Reopen it and try again.');
       let state=current.data() || initialWorkflow();
+      if (request.kind==='market') {
+        if(!['reviewing','saved'].includes(state.status) || canonical(state.copy)!==canonical(request.copy))throw new Conflict('Review the latest item details before researching prices.');
+        const market=listing.collection('pipeline').doc('market');
+        const prior=(await tx.get(market)).data();
+        if(prior?.status==='pending')throw new Conflict('Price research is already running.');
+        this.queueMarket(tx,op,market,target,state,uid,workspace,request);
+        return {state,operation:{status:'queued',stage:0}};
+      }
       if (state.version !== request.expectedVersion) throw new Conflict('This item changed elsewhere. Review the latest version before continuing.');
       const instructions=memory.data()?.instructions || [];
       let input=null;
@@ -154,6 +164,24 @@ export class PipelineService {
       return {state,operation};
     });
   }
+  queueMarket(tx,op,market,target,state,uid,workspace,request) {
+    const input={copy:state.copy,proposalId:state.proposalId,baseVersion:state.input.baseVersion};
+    tx.create(op,{uid,workspace,request,requestHash:hash(request),input,status:'queued',stage:0,attempts:0,target:target.path,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
+    tx.set(market,{id:op.id,status:'pending',sourceCopy:state.copy,proposalId:state.proposalId,baseVersion:state.input.baseVersion,startedAt:new Date().toISOString()});
+  }
+  async executeMarket(opRef,op) {
+    const target=this.db.doc(op.target);const market=target.parent.doc('market');
+    const prior=(await market.get()).data();
+    if(prior?.id!==opRef.id || prior.status!=='pending'){await opRef.update({status:'superseded',leaseUntil:0});return;}
+    const result=op.result || await this.market.research(op.input,opRef.id,op.marketCheckpoint || {},value=>opRef.update({marketCheckpoint:value}));
+    if(!op.result)await opRef.update({result});
+    await this.db.runTransaction(async tx=>{
+      const current=(await tx.get(market)).data();
+      if(current?.id!==opRef.id || current.status!=='pending'){tx.update(opRef,{status:'superseded',leaseUntil:0});return;}
+      tx.set(market,{...current,...result,completedAt:new Date().toISOString()});
+      tx.update(opRef,{status:'completed',leaseUntil:0});
+    });
+  }
   record(tx,target,state,eventId,type) {
     tx.set(target,state);
     tx.create(target.parent.parent.collection('workflowEvents').doc(eventId), {id:eventId,type,schemaVersion:1,version:state.version,state,createdAt:FieldValue.serverTimestamp()});
@@ -165,6 +193,10 @@ export class PipelineService {
       const target=this.db.doc(op.target); const doc=await tx.get(target); let state=doc.data();
       if (state.operationId!==opRef.id) {tx.update(opRef,{status:'superseded'}); return false;}
       state={...state,...mutate(state,op),stage:index,version:state.version+1,updatedAt:new Date().toISOString()};
+      if(index===3 && op.request.kind==='generate') {
+        const marketOp=opRef.parent.doc(`${opRef.id}-market`);
+        this.queueMarket(tx,marketOp,target.parent.doc('market'),target,state,op.uid,op.workspace,{kind:'market',listingId:op.request.listingId,expectedVersion:state.version,copy:state.copy});
+      }
       this.record(tx,target,state,`${opRef.id}-${index}`,`${op.request.kind}/stage-${index}`);
       tx.update(opRef,{stage:index,status:index===3 ? 'completed':'running',updatedAt:FieldValue.serverTimestamp()});
       return true;
@@ -176,11 +208,12 @@ export class PipelineService {
       const doc=await tx.get(opRef);op=doc.data();
       if(!op || !['queued','running'].includes(op.status))return false;
       if(op.leaseUntil>Date.now())throw new Error('Operation is already running');
-      tx.update(opRef,{attempts:FieldValue.increment(1),leaseUntil:Date.now()+150000});return true;
+      tx.update(opRef,{attempts:FieldValue.increment(1),leaseUntil:Date.now()+600000});return true;
     });
     if(!claimed)return;
     try {
       if((op.attempts || 0)>=3)throw new Error('Provider attempt limit reached');
+      if(op.request.kind==='market') {await this.executeMarket(opRef,op);return;}
       if(op.request.kind==='feedback') {
         const current=(await this.db.doc(op.target).get()).data();
         if(current.revision?.id!==opRef.id || current.revision.status!=='pending'){await opRef.update({status:'superseded',leaseUntil:0});return;}
@@ -200,7 +233,7 @@ export class PipelineService {
       for (const photo of op.input.photos) derivatives.push(await ensureDerivative(this.bucket,photo));
       await this.stage(opRef,1,()=>({derivatives}));
       const latest=(await opRef.get()).data();
-      if(['completed','superseded'].includes(latest.status))return;
+      if(!latest || ['completed','superseded'].includes(latest.status))return;
       const images=await Promise.all(derivatives.map(async d=>(await this.bucket.file(d.path).download())[0]));
       const proposal=op.result || await this.generator.generate(op.input,images);
       if(!op.result)await opRef.update({result:proposal});
@@ -210,15 +243,19 @@ export class PipelineService {
       await opRef.update({leaseUntil:0});
     } catch (error) {
       const latest=(await opRef.get()).data();
-      if(['completed','superseded'].includes(latest.status))return;
+      if(!latest || ['completed','superseded'].includes(latest.status))return;
       await opRef.update({leaseUntil:0});
       if ((latest.attempts||0)<3) throw error;
       await this.db.runTransaction(async tx=>{
         const target=this.db.doc(latest.target); const doc=await tx.get(target); const state=doc.data();
-        tx.update(opRef,{status:'failed',updatedAt:FieldValue.serverTimestamp()});
-        if(latest.request.kind==='feedback') {
+        if(latest.request.kind==='market') {
+          // Read before writing so a replaced research request is never clobbered.
+          const market=target.parent.doc('market');const current=(await tx.get(market)).data();
+          if(current?.id===opRef.id)tx.set(market,{...current,status:'failed',error:'Price evidence is unavailable. Your draft and chosen price are saved.'});
+        } else if(latest.request.kind==='feedback') {
           if(state.revision?.id===opRef.id && state.revision.status==='pending')this.record(tx,target,{...state,revision:{...state.revision,status:'failed'},version:state.version+1},`${opRef.id}-failed`,'feedback/failed');
         } else if (state.operationId===opRef.id) this.record(tx,target,{...state,status:'failed',error:'We could not finish. Your inputs are saved; please try again.',version:state.version+1},`${opRef.id}-failed`,'operation/failed');
+        tx.update(opRef,{status:'failed',updatedAt:FieldValue.serverTimestamp()});
       });
     }
   }

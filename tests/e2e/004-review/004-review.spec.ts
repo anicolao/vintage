@@ -14,6 +14,7 @@ test('generation, feedback, exact approval and copy survive reload',async({page,
   const steps=new TestStepHelper(page,testInfo);steps.setMetadata('Generation, feedback and approval','Photo-first generation with language feedback and exact approval. AI transport is isolated in the test process.');
   await expect(page.locator('main[data-workflow]')).toHaveAttribute('data-workflow',/generating|reviewing/);
   await expect(page.getByRole('heading',{name:'Listing proposal',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Use £25.00',exact:true})).toBeVisible();
   await page.getByLabel('Title',{exact:true}).fill('Checked green jacket');
   await page.getByLabel('Description',{exact:true}).fill('Checked condition and label. Measurements available on request.');
   await page.getByLabel('Description',{exact:true}).blur();
@@ -163,4 +164,30 @@ test('save unfinished drafts, edit approvals and duplicate offline without chang
   await expect(page.getByRole('button',{name:'Inspect photo 1',exact:true})).toBeVisible();
   await page.goto(url);await expect(page.getByRole('heading',{name:'Ready to copy'})).toBeVisible();
   await expect(page.getByRole('heading',{name:'Revised approved item',exact:true})).toBeVisible();
+});
+
+test('sold evidence recommends a price without overwriting the seller and survives reload',async({page,context,request})=>{
+  await resetAuth(request);await page.goto('/');await signIn(page,context);
+  await page.getByRole('link',{name:'New listing',exact:true}).click();
+  await page.getByLabel('Choose item photos').setInputFiles('static/images/wardrobe.png');
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync','synced');
+  await page.getByRole('button',{name:'Create my draft'}).click();
+  await expect(page.getByRole('heading',{name:'Listing proposal',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Use £25.00',exact:true})).toBeVisible();
+  await expect(page.getByLabel('Listing price in GBP')).toHaveValue('');
+  await page.getByRole('button',{name:'Use £25.00',exact:true}).click();
+  await expect(page.getByLabel('Listing price in GBP')).toHaveValue('25.00');
+  await page.getByRole('button',{name:/See price evidence/}).click();
+  await expect(page.getByRole('heading',{name:'Why £25.00?',exact:true})).toBeVisible();
+  await expect(page.locator('.comparable-row')).toHaveCount(3);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button',{name:/See price evidence/})).toBeFocused();
+  await page.getByLabel('Listing price in GBP').fill('42.50');await page.getByLabel('Listing price in GBP').blur();
+  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync','synced');
+  await page.reload();
+  await expect(page.getByRole('button',{name:'Use £25.00',exact:true})).toBeVisible();
+  await expect(page.getByLabel('Listing price in GBP')).toHaveValue('42.50');
+  await page.getByLabel('Title',{exact:true}).fill('Different item');await page.getByLabel('Title',{exact:true}).blur();
+  await expect(page.getByText('Item details changed. Refresh price evidence for the current item.',{exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Use £25.00',exact:true})).toHaveCount(0);
 });

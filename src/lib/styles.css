@@ -223,3 +223,10 @@ dialog::backdrop { background: rgb(33 28 25 / 25%); backdrop-filter: blur(5px); 
 .remembered-instruction p { flex: 1; min-width: 0; }
 .language-feedback summary { min-height: 44px; align-content: center; cursor: pointer; }
 .language-feedback summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+
+.market-research { margin-top: 20px; }
+.market-research .secondary { width: 100%; margin-top: 12px; }
+.recommendation-label { color: var(--muted); font-size: 14px; margin-bottom: 4px; }
+.recommendation-price { font-family: "DM Serif Display", serif; font-size: 36px; color: var(--accent); margin: 0; }
+.comparable-row { border-top: 1px solid var(--soft-line); padding: 16px 0; overflow-wrap: anywhere; }
+.comparable-price { color: var(--accent); font-size: 20px; margin-top: 0; }
