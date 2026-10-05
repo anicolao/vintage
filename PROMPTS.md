@@ -295,3 +295,16 @@ we set up keys for sandbox, not production - is a production keyset a hard requi
 Prompt 70: Implement sandbox collector
 
 let's do an initial implementation to see if the script works against the sandbox. we can rename .env to .env.sandbox if that's helpful.
+
+Prompt 71: Diagnose empty searches
+
+seems like this returns no records - is that because search isn't working, because it's sandbox, or because the keyword is bad? $ npm run investigate:ebay -- --environment sandbox --query "iphone"
+
+> vintage@0.0.0 investigate:ebay
+> node scripts/investigate-ebay.mjs --environment sandbox --query iphone
+
+sandbox: OAuth passed; sold scope passed; collection complete.
+basic_oauth: HTTP 200 — ok
+sold_search_oauth: HTTP 200 — ok
+sold_search: HTTP 200 — ok
+Collected 0 records. Saved /home/anicolao/projects/vintage/.cache/ebay/run-u5iL2l/analysis-input.json

@@ -1,6 +1,6 @@
 # eBay market data proof of concept
 
-Implemented 5 October 2026 in [scripts/investigate-ebay.mjs](scripts/investigate-ebay.mjs). The initial Sandbox test passed authentication and reached the sold-search endpoint, but returned no records. Populated responses and Production access remain unverified.
+Implemented 5 October 2026 in [scripts/investigate-ebay.mjs](scripts/investigate-ebay.mjs). Sandbox authentication and search work. A follow-up US `camera` query returned and normalized one actual Sandbox test listing. Production access and representative market-data coverage remain unverified.
 
 ## Run the Sandbox prototype
 
@@ -49,7 +49,7 @@ Each run saves three private files under the gitignored `.cache/ebay/run-*/` dir
 | `summary.json` | Environment, date window, authentication stages, HTTP outcomes, per-query counts/completeness and decimal-safe descriptive statistics. |
 | `analysis-input.json` | Summary, evidence and analysis instructions in one JSON document. |
 
-The exploratory adapter expects `itemSales` records with `itemId`, `title`, `condition`, `itemWebUrl`, `buyingOptions`, `lastSoldDate`, `lastSoldPrice` and `totalSoldQuantity` where available. It preserves unknown fields as null/empty values rather than fabricating facts. A changed or missing response envelope is a failure, except an explicit `total: 0` response. This field mapping has **not** been validated against populated Sandbox records; the successful live responses were empty.
+The exploratory adapter expects `itemSales` records with `itemId`, `title`, `condition`, `itemWebUrl`, `buyingOptions`, `lastSoldDate`, `lastSoldPrice` and `totalSoldQuantity` where available. It preserves unknown fields as null/empty values rather than fabricating facts. A changed or missing response envelope is a failure, except an explicit `total: 0` response. This field mapping has been exercised against one populated Sandbox fixed-price record; broader formats and pagination still require live coverage.
 
 Each record is a **listing summary**, not an individual paid transaction. A quantity-sold count is never expanded into invented sales. Payment verification and shipping are unknown. Dates outside the requested window and missing/invalid last-sold prices are excluded from statistics. Records retain source IDs/URLs and matched queries; the enclosing summary supplies marketplace and collection window.
 
@@ -70,7 +70,17 @@ Authenticated tests on 5 October 2026:
 
 The runs produced all three output files. No credentials or token responses were saved. No Production endpoints were called, no listings were created and no data was sent to an LLM.
 
-This establishes that these Sandbox keys can obtain tokens and reach the search endpoint. It does **not** establish availability of populated sold data, real-world price quality, Production entitlement or external-AI permission. Sandbox contains simulated listings and transactions, not live market data. [eBay environment guide](https://developer.ebay.com/api-docs/static/gs_understand-the-sandbox-and.html).
+Follow-up diagnosis found a populated case. `iphone` returned zero in both UK and US, including without a date filter. `camera` returned zero in UK but one in US, both with and without the 90-day date filter. An intentionally invalid date filter returned HTTP 400 (100011), confirming the endpoint validates that filter.
+
+This command also returned one normalized record through the actual collector, with its default 30-day window:
+
+```sh
+npm run investigate:ebay -- --environment sandbox --marketplace EBAY_US --query camera
+```
+
+The source record was `v1|110590598319|0`, titled `LB-SBX-202609090448-43a2069c Revised Camera Test`, with last-sold date `2026-09-09T05:06:35.000Z`, source-reported last-sold price USD 21.99 and buying options `FIXED_PRICE` / `BEST_OFFER`. Those options do not establish whether an offer was accepted. The collector retained it without a price/date exclusion and generated all output files. Its single observation correctly yields insufficient evidence for a price summary. This test record may later disappear or age out of the window.
+
+The evidence points to sparse, marketplace-specific Sandbox data for these queries, rather than a parser dropping results or a broken date filter. It does **not** establish real-world price quality, Production entitlement or external-AI permission. Sandbox contains simulated listings and transactions, not live market data. [eBay environment guide](https://developer.ebay.com/api-docs/static/gs_understand-the-sandbox-and.html).
 
 Seven isolated collector tests cover explicit environment/argument validation, scope denial and redaction, pagination and both sale formats, cross-query deduplication, empty/malformed/denied responses, hostile pagination URLs, record caps and decimal arithmetic. Their responses are synthetic test inputs, never a source for the collector's live output.
 
@@ -80,7 +90,7 @@ npm run test:ebay
 
 ## Next evidence needed
 
-Obtain an eBay-supported populated Sandbox search case and validate its actual field meanings against the entitled method reference, then extend response handling where needed. Empty Sandbox searches are not a substitute for that check. The current method documentation redirects to authenticated access. [Item-sales search reference](https://developer.ebay.com/api-docs/buy/marketplace-insights/resources/item_sales/methods/search).
+Extend the observed US camera case with additional populated records, formats and pagination, and validate field meanings against the entitled method reference. One populated response does not establish complete coverage. The current method documentation redirects to authenticated access. [Item-sales search reference](https://developer.ebay.com/api-docs/buy/marketplace-insights/resources/item_sales/methods/search).
 
 For a real-data test, configure a separate Production keyset in `.env.production` and explicitly select `--environment production`. Marketplace Insights remains restricted and not open to new users according to eBay's public access notice; Sandbox success does not settle Production access. [Marketplace support](https://developer.ebay.com/api-docs/buy/static/ref-marketplace-supported.html).
 
