@@ -334,3 +334,35 @@ OK let's implement that as a firebase function and write the token somewhere so 
 Prompt 76: Retest production access
 
 we think we did it, test prod again
+
+Prompt 77: Explain permission process
+
+how do we get that permission?
+
+Prompt 78: Draft support ticket
+
+write us a draft for this support ticket
+
+Prompt 79: Generalize listing purpose
+
+let's remove references to vinted, make it support for people creating listings generally
+
+Prompt 80: Clarify personal use
+
+OK two things: we are building this applicatoin just for our personal use, not for public use. Secondly, you should know the APP ID so don't give us things to fill out. Let's draft again
+
+Prompt 81: Explore pricing alternatives
+
+OK we submitted that ticket. Meanwhile, are tehre any workarounds or alternatives?
+
+Prompt 82: Compare API pricing
+
+is either of these options free to use or are they both paid APIs?
+
+Prompt 83: Prototype Soldgraph collection
+
+let's try a PoC with Soldgraph
+
+Prompt 84: Locate Soldgraph key
+
+it is in .env as SOLDGRAPH_API_KEY

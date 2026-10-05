@@ -1,5 +1,7 @@
 # eBay market data proof of concept
 
+For the working third-party alternative while official Production access is pending, see [Soldgraph PoC](SOLDGRAPH_POC.md). Its live UK keyword search returned 40 sold listings for one credit.
+
 Implemented 5 October 2026 in [scripts/investigate-ebay.mjs](scripts/investigate-ebay.mjs). Sandbox authentication and search work. A follow-up US `camera` query returned and normalized one actual Sandbox test listing. Production access and representative market-data coverage remain unverified.
 
 ## Run the Sandbox prototype

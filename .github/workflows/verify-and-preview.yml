@@ -25,6 +25,7 @@ jobs:
       - run: nix develop --command npm run test:hooks
       - run: nix develop --command npm run test:domain
       - run: nix develop --command npm run test:ebay
+      - run: nix develop --command npm run test:soldgraph
       - run: nix develop --command npm run test:config
       - run: nix develop --command npm run check
       - run: nix develop --command npm run lint:e2e
