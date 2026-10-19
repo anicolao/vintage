@@ -47,7 +47,7 @@ Eight automated tests cover asynchronous completion, deduplication, the one-page
 
 ## Product integration
 
-The CLI and deployed worker share `functions/soldgraph.mjs`. `functions/market.mjs` asks Vertex AI for a query based on item details, collects one UK page, and asks the model to select relevant evidence IDs with reasons. Server code computes the median and observed range from validated GBP rows; three matches are required. No price is invented by the model. The seller explicitly chooses whether to use the recommendation.
+The CLI and deployed worker share `functions/soldgraph.mjs`. `functions/market.mjs` asks Vertex AI for a brand/category query and condition filter, collects one UK page of up to 200 rows, and assesses eligible evidence against explicit item attributes. Server code selects up to 12 qualifying rows in provider order and computes their median and observed range from validated GBP prices; three matches are required. No price is invented by the model. The seller explicitly chooses whether to use the recommendation.
 
 The operator setup command `nix develop --command node scripts/configure-soldgraph.mjs` publishes `.env`'s key to Secret Manager and grants the existing worker access. Only `executeCommand` binds the secret. Deploy the reviewed Functions contract and update the backend digest before the PR Hosting build. Browser code never receives the key.
 

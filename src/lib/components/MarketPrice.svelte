@@ -23,7 +23,7 @@
   function toggleWord(word:string){selectedWords=selectedWords.includes(word)?selectedWords.filter(v=>v!==word):searchWords.filter(v=>v===word||selectedWords.includes(v));}
   async function broaden(){
     if(!research||!selectedWords.length)return;
-    try {await locallyPersisted();await enqueue({kind:'market',listingId:id,expectedVersion:current.version,copy:structuredClone(current.copy!),refinement:{sourceId:research.id,query:selectedWords.join(' '),condition:keepCondition?(research.condition||null):null,enabledCriteria:[...selectedCriteria]}});error='';}
+    try {await locallyPersisted();await enqueue({kind:'market',listingId:id,expectedVersion:current.version,copy:structuredClone(current.copy!),refinement:{sourceId:research.id,query:selectedWords.join(' ')===searchWords.join(' ')?research.query!:selectedWords.join(' '),condition:keepCondition?(research.condition||null):null,enabledCriteria:[...selectedCriteria]}});error='';}
     catch {error='Broader comparison could not be saved on this phone. Try again.';}
   }
   $: queued=$pipelineIntents.some(i=>i.request.kind==='market'&&i.request.listingId===id);
