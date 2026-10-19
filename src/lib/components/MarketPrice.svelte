@@ -87,6 +87,6 @@
   fieldset { border: 0; padding: 0; margin: 1rem 0; min-width: 0; }
   legend { font-weight: 600; margin-bottom: .5rem; }
   label { display: flex; align-items: center; gap: .75rem; min-height: 48px; padding-block: .35rem; cursor: pointer; }
-  input[type=checkbox] { width: 1.25rem; height: 1.25rem; flex: 0 0 auto; accent-color: var(--accent); }
+  input[type=checkbox] { width: 1.25rem; height: 1.25rem; min-height: 0; padding: 0; flex: 0 0 auto; accent-color: var(--accent); }
   .broaden-search small { display: block; font-size: .8rem; line-height: 1.4; }
 </style>
