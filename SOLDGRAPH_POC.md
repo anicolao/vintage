@@ -137,3 +137,32 @@ The existing 40-row choice bounds response size, but saves no credits per page. 
 For scale only: the saved searches reported 2,661 matches for shoes and 1,315 for heels. At 200 rows per page these would nominally require 14 and 7 credits respectively to retrieve all reported matches, assuming stable totals and full pages. Those totals are provider-reported estimates, not verified sales counts or guaranteed retrieval sizes. A 180-day local window does not make these rows arrive in one request.
 
 No paid searches or collector changes were made to answer this billing question. The current implementation still requests 40 rows until the proposed change is implemented and tested.
+
+## Shoes versus heels at 200 rows — 19 October 2026
+
+Two live UK searches requested page 1, `count=200`, `sort=recently_sold`, using the same 180-day local filter. Each returned 200 unique rows, reported `page_size=200`, completed via HTTP 202 then 200, and cost one credit. Both exposed another page. Total cost: two credits. An experiment-only transport wrapper set count to 200 before sending the shared collector's search request and recorded actual request URLs and returned page sizes; product code was unchanged.
+
+| Measure | Gucci shoes | Gucci heels |
+| --- | ---: | ---: |
+| Returned listings | 200 | 200 |
+| Price-eligible listings | 154 | 130 |
+| Excluded for accepted/unknown offer status | 46 | 70 |
+| Heel-related title screen | 7 | 169 |
+| Title screen plus price eligibility | 5 | 106 |
+| Oldest returned sale | October 13 | October 5 |
+| Newest returned sale | October 19 | October 19 |
+
+For a reproducible category screen, match the title case-insensitively with `\b(?:heels?|heeled|pumps?|stilettos?|wedges?|court\s+shoes?)\b`, then exclude titles matching `\b(?:sneakers?|trainers?|boots?|stiefeletten)\b|\b3[ -]set\b`. Apply exactly the same screen to both sets. These counts measure explicit title wording, not verified relevance or model-selected comparables. The screen misses vague/non-English titles and some sandals/mules; it does not establish material, model, size, vintage or condition compatibility. It is an exploratory comparison, not a proposed production classifier.
+
+The two sets share **8 IDs**, or 4% of each set (8/392 = 2.04% Jaccard overlap); five shared IDs have eligible prices. Shared IDs: `117451523737`, `127782225897`, `277493830407`, `278207880140`, `285696113112`, `358519031716`, `800770407754`, `840018438875`. This yields 392 unique listings and 279 unique price-eligible listings across both pages.
+
+**Recency truncation alone does not explain the difference:** 64 heels results absent from shoes have sold dates strictly newer than October 13, the oldest shoes result. Therefore we cannot assume that these keyword searches produce nested result sets. We have not established the provider's exact search-expansion or matching behavior. Local filtering cannot recover candidates that the chosen query never returned.
+
+Recommendation for this item: include the reliable category (`heels`) in retrieval and use later filtering for material, shape, model and condition. The shoes page spends most slots on men's footwear, trainers, flats, accessories and other irrelevant items. The heels page yields approximately 21 times as many title-screened, price-eligible candidates per credit (106 versus 5), although true comparable yield is still unmeasured. Do not lock in uncertain specifics such as snakeskin, exact model or size in the first query. If category is uncertain, test an alternate category query rather than assuming shoes contains everything. No price recommendation or automated query-policy change was made in this experiment.
+
+Evidence is retained locally:
+
+- Shoes: `.cache/soldgraph/compare-200-Gucci-shoes-1792429743632/`; provider request `607329a7-57df-4250-a52a-e59491c03154`.
+- Heels: `.cache/soldgraph/compare-200-Gucci-heels-1792429743631/`; provider request `9d9f026a-472e-449d-9c22-37e50966372b`.
+
+Each directory contains `report.json` (normalized evidence and eligibility) and `calls.json` (credential-free actual URLs, HTTP/job statuses, credit costs and returned page size). The previous 40-row comparisons remain historical observations of smaller pages.

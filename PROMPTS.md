@@ -410,3 +410,7 @@ how does paging interact with the search budget? Ideally we'd want to do one bro
 Prompt 95: Confirm recency sorting
 
 can we order by recency
+
+Prompt 96: Compare query specificity
+
+let's compare 'gucci shoes' to 'gucci heels'. we think 'shoes' is too broad, but are unsure if that's better filtered after or baked into the query
