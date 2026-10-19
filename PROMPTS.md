@@ -426,3 +426,7 @@ maybe '/new/used/vintage/' would be an important part of hte query to get compar
 Prompt 99: Add condition filtering
 
 let's add condition before we do more manual testing
+
+Prompt 100: Investigate insufficient comparables
+
+we tried again but got 'not enough comparables'. What happened?

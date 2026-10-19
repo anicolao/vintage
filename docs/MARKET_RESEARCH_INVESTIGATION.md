@@ -29,3 +29,18 @@ Add bounded query expansion when the initial query yields too few usable sales, 
 Record each search attempt, its query, timing, provider request ID, status and normalized response, plus counts for every rejection reason. Record model selection inputs and validated outputs with the model and prompt version, excluding credentials. Define restricted access and retention for these diagnostic records.
 
 Expose the actual outcome in the UI: for this case, “Found 1 sale; it was outside the last 30 days.” Distinguish provider errors, no returned sales, date/offer/currency exclusions and insufficient comparable matches. The existing generic message conceals these differences.
+
+## Condition-aware retry — 19 October 2026, 17:25 UTC
+
+Read-only inspection of the saved production operations found two completed requests for “Vintage Gucci Python Print Heels”, created at 17:25:17 and 17:25:42 UTC. Both used the deployed `brand-category-condition-v1` query prompt, generated `Gucci heels`, applied `condition=used`, and returned 200 rows. This was not stale query code or an API failure.
+
+- Initial provider request: `97e8b274-27de-45a4-af04-f554f152c26a`; HTTP 202 then 200; uncached; one credit.
+- Explicit refresh: `58a08a4c-d10c-49a7-bffb-6ea1b4b3215c`; HTTP 200; provider-cached; one credit. The returned collection timestamp remained `2026-10-19T17:25:21.597851+00:00`.
+- Each report: 200 fetched, 78 excluded for accepted/unknown offer status, 122 eligible, zero model-selected matches. No rows were rejected by the 180-day window.
+- The supplied item had material `Python print`, condition `Used`, and described pointed-toe stiletto heels. The model's saved caution said the eligible evidence lacked python-print comparables and differed in material/style.
+- Three returned titles contained python or snake: `366326332402` (Tiger Python Platform Pump), `117176545629` (Yoko Snake High Heel Pumps), and `407105103092` (Yoko Snake Leather Pumps). All had `bestOfferAccepted=true`, so their displayed asking amounts were excluded before AI selection. Their titles alone do not establish that they match this item.
+- Both reports had `nextPage=2` and provider-reported total 1,062. The retrieved page spanned October 2–19; the collector still stops after page 1, leaving older evidence unexamined despite the 180-day eligibility window.
+
+The observed failure is now strict comparable selection after successful retrieval, compounded by accepted-offer exclusions and the single-page cap. The saved caution is a model explanation, not proof that no comparable items exist. The second refresh repeated cached evidence instead of expanding coverage, and consumed another credit.
+
+Recommended next work: continue to another page or a material-targeted query when eligible evidence yields fewer than three comparables, within an explicit credit budget. Distinguish close comparables from broader category context rather than requiring exact material silently or mixing all heels into one price. Accepted-offer listings can be retained as clearly labelled context, but their displayed prices must not be presented as known transaction amounts. Explain these counts and limits in the UI. This investigation made no additional live API searches or changes to pricing behavior.
