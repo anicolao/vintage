@@ -402,3 +402,7 @@ for these result sets can you qantify the overlap? Shouldn't the 40 shoes or hee
 Prompt 93: Explain pagination limit
 
 why are we paging/using limit 40?
+
+Prompt 94: Explain search budget
+
+how does paging interact with the search budget? Ideally we'd want to do one broad search and then filter afterwards, if that minimizes API cost?

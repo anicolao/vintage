@@ -13,7 +13,7 @@ npm run investigate:soldgraph -- --query "iphone 13" --country uk
 
 Defaults: UK, one page of 40 rows, recently sold first, all sale formats, and a local filter covering today plus the preceding 179 UTC calendar dates. `--days 1..180` changes that filter. Supported countries: `us`, `uk`, `ca`, `au`, `de`, `fr`, `it`, `es`.
 
-Every new invocation starts one search and can consume one credit, including empty or cached results. It never follows `next_page` or automatically retries a search. Polling uses the job endpoint and is free. Soldgraph currently advertises a free allowance of 100 requests per rolling 30 days; check the account dashboard before larger experiments. No subscription or billing changes are made by this script. See [usage and billing](https://soldgraph.com/docs/api/usage).
+Every new invocation starts one search and can consume one credit, including empty or cached results. It never follows `next_page` or automatically retries a search. Polling uses the job endpoint and is free. Soldgraph now documents 100 one-time free requests for new accounts; accounts created before October 9, 2026 retain 100 requests per rolling 30 days. Check the account dashboard for the actual allowance before larger experiments. No subscription or billing changes are made by this script. See [usage and billing](https://soldgraph.com/docs/api/usage).
 
 A pending job is checkpointed with its request ID. Polling is bounded to 15 additional calls, each with a 30-second timeout. To resume a pending job without starting another search, use the same query/country and the recorded ID:
 
@@ -125,3 +125,15 @@ The 30/40 usable shoes versus 23/40 usable heels counts measure price eligibilit
 A broader complete result set might include a narrower set, but its first 40 results need not. The shoes page contains October 18–19 sales; heels covers October 17–19; court shoes spans July 31–October 11. All court-shoe results are older than either broad page's oldest date. Most snakeskin results are also older; the one October 18 result shares a date with the broad page boundary, and date-only records cannot establish its ranking within that day. Provider search matching may also differ by query; these saved pages do not prove strict set containment of complete searches.
 
 Recommended change: make retrieval an explicit bounded process, with pagination and query variation, stopping when enough relevant evidence is found, the date window is exhausted, no further page exists, or the request budget is reached. Surface truncation and exclusions in the result. Verify provider pagination limits and billing before selecting the budget; do not assume a larger requested count is supported or free. No additional API requests or pagination implementation were made for this overlap analysis.
+
+## Verified page billing — 19 October 2026
+
+The current [Soldgraph billing documentation](https://soldgraph.com/docs/api/usage) charges one credit per completed eBay page. Requesting 200 rows costs the same as 40. Polling and failed searches are free; a page beyond the end is free. Ordinary empty searches and fresh requests served from cache are charged. Reusing the same idempotency key for the same request avoids duplicate charging.
+
+The [sold endpoint reference](https://soldgraph.com/docs/api/sold) supports `count` values 40, 60, 120 and 200. Keep count fixed across pages and follow `next_page`. Thus one query across three nonempty 200-row pages costs three credits, just as three separate one-page queries do. The budget should count paid pages across all queries, not merely unique query strings.
+
+The existing 40-row choice bounds response size, but saves no credits per page. Increasing to 200 is the clearest retrieval-efficiency improvement. Recommend testing one moderately broad category query at 200 rows, filtering locally, and only then deciding whether another page or another query is warranted. The observed `Gucci shoes` results were dominated by unrelated categories, so the broadest possible query is not necessarily cheapest per relevant comparable. Local filtering costs no Soldgraph credits; model analysis can have separate costs.
+
+For scale only: the saved searches reported 2,661 matches for shoes and 1,315 for heels. At 200 rows per page these would nominally require 14 and 7 credits respectively to retrieve all reported matches, assuming stable totals and full pages. Those totals are provider-reported estimates, not verified sales counts or guaranteed retrieval sizes. A 180-day local window does not make these rows arrive in one request.
+
+No paid searches or collector changes were made to answer this billing question. The current implementation still requests 40 rows until the proposed change is implemented and tested.
