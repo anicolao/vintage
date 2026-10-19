@@ -15,7 +15,7 @@ const requestSchema = z.discriminatedUnion('kind', [
   z.object({ kind:z.literal('forget'), listingId:id, expectedVersion:version, instructionId:id }),
   z.object({ kind:z.literal('edit'), listingId:id, expectedVersion:version, field:z.enum(fields), value:z.string().max(5000), previousValue:z.string().max(5000) }),
   z.object({ kind:z.literal('price'), listingId:id, expectedVersion:version, price:moneySchema.nullable() }),
-  z.object({ kind:z.literal('market'), listingId:id, expectedVersion:version, copy:copySchema, refinement:z.object({sourceId:id,query:z.string().trim().min(1).max(200),condition:z.enum(['new','open_box','refurbished','used','for_parts']).nullable(),enabledCriteria:z.array(z.enum(criterionFields)).max(6)}).optional() }),
+  z.object({ kind:z.literal('market'), listingId:id, expectedVersion:version, copy:copySchema, refresh:z.boolean().optional(), refinement:z.object({sourceId:id,query:z.string().trim().min(1).max(200),condition:z.enum(['new','open_box','refurbished','used','for_parts']).nullable(),enabledCriteria:z.array(z.enum(criterionFields)).max(6)}).optional() }),
   z.object({ kind:z.literal('save'), listingId:id, expectedVersion:version }),
   z.object({ kind:z.literal('reopen'), listingId:id, expectedVersion:version }),
   z.object({ kind:z.literal('duplicate'), listingId:z.string().uuid(), expectedVersion:z.literal(0), sourceListingId:id, sourceVersion:version }),
@@ -54,13 +54,16 @@ export class PipelineService {
         if(request.refinement) {
           if(prior?.id!==request.refinement.sourceId || canonical(prior.sourceCopy)!==canonical(state.copy) || prior.baseVersion!==state.input.baseVersion)throw new Conflict('Price evidence changed. Reopen it before broadening.');
           const previous=(await tx.get(account.collection('operations').doc(prior.id))).data();
-          if(previous?.target!==target.path || previous.status!=='completed' || !previous.marketCheckpoint?.report)throw new Conflict('Research this item again before broadening.');
+          if(previous?.target!==target.path || (previous.status!=='completed'&&!(request.refresh&&previous.status==='failed')) || (!request.refresh&&!previous.marketCheckpoint?.report))throw new Conflict('Research this item again before broadening.');
           const source=previous.marketCheckpoint;
-          if(!source.criteria || request.refinement.enabledCriteria.some(id=>!source.criteria.some(c=>c.id===id)) || new Set(request.refinement.enabledCriteria).size!==request.refinement.enabledCriteria.length)throw new Conflict('Check the matching criteria.');
+          if(!source?.criteria || request.refinement.enabledCriteria.some(id=>!source.criteria.some(c=>c.id===id)) || new Set(request.refinement.enabledCriteria).size!==request.refinement.enabledCriteria.length)throw new Conflict('Check the matching criteria.');
           checkpoint={...source};
-          if(source.query!==request.refinement.query || (source.condition || null)!==request.refinement.condition) {
+          if(request.refresh || source.query!==request.refinement.query || (source.condition || null)!==request.refinement.condition) {
             checkpoint={query:request.refinement.query,condition:request.refinement.condition,criteria:source.criteria,queryModel:{provider:'seller',promptVersion:'manual-refinement'}};
           }
+        }
+        else if(prior?.criteria && canonical(prior.sourceCopy)===canonical(state.copy) && prior.baseVersion===state.input.baseVersion) {
+          checkpoint={query:prior.query,condition:prior.condition||null,criteria:prior.criteria.map(({id,value})=>({id,value})),enabledCriteria:prior.criteria.filter(c=>c.enabled).map(c=>c.id)};
         }
         this.queueMarket(tx,op,market,target,state,uid,workspace,request,checkpoint);
         return {state,operation:{status:'queued',stage:0}};
@@ -178,20 +181,25 @@ export class PipelineService {
     });
   }
   queueMarket(tx,op,market,target,state,uid,workspace,request,checkpoint) {
-    const input={copy:state.copy,photos:state.input.photos,proposalId:state.proposalId,baseVersion:state.input.baseVersion,...(request.refinement?{enabledCriteria:request.refinement.enabledCriteria}:{})};
+    const input={copy:state.copy,photos:state.input.photos,proposalId:state.proposalId,baseVersion:state.input.baseVersion,...(request.refinement?{enabledCriteria:request.refinement.enabledCriteria}:checkpoint?.enabledCriteria?{enabledCriteria:checkpoint.enabledCriteria}:{})};
     tx.create(op,{uid,workspace,request,requestHash:hash(request),input,...(checkpoint?{marketCheckpoint:checkpoint}:{}),status:'queued',stage:0,attempts:0,target:target.path,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
-    tx.set(market,{id:op.id,status:'pending',sourceCopy:state.copy,proposalId:state.proposalId,baseVersion:state.input.baseVersion,startedAt:new Date().toISOString()});
+    tx.set(market,{id:op.id,status:'pending',...(checkpoint?.criteria?{query:checkpoint.query,condition:checkpoint.condition||null,criteria:checkpoint.criteria.map(c=>({...c,enabled:(input.enabledCriteria||checkpoint.criteria.map(c=>c.id)).includes(c.id)}))}:{}),sourceCopy:state.copy,proposalId:state.proposalId,baseVersion:state.input.baseVersion,progress:{label:'Preparing price research'},startedAt:new Date().toISOString()});
   }
   async executeMarket(opRef,op) {
     const target=this.db.doc(op.target);const market=target.parent.doc('market');
     const prior=(await market.get()).data();
     if(prior?.id!==opRef.id || prior.status!=='pending'){await opRef.update({status:'superseded',leaseUntil:0});return;}
+    const progress=async value=>this.db.runTransaction(async tx=>{
+      const current=(await tx.get(market)).data();
+      if(current?.id===opRef.id&&current.status==='pending')tx.update(market,{progress:value});
+    });
     let images=[];
     if(!op.result)for(const photo of op.input.photos || []) {
+      await progress({label:'Preparing item photos',completed:images.length,total:op.input.photos.length});
       const derivative=await ensureDerivative(this.bucket,photo);
       images.push((await this.bucket.file(derivative.path).download())[0]);
     }
-    const result=op.result || await this.market.research(op.input,opRef.id,op.marketCheckpoint || {},value=>opRef.update({marketCheckpoint:value}),images);
+    const result=op.result || await this.market.research(op.input,opRef.id,op.marketCheckpoint || {},value=>opRef.update({marketCheckpoint:value}),images,progress);
     if(!op.result)await opRef.update({result});
     await this.db.runTransaction(async tx=>{
       const current=(await tx.get(market)).data();

@@ -32,7 +32,8 @@ export function recommend(report,selection,decision) {
 }
 export class MarketResearch {
   constructor(generator,{key=()=>process.env.SOLDGRAPH_API_KEY,transport=fetch,imageTransport=fetch}={}) {this.generator=generator;this.imageTransport=generator.test?(url,init)=>transport('http://127.0.0.1:9399/test-image',init):imageTransport;this.key=key;this.transport=generator.test ? (url,init)=>transport(`http://127.0.0.1:9399${new URL(url).pathname}${new URL(url).search}`,init) : transport;}
-  async research(input,id,saved={},checkpoint=async()=>{},sellerImages=[]) {
+  async research(input,id,saved={},checkpoint=async()=>{},sellerImages=[],progress=async()=>{}) {
+    await progress({label:'Preparing search'});
     let query=saved.query;
     if(!query) {
       const {result,model}=await this.generator.request(marketQueryPrompt,[{text:JSON.stringify({item:input.copy})}],{type:'OBJECT',properties:{query:{type:'STRING'},condition:{type:'STRING',enum:[...searchConditions,'unknown']}},required:['query','condition']});
@@ -42,6 +43,7 @@ export class MarketResearch {
     }
     let report=saved.report;
     if(report?.status!=='complete'||report.results.some(r=>!Object.hasOwn(r,'imageUrl'))) {
+      await progress({label:'Searching sold listings'});
       const key=this.key();if(!key)throw new Error('Market provider unavailable');
       report=await collect({query,condition:saved.condition,country:'uk',days:180,requestId:saved.requestId || report?.requestId || null,idempotencyKey:id},key,{
         transport:this.transport,maxPolls:5,
@@ -60,6 +62,7 @@ export class MarketResearch {
     const sellerParts=sellerImages.flatMap((bytes,i)=>[{text:`SELLER PHOTO ${i+1}`},imagePart(bytes)]);
     const remaining=eligible.filter(r=>!assessments.some(a=>a.evidenceId===r.evidenceId));
     for(let offset=0;offset<remaining.length;offset+=8) {
+      await progress({label:'Comparing listing photos',completed:assessments.length,total:eligible.length});
       const batch=remaining.slice(offset,offset+8);
       const loaded=await Promise.all(batch.map(async row=>({row,image:sellerImages.length?await loadMarketImage(row.imageUrl,this.imageTransport):null})));
       const visible=loaded.filter(v=>v.image);
@@ -75,6 +78,7 @@ export class MarketResearch {
       assessments=[...assessments,...assessed,...missing];
       saved={...saved,criteria,assessments,assessmentModel:model,photoEvidence};await checkpoint(saved);
     }
+    await progress({label:'Checking comparable matches',completed:assessments.length,total:eligible.length});
     validateAssessments(assessments,eligible,criteria);
     const selected=assessSelection(criteria,assessments,input.enabledCriteria);
     let decision;
@@ -90,6 +94,7 @@ export class MarketResearch {
         if(anchorPhotos.length) {
           const options=anchorOptions(candidates).filter(o=>anchorPhotos.some(p=>p.id===o.anchorId));
           const parts=[{text:JSON.stringify({item:input.copy,relaxedCriteria:selected.criteria.filter(c=>!c.enabled),candidates,options})},...sellerParts,...anchorPhotos.flatMap(p=>[{text:`COMPARABLE PHOTO evidenceId=${p.id}`},imagePart(p.image.bytes)])];
+          await progress({label:'Choosing the closest comparable and price'});
           const response=await this.generator.request(anchorPrompt,parts,anchorResponseSchema);
           decision=response.result;
           if(decision.anchorId){if(!options.some(o=>o.anchorId===decision.anchorId))throw new Error('Anchor requires a close, photo-verified comparable');anchorRecommendation(candidates,decision);}

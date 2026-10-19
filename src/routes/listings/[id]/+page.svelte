@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Busy from '$lib/components/Busy.svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
   import { app, dispatch } from '$lib/state/app';
@@ -15,4 +16,4 @@
   }
 </script>
 <svelte:head><title>Add photos — Vintage</title></svelte:head>
-<AccountGate>{#if id === 'new'}<main class="loading-screen"><p role="status">Opening your item…</p>{#if error}<p role="alert">{error}</p><button onclick={create}>Try again</button>{/if}</main>{:else}{#key `${$app.user?.uid}/${id}`}<ListingJourney {id} uid={$app.user?.uid ?? ''} />{/key}{/if}</AccountGate>
+<AccountGate>{#if id === 'new'}<main class="loading-screen"><Busy label="Opening your item…"/>{#if error}<p role="alert">{error}</p><button onclick={create}>Try again</button>{/if}</main>{:else}{#key `${$app.user?.uid}/${id}`}<ListingJourney {id} uid={$app.user?.uid ?? ''} />{/key}{/if}</AccountGate>

@@ -1,7 +1,8 @@
-import { PhotoImportError, photoType, heicPreview } from '../photos/import';
+import { PhotoImportError, photoType, heicPreview, maxPhotoBytes, maxPhotoPixels } from '../photos/import';
 import { getBlob, getMetadata, ref, uploadBytesResumable } from 'firebase/storage';
 import { getBackend, settings } from '../firebase';
 import type { Photo } from '../events/contracts';
+export interface PhotoProgress {label:string;value?:number;preview?:Blob}
 export interface PendingPhoto { id: string; uid: string; listingId: string; workspace: string; file: File; replace?: string | null }
 let database: Promise<IDBDatabase>;
 function open() {
@@ -40,28 +41,34 @@ async function put(path: string, blob: Blob, digest: string, progress: (n: numbe
   const upload = uploadBytesResumable(target, blob, { contentType: blob.type, customMetadata: { digest } });
   await new Promise<void>((resolve, reject) => upload.on('state_changed', s => progress(Math.round(s.bytesTransferred / s.totalBytes * 100)), reject, () => resolve()));
 }
-export async function uploadPhoto(pending: PendingPhoto, progress: (n: number) => void): Promise<Photo> {
+export async function uploadPhoto(pending: PendingPhoto, progress: (state:PhotoProgress) => void): Promise<Photo> {
   if (getBackend().auth.currentUser?.uid !== pending.uid) throw new PhotoImportError('Sign in to upload this photo.', true);
   const file = pending.file;
   const type = await photoType(file);
   if (!['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'].includes(type)) throw new PhotoImportError('Choose a JPEG, PNG, WebP or HEIC photo.');
-  if (!file.size || file.size > 10485760) throw new PhotoImportError('Choose a photo smaller than 10 MB.');
+  if (!file.size || file.size > maxPhotoBytes) throw new PhotoImportError('Choose a photo up to 50 MB.');
   const original = file.type === type ? file : new Blob([file], { type });
+  progress({label:'Preparing photo…'});
   let preview: Blob = original;
   if (/hei[cf]/.test(type)) {
+    progress({label:'Preparing iPhone photo…'});
     preview = await heicPreview(original);
   }
   let dimensions: ImageBitmap;
-  try { dimensions = await createImageBitmap(preview); } catch { throw new PhotoImportError(/hei[cf]/.test(type) ? 'The converted HEIC preview could not be read. Export the original as JPEG or PNG and select that copy.' : 'This photo could not be read. It may be damaged or use an unsupported format. Select another photo.'); }
+  try { dimensions = await createImageBitmap(preview); } catch { throw new PhotoImportError(/hei[cf]/.test(type) ? 'The iPhone photo preview could not be read. Select the original from Photos again.' : 'This photo could not be read. It may be damaged or use an unsupported format. Select another photo.'); }
   const width = dimensions.width; const height = dimensions.height; dimensions.close();
-  if (width > 20000 || height > 20000 || width * height > 60000000 || preview.size > 10485760) throw new PhotoImportError('This photo is too large. Choose a smaller image.');
+  if (width > 20000 || height > 20000 || width * height > maxPhotoPixels || preview.size > maxPhotoBytes) throw new PhotoImportError('This photo is too large. Choose a smaller image.');
+  progress({label:'Saving photo on this phone…',preview});
   const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', await original.arrayBuffer()))].map(b => b.toString(16).padStart(2, '0')).join('');
   const path = `workspaces/${settings.workspace}/accounts/${pending.uid}/listings/${pending.listingId}/photos/${pending.id}/original`;
   const previewPath = preview === original ? path : path.replace(/original$/, 'preview');
   await cachePreview(previewPath, preview);
-  if (!navigator.onLine) await new Promise<void>(resolve => window.addEventListener('online', () => resolve(), { once: true }));
-  await put(path, original, digest, progress);
-  if (preview !== original) await put(previewPath, preview, digest, progress);
+  if (!navigator.onLine) {progress({label:'Saved on this phone · Waiting for connection'});await new Promise<void>(resolve => window.addEventListener('online', () => resolve(), { once: true }));}
+  const total=original.size+(preview!==original?preview.size:0);
+  progress({label:'Uploading photo',value:0});
+  await put(path,original,digest,n=>progress({label:'Uploading photo',value:Math.round(n*original.size/total)}));
+  if(preview!==original)await put(previewPath,preview,digest,n=>progress({label:'Uploading preview',value:Math.round((original.size+preview.size*n/100)/total*100)}));
+  progress({label:'Finishing photo sync…'});
   return { id: pending.id, path, previewPath, type, size: original.size, width, height, digest };
 }
 async function cachePreview(path: string, blob: Blob) {
@@ -80,7 +87,7 @@ export async function photoUrl(photo: Photo) {
     r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error);
   });
   if (cached) return URL.createObjectURL(cached);
-  const blob = await getBlob(ref(getBackend().storage, photo.previewPath), 10485760);
+  const blob = await getBlob(ref(getBackend().storage, photo.previewPath), maxPhotoBytes);
   await cachePreview(photo.previewPath, blob);
   return URL.createObjectURL(blob);
 }

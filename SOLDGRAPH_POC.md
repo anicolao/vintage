@@ -225,3 +225,6 @@ Up to 12 qualifying candidates with the highest visual scores enter a second pho
 The UI displays the selected comparable image and asks for refresh on older text-only results. Missing-photo counts and no-close-photo explanations are shown when a price is withheld. Seller photos are pinned from server-owned listing state; editing and offline intent remain independent of network acknowledgement.
 
 Live validation against the saved Prada page inspected all 117 usable-price images without another Soldgraph search. It rejected `225866869779` (visual score 1; burgundy glossy peep-toe slingback) and withheld a price with all six criteria enabled (one qualifying result). A separate, non-mutating size-relaxed test reused the assessments and selected `297915165311`, a black pointed-toe Prada pump, disclosing EU 39 versus EU 37 and lower heel height. Artifacts: `.cache/soldgraph/photo-live-1792433187160/` and `.cache/soldgraph/photo-live-1792433320245/`.
+
+
+Refresh now retains the current explicit matching choices and query/condition, including when no visual anchor qualifies. Matching refinements still reuse saved evidence; refresh explicitly starts a new provider search with those choices. Live progress uses phase labels and assessed-photo counts rather than simulated API completion percentages.

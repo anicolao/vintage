@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Busy from './Busy.svelte';
   import { onMount, onDestroy } from 'svelte';
   import { watchWorkflow, workflows, pipelineIntents, duplicateEvents } from '$lib/state/pipeline';
   import { app } from '$lib/state/app';
@@ -13,7 +14,7 @@
   export let updatedAt: number | undefined = undefined;
   let events: unknown[] = [];
   let coverUrl = ''; let active = true; let request = 0;
-  let failed = false;
+  let failed = false;let loadingCover=false;
   $: commands = $app.commands.filter(c => c.streamId === id);
   $: localCapture = duplicateEvents($pipelineIntents,id,uid);
   let unobserved:unknown[]=[];
@@ -38,15 +39,15 @@
   async function loadCover(photo: Photo | undefined) {
     const current = ++request;
     URL.revokeObjectURL(coverUrl); coverUrl = '';
-    if (!photo) return;
-    try { const url = await photoUrl(photo); if (active && current === request) coverUrl = url; else URL.revokeObjectURL(url); } catch { /* The item remains openable if its cover cannot load. */ }
+    if (!photo){loadingCover=false;return;}loadingCover=true;
+    try { const url = await photoUrl(photo); if (active && current === request) coverUrl = url; else URL.revokeObjectURL(url); } catch { /* The item remains openable if its cover cannot load. */ }finally{if(current===request)loadingCover=false;}
   }
 </script>
 <a class="glass listing-row" href={`/listings/${id}`}>
   <div class="listing-cover">
-    {#if coverUrl}<img src={coverUrl} alt="" />{:else if jobs[0]?.photo.file.type.startsWith('image/') && !/hei[cf]/i.test(jobs[0].photo.file.type)}<img src={jobs[0].url} alt="" />{:else}<Icon name="camera" size={32} />{/if}
+    {#if loadingCover}<Busy compact label="Loading photo…"/>{:else if coverUrl}<img src={coverUrl} alt="" />{:else if jobs[0]?.photo.file.type.startsWith('image/') && !/hei[cf]/i.test(jobs[0].photo.file.type)}<img src={jobs[0].url} alt="" />{:else}<Icon name="camera" size={32} />{/if}
   </div>
-  <div class="listing-summary"><h2>{title}</h2><span class="stage-chip"><span aria-hidden="true">●</span> {stage} · {count} {count === 1 ? 'photo' : 'photos'}</span>
+  <div class="listing-summary"><h2>{title}</h2>{#if jobs.some(j=>!j.error)}<Busy compact label={jobs.find(j=>!j.error)?.phase||'Preparing photos…'} value={jobs.find(j=>j.running)?.progress}/>{:else if workflow?.status==='generating'}<Busy compact label="Creating draft…"/>{/if}<span class="stage-chip"><span aria-hidden="true">●</span> {stage} · {count} {count === 1 ? 'photo' : 'photos'}</span>
     {#if commands.length || jobs.length || $pipelineIntents.some(i=>i.request.listingId===id)}<span class="listing-date">Saved on this phone</span>{:else if failed}<span class="listing-date">Open to retry</span>{:else if editedAt}<time class="listing-date" datetime={new Date(editedAt * 1000).toISOString()}>{new Date(editedAt * 1000).toDateString() === new Date().toDateString() ? 'Today' : new Date(editedAt * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</time>{/if}
   </div>
   <Icon name="next" size={18} />

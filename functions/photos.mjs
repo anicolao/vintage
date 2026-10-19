@@ -8,11 +8,11 @@ export async function normalizePhoto(bytes, type) {
     const images = await decode.all({ buffer: bytes });
     try {
       const first = images[0];
-      if (!first || first.width * first.height > 40000000) throw new Error('Photo dimensions are too large');
+      if (!first || first.width * first.height > 60000000) throw new Error('Photo dimensions are too large');
       const decoded = await first.decode();
-      image = sharp(Buffer.from(decoded.data), { raw: { width: decoded.width, height: decoded.height, channels: 4 }, limitInputPixels: 40000000 });
+      image = sharp(Buffer.from(decoded.data), { raw: { width: decoded.width, height: decoded.height, channels: 4 }, limitInputPixels: 60000000 });
     } finally { images.dispose(); }
-  } else image = sharp(bytes, { limitInputPixels: 40000000 });
+  } else image = sharp(bytes, { limitInputPixels: 60000000 });
   const { data, info } = await image.rotate().resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 85 }).toBuffer({ resolveWithObject: true });
   return { bytes: data, width: info.width, height: info.height, digest: digest(data), type: 'image/jpeg', normalizerVersion: 1 };
 }

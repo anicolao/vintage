@@ -82,7 +82,7 @@ Language feedback is optional during review; generation has no style setup prere
 | AI provider/model | Vertex AI Gemini via the runtime service account; structured output validated server-side | 5; broader evaluation in 7 | Live photo/revision smoke checks plus representative quality, latency and cost evaluation |
 | Launch market | One agreed locale and currency for the pilot; retain typed currency in every monetary value | 6 for manual entry, 7 for pilot | Seller market and available comparable coverage; GBP in mockups is illustrative |
 | Deployment | Firebase Hosting previews with live Auth, Firestore and Storage; deploy backend changes with each feature PR | 0, before the first implementation PR is ready for review | Project/region/bucket configuration, deployment credentials, preview auth domains, PR isolation strategy and successful cloud read/write/reload |
-| Photo limits and HEIC support | Current: up to 8 photos, 10 MB each, JPEG/PNG/WebP/HEIC; browser HEIC display preview; server analysis normalization remains milestone 3 work | 3 | Successful JPEG, PNG, WebP and HEIC uploads, orientation handling, and recoverable invalid-file errors |
+| Photo limits and HEIC support | Current: up to 8 photos, 50 MB and 60 megapixels each, JPEG/PNG/WebP/HEIC/HEIF; native phone decoding or a current worker codec, resized display preview, and server analysis normalization | 3 | Successful JPEG, PNG, WebP and HEIC uploads, orientation handling, and recoverable invalid-file errors |
 
 Google login establishes Vintage identity; it does not supply Vinted history. There is no history import or style onboarding. Preferences come from explicit review feedback.
 
@@ -238,3 +238,10 @@ Live smoke checks are a separate verification lane from deterministic emulator E
 ## Next implementation sequence
 
 Review the photo-first real generation and language-feedback journey on live Firebase. Next implement evidence-backed pricing and complete representative provider evaluation, then the remaining device and operational gates.
+
+
+### Review fixes: persistent filters, progress and iPhone photos
+
+- Refreshing price evidence preserves the seller’s matching choices and search terms. The choices are pinned in the server operation and survive an insufficient result and reload. Plain refresh requests also inherit the last committed choices for unchanged item details.
+- Uploads report real byte percentages across original and preview. Preparation, offline waiting, decoding, syncing, generation, wording revision, image loading and account requests have accessible busy indicators. Price research reports its current stage and completed/total photo assessments. None of these indicators blocks navigation or editing; unknown durations use a spinner rather than invented percentages.
+- iPhone HEIC/HEIF is accepted directly, with content sniffing, native browser decoding when available and a maintained worker decoder otherwise. Original files are retained; JPEG display previews are capped at 1600 pixels. Client, Firestore and Storage allow 50 MB originals; browser/server decoding allow 60 megapixels, including 48 MP photos. Analysis functions have 2 GiB memory. The old browser decoder was removed.

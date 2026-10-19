@@ -200,6 +200,7 @@ test('insufficient pricing exposes measured exclusions and relaxes material with
  await page.getByLabel('Choose item photos').setInputFiles('static/images/wardrobe.png');
  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync','synced');
  await page.getByRole('button',{name:'Create my draft'}).click();
+ await expect(page.getByRole('heading',{name:'Listing proposal',exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Use £25.00',exact:true})).toBeVisible();
  await page.getByLabel('Material',{exact:true}).fill('Python print');await page.getByLabel('Material',{exact:true}).blur();
  await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync','synced');
@@ -218,4 +219,16 @@ test('insufficient pricing exposes measured exclusions and relaxes material with
  await expect(page.getByRole('button',{name:'Use £25.00',exact:true})).toBeVisible();
  await page.reload();await expect(page.getByRole('button',{name:'Use £25.00',exact:true})).toBeVisible();
  await expect(page.getByLabel('Material',{exact:true})).toHaveValue('Python print');
+ await page.getByRole('button',{name:'Refresh price evidence',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Use £25.00',exact:true})).toBeVisible();
+ await expect(page.getByText(/Broader comparison: Python print is not required/).filter({visible:true})).toBeVisible();
+ await page.getByLabel('Title',{exact:true}).fill('No visual match fixture');await page.getByLabel('Title',{exact:true}).blur();
+ await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync','synced');
+ await page.getByRole('button',{name:'Refresh price evidence',exact:true}).click();await expect(panel).toBeVisible();
+ await panel.getByRole('checkbox',{name:/Python print/}).uncheck();
+ await panel.getByRole('button',{name:'Compare with these choices',exact:true}).click();
+ await expect(panel).toBeVisible();await expect(panel.getByRole('checkbox',{name:/Python print/})).not.toBeChecked();
+ await page.getByRole('button',{name:'Refresh price evidence',exact:true}).click();
+ await expect(panel).toBeVisible();await expect(panel.getByRole('checkbox',{name:/Python print/})).not.toBeChecked();
+ await page.reload();await expect(panel.getByRole('checkbox',{name:/Python print/})).not.toBeChecked();
 });

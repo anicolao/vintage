@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Busy from './Busy.svelte';
   import { onMount } from 'svelte';
   import type { Photo } from '$lib/events/contracts';
   import { photoUrl } from '$lib/repositories/photos';
@@ -11,6 +12,6 @@
 </script>
 {#if error}<button class="photo-tile glass" onclick={load}>{error}. Try again</button>
 {:else}<button class="photo-tile glass" onclick={() => open(photo, url)} disabled={!url} aria-label={`Inspect photo ${position}`}>
-  {#if url}<img src={url} alt="" />{:else}<span>Loading photo…</span>{/if}
+  {#if url}<img src={url} alt="" />{:else}<Busy compact label="Loading photo…"/>{/if}
 
 </button>{/if}

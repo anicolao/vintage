@@ -20,7 +20,7 @@ export type Request =
   | {kind:'forget';listingId:string;expectedVersion:number;instructionId:string}
   | {kind:'generate';listingId:string;expectedVersion:number;photoIds:string[];context:string;replace:boolean}
   | {kind:'edit';listingId:string;expectedVersion:number;field:ListingField;value:string;previousValue:string}
-  | {kind:'market';listingId:string;expectedVersion:number;copy:Copy;refinement?:{sourceId:string;query:string;condition:'new'|'open_box'|'refurbished'|'used'|'for_parts'|null;enabledCriteria:('brand'|'category'|'material'|'colour'|'size'|'condition')[]}}
+  | {kind:'market';listingId:string;expectedVersion:number;copy:Copy;refresh?:boolean;refinement?:{sourceId:string;query:string;condition:'new'|'open_box'|'refurbished'|'used'|'for_parts'|null;enabledCriteria:('brand'|'category'|'material'|'colour'|'size'|'condition')[]}}
   | {kind:'price';listingId:string;expectedVersion:number;price:Money|null}
   | {kind:'save'|'reopen';listingId:string;expectedVersion:number}
   | {kind:'duplicate';listingId:string;expectedVersion:0;sourceListingId:string;sourceVersion:number}

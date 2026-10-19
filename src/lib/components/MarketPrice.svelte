@@ -4,6 +4,7 @@
   import { getBackend } from '$lib/firebase';
   import { accountPath } from '$lib/repositories/drafts';
   import { enqueue, locallyPersisted, pipelineIntents, connection, listingFields, type Workflow, type Copy, type Money } from '$lib/state/pipeline';
+  import Busy from './Busy.svelte';
   import Icon from './Icon.svelte';
   export let uid:string;export let id:string;export let current:Workflow;export let baseVersion:number;
   export let usePrice:(price:Money)=>Promise<void>;
@@ -11,8 +12,8 @@
   type CriterionId='brand'|'category'|'material'|'colour'|'size'|'condition';
   type Condition='new'|'open_box'|'refurbished'|'used'|'for_parts';
   interface Criterion {id:CriterionId;value:string;enabled:boolean;excludedCount:number;restoredCount:number}
-  interface Research {visualComparisonVersion?:string;visualCaution?:string;missingPhotoCount?:number;anchor?:{evidenceId:string;title:string;sourceUrl:string;imageUrl?:string;price:Money;reason:string}|null;pricing?:{direction:'above'|'below'|'same';adjustmentMinor:number;reason:string;distribution:{count:number;below:number;equal:number;above:number}}|null;assessmentFailures?:{failedCriteria:CriterionId[];unsafe:boolean}[];criteria?:Criterion[];condition?:Condition|null;eligibleCount?:number;matchingCount?:number;unsafeCount?:number;id:string;status:string;sourceCopy:Copy;baseVersion:number;startedAt:string;collectedAt?:string;query?:string;matches?:Match[];suggestedPrice?:Money|null;comparableRange?:{low:number;high:number}|null;caution?:string;error?:string;fetchedCount?:number;excludedCount?:number}
-  let research:Research|null=null;let error='';let sheet:HTMLDialogElement;
+  interface Research {progress?:{label:string;completed?:number;total?:number};visualComparisonVersion?:string;visualCaution?:string;missingPhotoCount?:number;anchor?:{evidenceId:string;title:string;sourceUrl:string;imageUrl?:string;price:Money;reason:string}|null;pricing?:{direction:'above'|'below'|'same';adjustmentMinor:number;reason:string;distribution:{count:number;below:number;equal:number;above:number}}|null;assessmentFailures?:{failedCriteria:CriterionId[];unsafe:boolean}[];criteria?:Criterion[];condition?:Condition|null;eligibleCount?:number;matchingCount?:number;unsafeCount?:number;id:string;status:string;sourceCopy:Copy;baseVersion:number;startedAt:string;collectedAt?:string;query?:string;matches?:Match[];suggestedPrice?:Money|null;comparableRange?:{low:number;high:number}|null;caution?:string;error?:string;fetchedCount?:number;excludedCount?:number}
+  let research:Research|null=null;let error='';let submitting=false;let imageFinished='';let researchLoaded=false;let sheet:HTMLDialogElement;
   let editorId='';let searchWords:string[]=[];let selectedWords:string[]=[];let selectedCriteria:CriterionId[]=[];let keepCondition=true;
   $: if(research && editorId!==research.id && research.status!=='pending'){editorId=research.id;searchWords=[...new Set((research.query||'').split(/\s+/).filter(Boolean))];selectedWords=[...searchWords];selectedCriteria=(research.criteria||[]).filter(c=>c.enabled).map(c=>c.id);keepCondition=true;}
   $: retrievalChanged=!!research&&(selectedWords.join(' ')!==searchWords.join(' ')||(!keepCondition&&!!research.condition));
@@ -21,24 +22,27 @@
   $: previewMatches=(research?.assessmentFailures||[]).filter(r=>!r.unsafe&&!r.failedCriteria.some(f=>selectedCriteria.includes(f))).length;
   function toggleCriterion(id:CriterionId){selectedCriteria=selectedCriteria.includes(id)?selectedCriteria.filter(v=>v!==id):[...selectedCriteria,id];}
   function toggleWord(word:string){selectedWords=selectedWords.includes(word)?selectedWords.filter(v=>v!==word):searchWords.filter(v=>v===word||selectedWords.includes(v));}
-  async function broaden(){
-    if(!research||!selectedWords.length)return;
-    try {await locallyPersisted();await enqueue({kind:'market',listingId:id,expectedVersion:current.version,copy:structuredClone(current.copy!),refinement:{sourceId:research.id,query:selectedWords.join(' ')===searchWords.join(' ')?research.query!:selectedWords.join(' '),condition:keepCondition?(research.condition||null):null,enabledCriteria:[...selectedCriteria]}});error='';}
-    catch {error='Broader comparison could not be saved on this phone. Try again.';}
+  async function broaden(refresh=false){
+    if(!research||!selectedWords.length||submitting)return;
+    submitting=true;
+    try {await locallyPersisted();await enqueue({kind:'market',listingId:id,expectedVersion:current.version,copy:structuredClone(current.copy!),refresh,refinement:{sourceId:research.id,query:selectedWords.join(' ')===searchWords.join(' ')?research.query!:selectedWords.join(' '),condition:keepCondition?(research.condition||null):null,enabledCriteria:[...selectedCriteria]}});error='';}
+    catch {error='Broader comparison could not be saved on this phone. Try again.';}finally{submitting=false;}
   }
   $: queued=$pipelineIntents.some(i=>i.request.kind==='market'&&i.request.listingId===id);
-  $: pending=queued||research?.status==='pending';
+  $: pending=submitting||queued||research?.status==='pending';
   $: stale=!!research&&(listingFields.some(f=>research!.sourceCopy[f]!==current.copy?.[f])||research.baseVersion!==baseVersion);
   $: ready=research?.status==='ready'&&research.visualComparisonVersion==='photo-comparison-v1'&&!!research.anchor&&!!research.pricing&&!stale&&!queued;
   const pounds=(minor:number)=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(minor/100);
-  onMount(()=>onSnapshot(doc(getBackend().db,`${accountPath(uid)}/listings/${id}/pipeline/market`),snapshot=>{research=(snapshot.data() as Research)||null;error='';},()=>error='Price evidence could not be opened. Try reloading.'));
+  onMount(()=>onSnapshot(doc(getBackend().db,`${accountPath(uid)}/listings/${id}/pipeline/market`),snapshot=>{research=(snapshot.data() as Research)||null;researchLoaded=true;error='';},()=>{researchLoaded=true;error='Price evidence could not be opened. Try reloading.';}));
   async function refresh() {
+    if(research?.criteria&&!stale){await broaden(true);return;}
+    if(submitting)return;submitting=true;
     try {await locallyPersisted();await enqueue({kind:'market',listingId:id,expectedVersion:current.version,copy:structuredClone(current.copy!)});error='';}
-    catch {error='Price research could not be saved on this phone. Try again.';}
+    catch {error='Price research could not be saved on this phone. Try again.';}finally{submitting=false;}
   }
 </script>
 <div class="market-research">
-  {#if pending}<p role="status">{$connection?'Comparing sold listings…':'Price research saved on this phone. Will start when connected.'} You can keep editing.</p>
+  {#if !researchLoaded}<Busy label="Opening price evidence…"/>{:else if pending}<Busy label={!$connection?'Price research saved on this phone. Will start when connected.':research?.status==='pending'?(research.progress?.label||'Comparing sold listings…'):'Saving price research…'} value={research?.status==='pending'?research.progress?.completed:undefined} max={research?.progress?.total||100}/>{#if research?.status==='pending'&&research.progress?.total}<p class="supporting">{research.progress.completed||0} of {research.progress.total}</p>{/if}<p class="supporting">You can keep editing.</p>
   {:else if stale}<p role="status">Item details changed. Refresh price evidence for the current item.</p>
   {:else if research&&['ready','insufficient'].includes(research.status)&&research.visualComparisonVersion!=='photo-comparison-v1'}<p role="status">Refresh price evidence to compare the actual photos.</p>
   {:else if ready&&research?.suggestedPrice}
@@ -46,7 +50,7 @@
     <p class="supporting">Based on {research.pricing?.distribution.count||research.matches?.length} comparable sold listings. Their displayed prices range from {pounds(research.comparableRange!.low)} to {pounds(research.comparableRange!.high)}, excluding shipping.</p>
     {#if research.anchor&&research.pricing}
       <p class="supporting">Closest comparable: <a href={research.anchor.sourceUrl} target="_blank" rel="noopener noreferrer">{research.anchor.title}</a> · {pounds(research.anchor.price.minor)}</p>
-      {#if research.anchor.imageUrl}<img class="anchor-photo" src={research.anchor.imageUrl} alt="Selected comparable" referrerpolicy="no-referrer" />{/if}
+      {#if research.anchor.imageUrl}{#if imageFinished!==research.anchor.evidenceId}<Busy compact label="Loading comparable photo…"/>{/if}<img onload={()=>imageFinished=research!.anchor!.evidenceId} onerror={()=>imageFinished=research!.anchor!.evidenceId} class="anchor-photo" src={research.anchor.imageUrl} alt="Selected comparable" referrerpolicy="no-referrer" />{/if}
       <p>{research.anchor.reason}</p>
       <p class="supporting">{research.pricing.direction==='same'?'Same price as the closest comparable':`${pounds(Math.abs(research.pricing.adjustmentMinor))} ${research.pricing.direction} the closest comparable`}.</p>
       <p>{research.pricing.reason}</p>
@@ -70,7 +74,7 @@
         <p class="supporting">AI-assessed counts from this page. A listing can fail several details, so counts overlap. “Adds” uses your current checkbox choices. Unchecking a detail leaves your listing unchanged.</p>
         <p class="supporting">{research.excludedCount} listings lack usable prices; {research.unsafeCount||0} are unsuitable items. These exclusions cannot be relaxed.</p>
         {#if retrievalChanged}<p class="supporting">A new search uses one search credit. Current counts will be recalculated.</p>{:else}<p class="supporting">{previewMatches} listings match these choices. Reuses these results. No additional search credit.</p>{/if}
-        <button class="secondary" disabled={!selectedWords.length||(!retrievalChanged&&!criteriaChanged)} onclick={broaden}>{retrievalChanged?'Search with these choices':'Compare with these choices'}</button>
+        <button class="secondary" disabled={!selectedWords.length||(!retrievalChanged&&!criteriaChanged)} onclick={()=>broaden()}>{retrievalChanged?'Search with these choices':'Compare with these choices'}</button>
       {:else}<p class="supporting">Refresh price evidence to assess which details exclude matches.</p>{/if}
       {#if research.caution}<p class="supporting">{research.caution}</p>{/if}
     </section>
@@ -79,7 +83,7 @@
   {#if research?.visualComparisonVersion==='photo-comparison-v1'&&research?.matches?.length}<button class="evidence-row" onclick={()=>sheet.showModal()}><span>See price evidence<small>{stale?'Previous item details':'Comparable sold listings and uncertainty'}</small></span><Icon name="next"/></button>{/if}
   {#if ready&&research?.criteria?.some(c=>!c.enabled)}<p class="supporting">{research.caution}</p>{/if}
   {#if ready}<p class="supporting">{research?.visualCaution}</p><p class="supporting">A starting point, not a predicted sale price. Accepted offers with hidden prices are excluded.</p>{/if}
-  {#if !pending}<button class="secondary" onclick={refresh}>{research?'Refresh price evidence':'Research price'}</button>{/if}
+  {#if researchLoaded&&!pending}<button class="secondary" onclick={refresh}>{research?'Refresh price evidence':'Research price'}</button>{/if}
   {#if error}<p role="alert">{error}</p>{/if}
 </div>
 <dialog class="evidence-sheet glass" bind:this={sheet} aria-labelledby="price-evidence-title">

@@ -273,3 +273,12 @@ When transparency is reduced or backdrop blur is unavailable, use deliberately o
 - Text and controls meet WCAG 2.2 AA contrast on the final composited surfaces in both appearances.
 - Keyboard access, screen-reader status announcements, photo-order alternatives, text scaling, reduced motion and reduced transparency work throughout.
 - Implementation is visually reviewed against these generated concepts at phone size and in the centered desktop layout.
+
+
+### Progress and photo-import behavior
+
+Every visible asynchronous task has immediate feedback: a terracotta/linen spinner and a specific stage label, including photo preparation, iPhone image decoding, uploads, photo loading, account restoration/sign-in/out, draft generation, wording revision and price research. Respect reduced motion; status labels remain available to assistive technology. Show determinate bars only for measured progress: uploaded bytes and completed comparable-photo assessments. Never show an estimated percentage for an API call. Keep navigation and editing available.
+
+Selecting an iPhone photo must not require exporting a JPEG. Keep the original on the device before background work and display its resized preview as soon as it is ready. Upload progress remains visible on the photo tile and listing card; queued draft creation shows the current photo task. Offline work explicitly says it is saved on the phone and waiting for a connection.
+
+**Refresh price evidence** uses the selected search terms and matching choices. An insufficient result must not recheck disabled details. Persist choices across refresh and reload; item attributes themselves remain unchanged. Show the current research stage and a completed/total photo count while comparing evidence.

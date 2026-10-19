@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Busy from './Busy.svelte';
   import { goto } from '$app/navigation';
   import { workflows, enqueue, emptyWorkflow, pipelineIntents, duplicateEvents } from '$lib/state/pipeline';
   import PipelineStatus from './PipelineStatus.svelte';
@@ -132,9 +133,9 @@
         <div role="group" aria-label={`Photo ${index + 1}`} draggable="true" ondragstart={() => dragged = photo.id} ondragover={event => event.preventDefault()} ondrop={event => { event.preventDefault(); if (dragged) void move(dragged, index); dragged = null; }}><PhotoTile {photo} position={index + 1} open={inspect} /></div>
       {/each}
       {#each jobs as job (job.photo.id)}<div class="upload-tile glass" role="group" aria-label="Photo upload">
-        {#if !/hei[cf]/i.test(job.photo.file.type + job.photo.file.name) && job.photo.file.type.startsWith('image/')}<img class="upload-preview" src={job.url} alt="Selected item" />{:else}<Icon name="camera" size={32} />{/if}
+        {#if job.previewReady || (!/hei[cf]/i.test(job.photo.file.type + job.photo.file.name) && job.photo.file.type.startsWith('image/'))}<img class="upload-preview" src={job.url} alt="Selected item" />{:else}<Icon name="camera" size={32} />{/if}
         {#if job.error}<div class="upload-feedback"><p role="alert">Couldn't use this photo. {job.error}</p><button class="secondary" onclick={() => { replacing = job.replace; replacingJob = job; fileInput.click(); }}>Choose another photo</button>{#if job.retryable}<button class="secondary" onclick={() => retryPhoto(job)}>Try again</button>{/if}<button class="secondary" onclick={() => discardPhoto(job)}>Remove</button></div>
-        {:else}<span class="upload-badge glass" role="status" aria-label={online ? 'Syncing photo' : 'Photo saved on this phone'}><Icon name="cloud" size={18} />{#if online}<span>Syncing</span>{/if}</span>{/if}
+        {:else}<div class="upload-badge glass"><Busy compact label={online?job.phase:'Saved on this phone · Waiting for connection'} value={online?job.progress:undefined}/>{#if online&&job.progress!==undefined}<span>{job.progress}%</span>{/if}</div>{/if}
       </div>{/each}
       {#if projection.photos.length + jobs.filter(j => !j.replace).length < 8}<div class="add-tile glass"><button class="add-photo" onclick={() => { replacing = null; fileInput.click(); }}><span class="icon-disc"><Icon name="camera" size={28} /></span><span>Add photo</span></button><button class="camera-action" onclick={() => { replacing = null; cameraInput.click(); }}>Take photo</button></div>{/if}
     </div>{/if}
@@ -144,9 +145,10 @@
     <button class="create-draft" disabled={!usable || $workflows[id]?.status === 'generating'} onclick={() => generate()}>Create my draft<Icon name="next"/></button>
     {#if !usable}<p class="quiet-status">Add a photo to continue</p>{/if}
     <button class="secondary" onclick={saveDraft}>Save draft</button>
+    {#if (saving||pending)&&!jobs.length}<Busy label={saving?'Saving on this phone…':online?'Syncing changes…':'Saved on this phone · Waiting for connection'}/>{/if}
     <PipelineStatus/>
     {#if removed}<div class="undo-notice glass" role="status"><span>Photo removed</span><button class="text-button" disabled={undoing} onclick={undoRemove}>Undo</button></div>{/if}
-  {:else}<p role="status">Opening your item…</p>{/if}
+  {:else}<Busy label="Opening your item…"/>{/if}
   <Status message={error || (pending ? $app.error : '')} error />
   {#if pending && !$app.sending && $app.error}<button class="secondary" onclick={() => retryDelivery()}>Try again</button>{#if commands.some(c => c.status === 'rejected')}<button class="secondary" onclick={async() => { await discardRejected(id); unobserved=[]; }}>Discard unsaved change</button>{/if}{/if}
   {#if error}<button class="secondary" onclick={() => edited ? saveContext() : location.reload()}>Try again</button>{/if}

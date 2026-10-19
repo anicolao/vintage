@@ -65,8 +65,8 @@ test('photo events validate owner paths and image metadata; retired note/check p
   const photo={id:'photo-one',path:`${path}/photos/photo-one/original`,previewPath:`${path}/photos/photo-one/original`,type:'image/png',size:100,width:100,height:100,digest:'a'.repeat(64)};
   const append=async payload => {const e=domainEvent(uid,4,draftId(uid),'photo/uploaded',payload,3);const b=writeBatch(db);b.update(doc(db,path),{version:3,updatedAt:serverTimestamp(),lastEventId:e.id});b.set(doc(db,`${path}/events/${e.id}`),e);return b.commit();};
   await assertFails(append({photo:{...photo,path:'someone/else'}}));
-  await assertFails(append({photo:{...photo,size:10485761}}));
-  await assertSucceeds(append({photo}));
+  await assertFails(append({photo:{...photo,size:52428801}}));
+  await assertSucceeds(append({photo:{...photo,size:12*1024*1024,width:8064,height:6048}}));
   await assertFails(getDoc(doc(db,`workspaces/e2e/users/${uid}`)));
   const storage=environment.authenticatedContext(uid).storage();
   const target=ref(storage,photo.path);

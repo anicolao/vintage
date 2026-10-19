@@ -214,3 +214,21 @@ test('price refinements pin owner, source and item; reuse reports only for uncha
  const checkpoint=(await account.collection('operations').doc(changed).get()).data().marketCheckpoint;
  assert.equal(checkpoint.query,'broader garment');assert.equal(checkpoint.report,undefined);assert.equal(checkpoint.assessments,undefined);
 });
+
+test('refresh retains relaxed matching choices and exposes durable research progress',async()=>{
+ const {uid,account,listingId,target,commandId}=await listing();
+ const original=account.collection('operations').doc(`${commandId}-market`);await service.execute(original);
+ const state=(await target.get()).data();const market=target.parent.doc('market');const first=(await market.get()).data();
+ const refined=randomUUID();await submit(uid,{kind:'market',listingId,expectedVersion:state.version,copy:state.copy,refinement:{sourceId:first.id,query:first.query,condition:first.condition||null,enabledCriteria:[]}},refined);
+ await service.execute(account.collection('operations').doc(refined));
+ for(const explicit of [true,false]){
+  const prior=(await market.get()).data();const id=randomUUID();
+  const request={kind:'market',listingId,expectedVersion:state.version,copy:state.copy,...(explicit?{refresh:true,refinement:{sourceId:prior.id,query:prior.query,condition:prior.condition||null,enabledCriteria:[]}}:{})};
+  await submit(uid,request,id);await submit(uid,request,id);
+  const op=account.collection('operations').doc(id);const queued=(await op.get()).data();
+  assert.deepEqual(queued.input.enabledCriteria,[]);assert.equal(queued.marketCheckpoint.report,undefined);
+  assert.equal((await market.get()).data().progress.label,'Preparing price research');
+  await service.execute(op);const done=(await market.get()).data();assert.ok(done.criteria.every(c=>!c.enabled));
+  assert.equal(done.progress.label,'Choosing the closest comparable and price');
+ }
+});

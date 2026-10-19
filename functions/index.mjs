@@ -29,8 +29,8 @@ export const submitCommand=onCall({region,maxInstances:10,timeoutSeconds:60},asy
     throw new HttpsError('internal','This change could not sync. Please try again.');
   }
 });
-export const executeCommand=onDocumentCreated({document:'workspaces/{workspace}/accounts/{uid}/operations/{commandId}',region,retry:true,memory:'1GiB',timeoutSeconds:540,maxInstances:5,secrets:projectId==='demo-vintage'?[]:[soldgraphKey]},event=>service.execute(event.data.ref));
-export const normalizeOriginal=onObjectFinalized({bucket:bucketName,region,retry:true,memory:'1GiB',timeoutSeconds:120,maxInstances:5},async event=>{
+export const executeCommand=onDocumentCreated({document:'workspaces/{workspace}/accounts/{uid}/operations/{commandId}',region,retry:true,memory:'2GiB',timeoutSeconds:540,maxInstances:5,secrets:projectId==='demo-vintage'?[]:[soldgraphKey]},event=>service.execute(event.data.ref));
+export const normalizeOriginal=onObjectFinalized({bucket:bucketName,region,retry:true,memory:'2GiB',timeoutSeconds:120,maxInstances:5},async event=>{
   const file=event.data;
   if (event.time && Date.now()-Date.parse(event.time)>86400000) return;
   if (!/^workspaces\/(main|pr-[1-9][0-9]*|e2e)\/accounts\/[^/]+\/listings\/[^/]+\/photos\/[^/]+\/original$/.test(file.name)) return;

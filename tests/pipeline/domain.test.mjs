@@ -53,3 +53,9 @@ test('provider sends actual photos and remembered wording instructions and valid
   generator.transport=async()=>({ok:true,json:async()=>({candidates:[{finishReason:'MAX_TOKENS'}]})});
   await assert.rejects(()=>generator.revise({copy,instructions:input.instructions}));
 });
+
+test('48 megapixel phone originals normalize without the previous 40 megapixel rejection',async()=>{
+ const require=createRequire(new URL('../../functions/package.json',import.meta.url));const sharp=require('sharp');
+ const bytes=await sharp({create:{width:8064,height:6048,channels:3,background:'#984831'}}).jpeg().toBuffer();
+ const result=await normalizePhoto(bytes,'image/jpeg');assert.equal(result.width,1600);assert.equal(result.height,1200);
+});

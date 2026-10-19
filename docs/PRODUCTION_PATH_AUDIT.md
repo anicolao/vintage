@@ -57,3 +57,12 @@ New generation queues independent background market research. Existing reviews c
 ### Photo-grounded comparable selection
 
 Corrected a production failure where text-only matching invented black leather attributes for a burgundy glossy slingback. Soldgraph image URLs now survive normalization; production downloads and validates images and sends actual seller/comparable photos to both assessment and anchor selection. The selected photo is visible in review. Missing photos and low visual resemblance cannot produce an anchor, and the model may abstain even with three qualifying prices. Versioned caches and image digests prevent reuse of the superseded text-only decision path. Visual judgments remain fallible, particularly with small provider thumbnails and hidden wear; missing detail must remain unknown. This does not establish authenticity or verified paid prices.
+
+
+### Refresh, progress and iPhone import corrections
+
+Production logs showed a successful material/colour refinement followed by a plain refresh that reset all criteria. Refresh now preserves the chosen criteria on both client and server, including when the broader comparison still has insufficient evidence. New tests exercise the insufficient → refine → insufficient → refresh → reload flow.
+
+Upload byte counts and market-assessment counts now drive progress bars; other asynchronous tasks use labelled spinners without fabricated completion percentages. Intent remains local-first and editors stay available.
+
+Removed `heic2any`; native image decoding is attempted first, with `heic-to` 1.6.6 providing worker-based HEIF decoding on other browsers. Server `libheif-js` is updated to 1.23.5. The former 10 MB upload limit and 40 MP server limit are replaced by consistent 50 MB originals and 60 MP decoding limits. Originals are immutable, previews are resized and temporary bitmaps are released. Device memory and genuinely malformed/unsupported images can still prevent decoding; retained originals and actionable errors support retry/reselection. Physical iPhone model/version coverage is not implied by automated tests.

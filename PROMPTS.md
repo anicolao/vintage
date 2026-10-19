@@ -458,3 +458,7 @@ the comparable selected is not a close match at all. it's a patent leather shoe 
 Prompt 107: Require photo comparison
 
 in particular it needs the *PHOTO*
+
+Prompt 108: Repair photo workflows
+
+OK the match is better for the black shoes, but the snakeskin shoe flow where we tried to uncheck the overley restrictive filters didn't work nad came back with hte same things checked. meanwhile, htere are a few places in the UI whwere we are witing for uploads or API calls and there is no feedback whatsoever about the work in progress - minimally a spinner, ideally a proper progress bar is needed in all these place. also the HEIC support is way too limited, we wnat to be able to natively use iphone picutures. let's update the PR accordignly

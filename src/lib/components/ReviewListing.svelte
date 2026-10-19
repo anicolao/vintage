@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Busy from './Busy.svelte';
   import { goto } from '$app/navigation';
   import { onMount, tick } from 'svelte';
   import { duplicateCachedPreviews } from '$lib/repositories/photos';
@@ -114,7 +115,7 @@
 
   {#if photos[0]}<div class="progress-photo"><PhotoTile photo={photos[0]} position={1} open={inspect}/></div>{:else if queuedPhoto && !/hei[cf]/i.test(queuedPhoto.photo.file.type)}<img class="progress-local-photo" src={queuedPhoto.url} alt="Selected item"/>{/if}
   <section class="glass flow-card">
-    {#if $pipelineIntents.some(i=>i.request.kind==='generate' && i.request.listingId===id)}<p role="status">{$connection?'Waiting for photos to sync':'Will start when connected'}</p>{/if}
+    {#if current.status==='generating'}<Busy label={queuedPhoto?queuedPhoto.phase:pendingGeneration?($connection?'Waiting for photos to sync':'Will start when connected'):['Preparing photos…','Writing your draft…','Saving your draft…'][Math.min(current.stage||0,2)]} value={queuedPhoto?.progress}/>{/if}
     <p class="supporting">Later photo or context edits are kept for your next proposal.</p>
     <ol class="stage-list">{#each ['Preparing photos','Writing your draft','Saving your draft'] as name,index}<li class:stage-done={(current.stage || 0)>index}><span class="stage-number">{#if (current.stage || 0)>index}<Icon name="check" size={18}/>{:else}{index+1}{/if}</span>{name}</li>{/each}</ol>
     {#if current.error}<p role="alert">{current.error}</p>{/if}
@@ -135,7 +136,7 @@
     <label for="language-feedback">Language feedback</label><textarea id="language-feedback" bind:value={feedback} maxlength="1000" rows="3" placeholder="e.g. Keep it short and factual"></textarea>
     <p class="supporting">Applies to this draft and future listings.</p>
     <button disabled={!feedback.trim() || current.revision?.status==='pending'} onclick={applyFeedback}>Apply feedback</button>
-    {#if current.revision?.status==='pending'}<p role="status">{$connection?'Revising wording…':'Feedback saved on this phone. Will revise when connected.'} You can keep editing.</p>
+    {#if current.revision?.status==='pending'}<Busy label={$connection?'Revising wording…':'Feedback saved on this phone. Will revise when connected.'}/><p class="supporting">You can keep editing.</p>
     {:else if current.revision?.status==='applied'}<p role="status">Wording updated. Feedback remembered.</p>
     {:else if current.revision?.status==='conflict'}<p role="status">Your wording changed during revision. Your edits are kept. Apply feedback again to revise the latest text.</p>
     {:else if current.revision?.status==='failed'}<p role="alert">Wording could not be revised. Your draft and feedback are saved.</p><button class="secondary" onclick={()=>{feedback=current.revision!.text;}}>Use feedback again</button>{/if}
@@ -148,6 +149,7 @@
   <button class="secondary" disabled={acting} onclick={saveDraft}>Save draft</button>
   <button disabled={!validPrice || !current.price || current.revision?.status==='pending' || (!!current.input && baseVersion!==current.input.baseVersion)} onclick={approve}>Approve listing<Icon name="check"/></button><a class="text-link" href={`/listings/${id}?view=photos`}>Edit photos or create another proposal</a>
 {/if}
+{#if acting}<Busy label="Saving on this phone…"/>{/if}
 {#if error}<p role="alert">{error}</p>{/if}<PipelineStatus/>
 </main>
 <dialog class="evidence-sheet glass" bind:this={evidenceDialog} aria-labelledby="evidence-title"><div class="sheet-handle" aria-hidden="true"></div><header class="sheet-header"><h2 id="evidence-title">Your photo evidence</h2><button class="icon-button secondary" aria-label="Close evidence" onclick={()=>evidenceDialog.close()}><Icon name="close"/></button></header>
