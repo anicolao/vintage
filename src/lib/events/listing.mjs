@@ -22,7 +22,7 @@ export function validateEvent(raw) {
   if (event.type === 'context/changed' && exact(event.payload, ['context']) && text(event.payload.context, 2000)) return { event };
   if ((event.type === 'photo/uploaded' && exact(event.payload, ['photo'])) || (event.type === 'photo/replaced' && exact(event.payload, ['photo', 'photoId']) && text(event.payload.photoId, 64))) {
     const p = event.payload.photo;
-    if (exact(p, ['id', 'path', 'previewPath', 'type', 'size', 'width', 'height', 'digest']) && text(p.id, 64) && text(p.path, 1024) && text(p.previewPath, 1024) && /^image\/(jpeg|png|webp|heic|heif)$/.test(p.type) && Number.isInteger(p.size) && p.size > 0 && p.size <= 10485760 && Number.isInteger(p.width) && p.width > 0 && Number.isInteger(p.height) && p.height > 0 && /^[a-f0-9]{64}$/.test(p.digest)) return { event };
+    if (exact(p, ['id', 'path', 'previewPath', 'type', 'size', 'width', 'height', 'digest']) && text(p.id, 64) && text(p.path, 1024) && text(p.previewPath, 1024) && /^image\/(jpeg|png|webp|heic|heif)$/.test(p.type) && Number.isInteger(p.size) && p.size > 0 && p.size <= 52428800 && Number.isInteger(p.width) && p.width > 0 && Number.isInteger(p.height) && p.height > 0 && /^[a-f0-9]{64}$/.test(p.digest)) return { event };
   }
   if (event.type === 'photo/removed' && exact(event.payload, ['photoId']) && text(event.payload.photoId, 64)) return { event };
   if (event.type === 'photo/reordered' && exact(event.payload, ['photoIds']) && Array.isArray(event.payload.photoIds) && event.payload.photoIds.length <= 8 && event.payload.photoIds.every(/** @param {any} id */ id => text(id, 64)) && new Set(event.payload.photoIds).size === event.payload.photoIds.length) return { event };

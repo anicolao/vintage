@@ -22,7 +22,7 @@ Event IDs combine UID, stable device ID and a sequence allocated atomically in I
 
 ## Photo entry
 
-Selecting an item starts an owned stream without asking for a name. Photo files and camera input accept JPEG, PNG, WebP and HEIC/HEIF, up to 8 photos at 10 MB each. Originals remain untinted and immutable. HEIC originals are retained alongside a browser-readable JPEG preview; the original is also decoded server-side to an oriented JPEG analysis derivative.
+Selecting an item starts an owned stream without asking for a name. Photo files and camera input accept JPEG, PNG, WebP and HEIC/HEIF, up to 8 photos at 50 MB each, up to 60 megapixels. Originals remain untinted and immutable. HEIC originals are retained alongside a browser-readable JPEG preview; the original is also decoded server-side to an oriented JPEG analysis derivative.
 
 Selected bytes are retained in IndexedDB until upload and local event enqueue succeed. Pending tiles keep their local image and a discreet sync badge. Offline status says Saved on this phone; invalid files offer replacement/removal, and interrupted transfers offer retry. Interrupted selections can be recovered on the same device. Authenticated reads restore thumbnails after reload without shareable download tokens. Inspection uses a centered mobile-width full-height dialog with a filmstrip, Make cover, Replace and Remove. Removal offers Undo. The order menu supports keyboard/touch movement, and tiles also support drag ordering. Replacement retains position. Uploads run independently of the screen and continue after navigation. Local thumbnails appear before upload; authenticated previews are cached on the device. Navigation and controls do not wait for network acknowledgement.
 

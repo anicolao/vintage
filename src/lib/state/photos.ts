@@ -1,21 +1,24 @@
+import { PhotoImportError, photoFailure } from '../photos/import';
 import { writable, get } from 'svelte/store';
 import { app, dispatch } from './app';
 import { settings } from '../firebase';
 import { uploadPhoto, retain, retained, type PendingPhoto } from '../repositories/photos';
-export interface PhotoJob { photo: PendingPhoto; url: string; progress: number; error: string; running: boolean; replace: string | null; retryable: boolean }
+export interface PhotoJob { photo: PendingPhoto; url: string; progress: number|undefined; phase:string; previewReady:boolean; error: string; running: boolean; replace: string | null; retryable: boolean }
 export const photoJobs = writable<PhotoJob[]>([]);
 let processing = false;
 const update = () => photoJobs.update(jobs => [...jobs]);
 export async function restorePhotos(uid: string, id: string) {
   const photos = await retained(uid, id);
-  photoJobs.update(jobs => [...jobs, ...photos.filter(p => !jobs.some(j => j.photo.id === p.id)).map(photo => ({ photo, url: URL.createObjectURL(photo.file), progress: 0, error: '', running: false, retryable: false, replace: photo.replace ?? null }))]);
+  photoJobs.update(jobs => [...jobs, ...photos.filter(p => !jobs.some(j => j.photo.id === p.id)).map(photo => ({ photo, url: URL.createObjectURL(photo.file), progress: undefined, phase:'Waiting to prepare photo…', previewReady:false, error: '', running: false, retryable: false, replace: photo.replace ?? null }))]);
   void processPhotos();
 }
 export async function addPhoto(file: File, uid: string, listingId: string, replace: string | null) {
   const photo = { id: crypto.randomUUID(), uid, listingId, workspace: settings.workspace, file, replace };
-  const job: PhotoJob = { photo, url: URL.createObjectURL(file), progress: 0, error: '', running: false, retryable: false, replace };
-  await retain(photo);
+  const job: PhotoJob = { photo, url: URL.createObjectURL(file), progress: undefined, phase:'Waiting to prepare photo…', previewReady:false, error: '', running: false, retryable: false, replace };
+  job.phase='Saving photo on this phone…';job.running=true;
   photoJobs.update(jobs => [...jobs, job]);
+  try {await retain(photo);}catch(error){URL.revokeObjectURL(job.url);photoJobs.update(jobs=>jobs.filter(j=>j!==job));throw error;}
+  job.running=false;update();
   void processPhotos();
 }
 export async function discardPhoto(job: PhotoJob) {
@@ -30,22 +33,22 @@ export async function processPhotos() {
   try {
     for (;;) {
       const uid = get(app).user?.uid;
-      const job = get(photoJobs).find(j => !j.error && j.photo.uid === uid);
+      const job = get(photoJobs).find(j => !j.error && !j.running && j.photo.uid === uid);
       if (!job) break;
       job.running = true; update();
       try {
-        const photo = await uploadPhoto(job.photo, progress => { job.progress = progress; update(); });
+        const photo = await uploadPhoto(job.photo, state => {job.progress=state.value;job.phase=state.label;if(state.preview){URL.revokeObjectURL(job.url);job.url=URL.createObjectURL(state.preview);job.previewReady=true;}update();});
         if (!get(photoJobs).includes(job)) continue;
-        if (get(app).user?.uid !== uid) throw new Error('Sign in to finish uploading this photo.');
+        if (get(app).user?.uid !== uid) throw new PhotoImportError('Sign in to finish uploading this photo.', true);
         await dispatch(job.replace
           ? { type: 'photo/replaced', payload: { photo, photoId: job.replace } }
           : { type: 'photo/uploaded', payload: { photo } }, job.photo.listingId);
         await retain(job.photo, true); URL.revokeObjectURL(job.url);
         photoJobs.update(jobs => jobs.filter(j => j !== job));
       } catch (cause) {
-        const message = cause instanceof Error ? cause.message : '';
-        job.retryable = !/Choose |could not be read|too large|conflicting upload/.test(message);
-        job.error = job.retryable ? 'Photo could not sync. Check your connection and try again.' : message;
+        const failure = photoFailure(cause);
+        job.retryable = failure.retryable;
+        job.error = failure.message;
       }
       finally { job.running = false; update(); }
     }

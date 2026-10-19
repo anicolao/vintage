@@ -275,3 +275,190 @@ looking good, rebase and merge
 Prompt 65: Preserve capture continuity
 
 looking good, rebase and merge
+
+Prompt 66: Review project status
+
+review where we are at and suggest next steps, then stop
+
+Prompt 67: Specify market prototype
+
+I think we'd like to prototype some data gathering via our developer account. Write an EBAY_MARKET_DATA_POC.md that specifies some very basic pricing/data gathering, and specifies what we need to configure for a first test
+
+Prompt 68: Automate sales discovery
+
+this first step sucks. we don't want to have to look up thiings by hand. Instead, let's do a prototype where we search for some terms, the script automatically finds recently completed auctions and returns data for the LLM to analyze. don't limit it to auctions; use any completed sales for pricing. we made a .env file with the appropriate secrets, update the POC doc with this approach
+
+Prompt 69: Clarify sandbox requirements
+
+we set up keys for sandbox, not production - is a production keyset a hard requirement?
+
+Prompt 70: Implement sandbox collector
+
+let's do an initial implementation to see if the script works against the sandbox. we can rename .env to .env.sandbox if that's helpful.
+
+Prompt 71: Diagnose empty searches
+
+seems like this returns no records - is that because search isn't working, because it's sandbox, or because the keyword is bad? $ npm run investigate:ebay -- --environment sandbox --query "iphone"
+
+> vintage@0.0.0 investigate:ebay
+> node scripts/investigate-ebay.mjs --environment sandbox --query iphone
+
+sandbox: OAuth passed; sold scope passed; collection complete.
+basic_oauth: HTTP 200 — ok
+sold_search_oauth: HTTP 200 — ok
+sold_search: HTTP 200 — ok
+Collected 0 records. Saved /home/anicolao/projects/vintage/.cache/ebay/run-u5iL2l/analysis-input.json
+
+Prompt 72: Clarify default environment
+
+we put production keys into .env, if we don't pass --environment will it use those by default?
+
+Prompt 73: Diagnose production authentication
+
+hmm. sandbox seems to work but prod says: $ npm run investigate:ebay -- --environment production --query "iphone 13"
+
+> vintage@0.0.0 investigate:ebay
+> node scripts/investigate-ebay.mjs --environment production --query iphone 13
+
+production: OAuth failed; sold scope not_tested; collection failed.
+basic_oauth: HTTP 401 — invalid_credentials
+
+Prompt 74: Explain verification token
+
+it looks like we need to do somethign for account deletion and it watnts a "verification token" where do we get that from?
+
+Prompt 75: Implement deletion endpoint
+
+OK let's implement that as a firebase function and write the token somewhere so taht we can configure it on ebay
+
+Prompt 76: Retest production access
+
+we think we did it, test prod again
+
+Prompt 77: Explain permission process
+
+how do we get that permission?
+
+Prompt 78: Draft support ticket
+
+write us a draft for this support ticket
+
+Prompt 79: Generalize listing purpose
+
+let's remove references to vinted, make it support for people creating listings generally
+
+Prompt 80: Clarify personal use
+
+OK two things: we are building this applicatoin just for our personal use, not for public use. Secondly, you should know the APP ID so don't give us things to fill out. Let's draft again
+
+Prompt 81: Explore pricing alternatives
+
+OK we submitted that ticket. Meanwhile, are tehre any workarounds or alternatives?
+
+Prompt 82: Compare API pricing
+
+is either of these options free to use or are they both paid APIs?
+
+Prompt 83: Prototype Soldgraph collection
+
+let's try a PoC with Soldgraph
+
+Prompt 84: Locate Soldgraph key
+
+it is in .env as SOLDGRAPH_API_KEY
+
+Prompt 85: Integrate preview pricing
+
+aat a glance, these results look good for prototyping. Let's integrate - or have we already integrated? - so that we can test in the PR preview of our actual product
+
+Prompt 86: Refresh live preview
+
+is the live preview still up? I think it probably expired/needs refreshing please
+
+Prompt 87: Fix HEIC errors
+
+we tried to import HEIC and they failed with a wrong/unhelpful error message
+
+Prompt 88: Publish HEIC fix
+
+Restarteed your session, you should be able to publish to the PR
+
+Prompt 89: Investigate pricing evidence
+
+we tried to upload a listing for gucci shoes and it said 'not enough price data'. WTF? we think there should be info for a product like that. Do we have an adequate log of tehe API calls and responses that you can analyze to explain this outcome?
+
+Prompt 90: Extend pricing window
+
+let's try using a default window of at least 90 days, maybe even as much as 180 days. let's run that query by hand now to get a sense of whta that would have produced for this example
+
+Prompt 91: Compare broader searches
+
+even the word 'pumps' might not be right for the UK market. let's try a selection of broader searches and compare them
+
+Prompt 92: Quantify search overlap
+
+for these result sets can you qantify the overlap? Shouldn't the 40 shoes or heels include all the others? Yet they seem not to - only 23/40 usable heels, but 30/40 usable shoes?
+
+Prompt 93: Explain pagination limit
+
+why are we paging/using limit 40?
+
+Prompt 94: Explain search budget
+
+how does paging interact with the search budget? Ideally we'd want to do one broad search and then filter afterwards, if that minimizes API cost?
+
+Prompt 95: Confirm recency sorting
+
+can we order by recency
+
+Prompt 96: Compare query specificity
+
+let's compare 'gucci shoes' to 'gucci heels'. we think 'shoes' is too broad, but are unsure if that's better filtered after or baked into the query
+
+Prompt 97: Refine pricing retrieval
+
+ok let's refine the code to use 200 results and choose brand+category searches to get pricing and see if that helps. what is the prompt currently for determining the query?
+
+Prompt 98: Consider condition searches
+
+maybe '/new/used/vintage/' would be an important part of hte query to get comparables?
+
+Prompt 99: Add condition filtering
+
+let's add condition before we do more manual testing
+
+Prompt 100: Investigate insufficient comparables
+
+we tried again but got 'not enough comparables'. What happened?
+
+Prompt 101: Expose matching controls
+
+maybe the UI needs to surface the search terms used so the user can uncheck 'python print' and get more matches. let's try surfacing all search keywords in the failure mode so that the user can broaden the search, showing how many each excludes so that hte user can uncheck the impactful terms
+
+Prompt 102: Polish matching controls
+
+maybe the UI needs to surface the search terms used so the user can uncheck 'python print' and get more matches. let's try surfacing all search keywords in the failure mode so that the user can broaden the search, showing how many each excludes so that hte user can uncheck the impactful terms
+
+Prompt 103: Preserve unchanged queries
+
+maybe the UI needs to surface the search terms used so the user can uncheck 'python print' and get more matches. let's try surfacing all search keywords in the failure mode so that the user can broaden the search, showing how many each excludes so that hte user can uncheck the impactful terms
+
+Prompt 104: Anchor price recommendations
+
+we think that choosign the median price of a bunch of similar listings isn't good enough. instead, let's find the closest comparable and then choose a price near to that in the distribution, and provide an explanation of why it is the closest comparable and why we went above or below its price
+
+Prompt 105: Correct pricing verification
+
+we think that choosign the median price of a bunch of similar listings isn't good enough. instead, let's find the closest comparable and then choose a price near to that in the distribution, and provide an explanation of why it is the closest comparable and why we went above or below its price
+
+Prompt 106: Correct comparable evidence
+
+the comparable selected is not a close match at all. it's a patent leather shoe in a burgundy with a high gloss finish and a totally different style. the justification claims it is a black leather shoe. why? fix it
+
+Prompt 107: Require photo comparison
+
+in particular it needs the *PHOTO*
+
+Prompt 108: Repair photo workflows
+
+OK the match is better for the black shoes, but the snakeskin shoe flow where we tried to uncheck the overley restrictive filters didn't work nad came back with hte same things checked. meanwhile, htere are a few places in the UI whwere we are witing for uploads or API calls and there is no feedback whatsoever about the work in progress - minimally a spinner, ideally a proper progress bar is needed in all these place. also the HEIC support is way too limited, we wnat to be able to natively use iphone picutures. let's update the PR accordignly

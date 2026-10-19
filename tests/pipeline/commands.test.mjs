@@ -1,3 +1,4 @@
+import { recordDeletion } from '../../functions/ebay-deletion.mjs';
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
@@ -152,4 +153,82 @@ test('duplicate approved listings with independent files, replayable capture and
   assert.equal((await pipeline.get()).data().status,'reviewing');
   await submit(uid,{kind:'reopen',listingId,expectedVersion:original.version});
   const staleId=randomUUID();await assert.rejects(()=>submit(uid,{...duplicate,listingId:staleId},staleId));
+});
+
+test('eBay deletion receipts advance a durable revision once per notification',async()=>{
+  const state=db.doc(`_pipelineTests/ebay-deletion-${randomUUID()}`);
+  await Promise.all([recordDeletion(state,'notification-one'),recordDeletion(state,'notification-one')]);
+  assert.equal((await state.get()).data().revision,1);
+  await recordDeletion(state,'notification-two');
+  assert.equal((await state.get()).data().revision,2);
+  const receipts=await state.collection('receipts').get();
+  assert.equal(receipts.size,2);
+  for(const row of receipts.docs)assert.deepEqual(Object.keys(row.data()),['receivedAt']);
+});
+
+test('background price research preserves edits and approval; replay never repeats provider work',async()=>{
+  const {uid,account,listingId,target,commandId}=await listing();
+  const market=target.parent.doc('market');const pending=(await market.get()).data();
+  assert.equal(pending.status,'pending');assert.equal(pending.id,`${commandId}-market`);
+  const state=(await target.get()).data();
+  await submit(uid,{kind:'edit',listingId,expectedVersion:state.version,field:'title',value:'Updated while researching',previousValue:state.copy.title});
+  await submit(uid,{kind:'price',listingId,expectedVersion:state.version+1,price:{currency:'GBP',minor:4200}});
+  const reviewed=(await target.get()).data();
+  await submit(uid,{kind:'approve',listingId,expectedVersion:reviewed.version,baseVersion:2,snapshot:resolvedSnapshot(reviewed)});
+  const approved=(await target.get()).data();
+  const op=account.collection('operations').doc(pending.id);
+  await service.execute(op);await service.execute(op);
+  const result=(await market.get()).data();assert.equal(result.status,'ready');assert.equal(result.suggestedPrice.minor,2500);
+  assert.deepEqual((await target.get()).data(),approved);
+  assert.equal(result.sourceCopy.title,state.copy.title);
+});
+
+test('failed market research leaves review usable; explicit retries pin current copy and enforce ownership',async()=>{
+  const {uid,account,listingId,target,commandId}=await listing();
+  const before=(await target.get()).data();const op=account.collection('operations').doc(`${commandId}-market`);
+  const provider=service.market;service.market={research:async()=>{throw new Error('Provider unavailable');}};
+  try {await assert.rejects(()=>service.execute(op));await assert.rejects(()=>service.execute(op));await service.execute(op);}finally{service.market=provider;}
+  const market=target.parent.doc('market');assert.equal((await market.get()).data().status,'failed');
+  assert.deepEqual((await target.get()).data(),before);
+  const request={kind:'market',listingId,expectedVersion:before.version,copy:before.copy};
+  await assert.rejects(()=>submit('another-owner',request));
+  await assert.rejects(()=>submit(uid,{...request,copy:{...before.copy,title:'Outdated'}}));
+  const retry=randomUUID();await submit(uid,request,retry);await submit(uid,request,retry);
+  assert.deepEqual((await target.get()).data(),before);
+  await service.execute(account.collection('operations').doc(retry));
+  assert.equal((await market.get()).data().status,'ready');
+});
+
+test('price refinements pin owner, source and item; reuse reports only for unchanged retrieval',async()=>{
+ const {uid,account,listingId,target,commandId}=await listing();
+ const original=account.collection('operations').doc(`${commandId}-market`);await service.execute(original);
+ const state=(await target.get()).data();const prior=(await original.get()).data();
+ const request={kind:'market',listingId,expectedVersion:state.version,copy:state.copy,refinement:{sourceId:original.id,query:prior.marketCheckpoint.query,condition:prior.marketCheckpoint.condition||null,enabledCriteria:[]}};
+ await assert.rejects(()=>submit('another-owner',request));
+ await assert.rejects(()=>submit(uid,{...request,refinement:{...request.refinement,sourceId:'wrong-source'}}));
+ const refined=randomUUID();await submit(uid,request,refined);
+ const ref=account.collection('operations').doc(refined);assert.deepEqual((await ref.get()).data().marketCheckpoint.report,prior.marketCheckpoint.report);
+ await service.execute(ref);assert.deepEqual((await target.get()).data(),state);
+ await assert.rejects(()=>submit(uid,request));
+ const changed=randomUUID();await submit(uid,{...request,refinement:{...request.refinement,sourceId:refined,query:'broader garment'}},changed);
+ const checkpoint=(await account.collection('operations').doc(changed).get()).data().marketCheckpoint;
+ assert.equal(checkpoint.query,'broader garment');assert.equal(checkpoint.report,undefined);assert.equal(checkpoint.assessments,undefined);
+});
+
+test('refresh retains relaxed matching choices and exposes durable research progress',async()=>{
+ const {uid,account,listingId,target,commandId}=await listing();
+ const original=account.collection('operations').doc(`${commandId}-market`);await service.execute(original);
+ const state=(await target.get()).data();const market=target.parent.doc('market');const first=(await market.get()).data();
+ const refined=randomUUID();await submit(uid,{kind:'market',listingId,expectedVersion:state.version,copy:state.copy,refinement:{sourceId:first.id,query:first.query,condition:first.condition||null,enabledCriteria:[]}},refined);
+ await service.execute(account.collection('operations').doc(refined));
+ for(const explicit of [true,false]){
+  const prior=(await market.get()).data();const id=randomUUID();
+  const request={kind:'market',listingId,expectedVersion:state.version,copy:state.copy,...(explicit?{refresh:true,refinement:{sourceId:prior.id,query:prior.query,condition:prior.condition||null,enabledCriteria:[]}}:{})};
+  await submit(uid,request,id);await submit(uid,request,id);
+  const op=account.collection('operations').doc(id);const queued=(await op.get()).data();
+  assert.deepEqual(queued.input.enabledCriteria,[]);assert.equal(queued.marketCheckpoint.report,undefined);
+  assert.equal((await market.get()).data().progress.label,'Preparing price research');
+  await service.execute(op);const done=(await market.get()).data();assert.ok(done.criteria.every(c=>!c.enabled));
+  assert.equal(done.progress.label,'Choosing the closest comparable and price');
+ }
 });

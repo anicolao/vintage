@@ -122,7 +122,7 @@ label { display: block; font-size: 17px; font-weight: 400; margin-bottom: 8px; }
 .file-input { position: absolute; width: 1px; height: 1px; opacity: 0; padding: 0; min-height: 0; pointer-events: none; }
 .upload-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; }
 .upload-preview { position: absolute; inset: 4px; width: calc(100% - 8px); height: calc(100% - 8px); object-fit: cover; border-radius: 15px; }
-.upload-badge { position: absolute; bottom: 10px; right: 10px; padding: 6px; display: flex; align-items: center; gap: 4px; color: var(--text); }
+.upload-badge { max-width: calc(100% - 20px); flex-wrap: wrap; position: absolute; bottom: 10px; right: 10px; padding: 6px; display: flex; align-items: center; gap: 4px; color: var(--text); }
 .upload-feedback { position: relative; width: 100%; padding: 8px; background: var(--surface); border-radius: 15px; overflow: auto; }
 .upload-feedback p { margin: 0 0 8px; }
 .upload-feedback button { padding: 6px; min-height: 44px; font-size: 12px; width: 100%; margin-top: 4px; }
@@ -223,3 +223,10 @@ dialog::backdrop { background: rgb(33 28 25 / 25%); backdrop-filter: blur(5px); 
 .remembered-instruction p { flex: 1; min-width: 0; }
 .language-feedback summary { min-height: 44px; align-content: center; cursor: pointer; }
 .language-feedback summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+
+.market-research { margin-top: 20px; }
+.market-research .secondary { width: 100%; margin-top: 12px; }
+.recommendation-label { color: var(--muted); font-size: 14px; margin-bottom: 4px; }
+.recommendation-price { font-family: "DM Serif Display", serif; font-size: 36px; color: var(--accent); margin: 0; }
+.comparable-row { border-top: 1px solid var(--soft-line); padding: 16px 0; overflow-wrap: anywhere; }
+.comparable-price { color: var(--accent); font-size: 20px; margin-top: 0; }

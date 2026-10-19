@@ -48,7 +48,7 @@ service cloud.firestore {
           && p.id is string && p.id.matches('^[a-zA-Z0-9-]{1,64}$')
           && p.path == base + 'original' && p.previewPath in [p.path, base + 'preview']
           && p.type in ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
-          && p.size is int && p.size > 0 && p.size <= 10485760
+          && p.size is int && p.size > 0 && p.size <= 52428800
           && p.width is int && p.width > 0 && p.width <= 20000
           && p.height is int && p.height > 0 && p.height <= 20000
           && p.digest is string && p.digest.matches('^[a-f0-9]{64}$');

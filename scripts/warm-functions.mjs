@@ -33,7 +33,15 @@ try {
       if(status==='completed' || status==='failed'){clearTimeout(timer);stop();status==='completed'?resolve():reject(new Error('Queued worker startup failed'));}
     },error=>{clearTimeout(timer);stop();reject(error);});
   });
-  console.log('Callable authentication and actual generation worker are ready.');
+  await new Promise((resolve,reject)=>{
+    let stop=()=>{};
+    const timer=setTimeout(()=>{stop();reject(new Error('Market worker did not become ready'));},30000);
+    stop=account.collection('operations').doc(`${commandId}-market`).onSnapshot(snapshot=>{
+      const status=snapshot.data()?.status;
+      if(status==='completed' || status==='failed'){clearTimeout(timer);stop();status==='completed'?resolve():reject(new Error('Market worker startup failed'));}
+    },error=>{clearTimeout(timer);stop();reject(error);});
+  });
+  console.log('Callable authentication, generation and market workers are ready.');
 } finally {
   await db.recursiveDelete(account);
   await bucket.deleteFiles({prefix:`${listing.path}/photos/`});

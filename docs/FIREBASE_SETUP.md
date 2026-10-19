@@ -34,7 +34,7 @@ VINTAGE_WORKSPACE=pr-3 npm run build:live
 
 Live builds reject missing Firebase configuration; test builds require both explicit E2E/emulator flags, the `demo-vintage` project and localhost. `.env.e2e` is test-only. Never point emulator reset/seed tools at the live project.
 
-Run `npm run check`, `npm run test:config`, `npm run test:hooks` and `npm run test:foundation`. The foundation command owns Auth, Firestore and Storage emulators, runs the security rules suite, builds the SPA and runs phone/desktop browser scenarios. Rules validation happens before browser scenarios so rule compilation is complete before their 2,000 ms action/assertion limits. No in-test sleeps or increased wait thresholds are used.
+Run `npm run check`, `npm run test:config`, `npm run test:hooks` and `npm run test:foundation`. The foundation command owns Auth, Firestore and Storage emulators, runs the security rules suite, builds the SPA and runs phone/desktop browser scenarios. Rules validation happens before browser scenarios so rule compilation is complete before their 2,000 ms action/assertion limits. No in-test sleeps are used. UI actions and assertions retain the 2,000 ms limit; an explicit background HTTP response may take up to 15,000 ms (for example, decoding and uploading HEIC). Tests assert immediate progress feedback before awaiting that completion.
 
 `npm run test:e2e:update-snapshots` deliberately updates screenshots after the rules suite passes. Review changes before committing them. Baselines cover both system appearances on phone and desktop.
 

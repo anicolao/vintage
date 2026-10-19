@@ -80,7 +80,10 @@ test('photo controls reorder, remove and reject unsupported files', async ({page
 test('HEIC original has a readable preview after reload', async ({page,context,request}) => {
   await resetAuth(request); await page.goto('/'); await signIn(page,context); await page.getByRole('link', {name:'New listing',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Show us the item'})).toBeVisible();
+  const uploaded=page.waitForResponse(response=>new URL(response.url()).port==='9290'&&response.request().method()==='POST'&&response.status()===200&&new URL(response.url()).searchParams.get('name')?.endsWith('/preview')===true,{timeout:15_000});
   await page.getByLabel('Choose item photos').setInputFiles('tests/fixtures/sample.heic');
+  await expect(page.getByRole('status').filter({hasText:'Preparing iPhone photo'})).toBeVisible();
+  await uploaded;
   await expect(page.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
   await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync', 'synced');
   await page.reload();
@@ -160,4 +163,37 @@ test('offline sign-out explains retained work and keeps it recoverable', async (
   await expect(page.getByLabel('Anything else?')).toHaveValue('Keep this local detail');
   await context.setOffline(false);
   await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync','synced');
+});
+
+test('unreadable HEIC explains conversion failure without suggesting a connection retry',async({page,context,request})=>{
+  await resetAuth(request);await page.goto('/');await signIn(page,context);
+  await page.getByRole('link',{name:'New listing',exact:true}).click();
+  await page.getByLabel('Choose item photos').setInputFiles({name:'unreadable.heic',mimeType:'image/heic',buffer:Buffer.from('not a decodable HEIC image')});
+  await expect(page.getByRole('alert')).toContainText('This HEIC photo could not be read.');
+  await expect(page.getByRole('alert')).toContainText('Try selecting the original from Photos');
+  await expect(page.getByRole('alert')).not.toContainText('Check your connection');
+  await expect(page.getByRole('button',{name:'Try again',exact:true})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Choose another photo',exact:true})).toBeEnabled();
+  await page.getByRole('button',{name:'Remove',exact:true}).click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+});
+
+test('upload progress stays visible while editing and navigation remain available',async({page,context,request})=>{
+ await resetAuth(request);await page.goto('/');await signIn(page,context);
+ await page.getByRole('link',{name:'New listing',exact:true}).click();
+ await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync','synced');
+ const url=page.url();let release!:()=>void;const gate=new Promise<void>(resolve=>release=resolve);
+ await page.route(url=>url.port==='9290',async route=>{await gate;await route.continue();});
+ try {
+  await page.getByLabel('Choose item photos').setInputFiles('static/images/wardrobe.png');
+  const bar=page.getByRole('progressbar',{name:'Uploading photo',exact:true});
+  await expect(bar).toBeVisible();await expect(bar).toHaveAttribute('value','0');
+  await page.getByLabel('Anything else?').fill('Editing while this photo uploads');
+  await expect(page.getByLabel('Anything else?')).toHaveValue('Editing while this photo uploads');
+  await test.info().attach('photo-upload-progress',{body:await page.screenshot(),contentType:'image/png'});
+  await page.getByRole('link',{name:'Your listings',exact:true}).click();
+  await expect(page.getByRole('progressbar',{name:'Uploading photo',exact:true})).toBeVisible();
+ }finally{release();}
+ await page.goto(url);await expect(page.getByRole('button',{name:'Inspect photo 1'})).toBeEnabled();
+ await expect(page.getByLabel('Anything else?')).toHaveValue('Editing while this photo uploads');
 });

@@ -1,6 +1,6 @@
 # Vintage v0 implementation plan
 
-Baseline: merged `main` at `0a61360`, inspected on 2026-09-14. [PR #11](https://github.com/anicolao/vintage/pull/11) contains photo processing, real generation, language feedback, review and approval using the approved visual system. Real generation and language feedback replace the sample path; market estimates and full provider evaluation remain outstanding; device review gates are listed separately below.
+Baseline: merged `main` at `0a61360`, inspected on 2026-09-14. [PR #11](https://github.com/anicolao/vintage/pull/11) contains photo processing, real generation, language feedback, review and approval using the approved visual system. Real generation and language feedback replace the sample path; Soldgraph-backed UK comparable research is integrated in PR #12; predictive market estimates and full provider evaluation remain outstanding; device review gates are listed separately below.
 
 ## Intended outcome
 
@@ -82,7 +82,7 @@ Language feedback is optional during review; generation has no style setup prere
 | AI provider/model | Vertex AI Gemini via the runtime service account; structured output validated server-side | 5; broader evaluation in 7 | Live photo/revision smoke checks plus representative quality, latency and cost evaluation |
 | Launch market | One agreed locale and currency for the pilot; retain typed currency in every monetary value | 6 for manual entry, 7 for pilot | Seller market and available comparable coverage; GBP in mockups is illustrative |
 | Deployment | Firebase Hosting previews with live Auth, Firestore and Storage; deploy backend changes with each feature PR | 0, before the first implementation PR is ready for review | Project/region/bucket configuration, deployment credentials, preview auth domains, PR isolation strategy and successful cloud read/write/reload |
-| Photo limits and HEIC support | Current: up to 8 photos, 10 MB each, JPEG/PNG/WebP/HEIC; browser HEIC display preview; server analysis normalization remains milestone 3 work | 3 | Successful JPEG, PNG, WebP and HEIC uploads, orientation handling, and recoverable invalid-file errors |
+| Photo limits and HEIC support | Current: up to 8 photos, 50 MB and 60 megapixels each, JPEG/PNG/WebP/HEIC/HEIF; native phone decoding or a current worker codec, resized display preview, and server analysis normalization | 3 | Successful JPEG, PNG, WebP and HEIC uploads, orientation handling, and recoverable invalid-file errors |
 
 Google login establishes Vintage identity; it does not supply Vinted history. There is no history import or style onboarding. Preferences come from explicit review feedback.
 
@@ -176,14 +176,19 @@ The seller reaches generation directly from photos. Example ingestion, a learned
 - [x] Duplicate an approved listing into an independent unapproved draft with its copy, attributes, price, context and ordered photos. Copy immutable Storage objects into the new listing namespace; atomically publish the descriptor, capture events and workflow.
 - [x] Persist reopen/duplicate/save intent locally and project it immediately. Queue duplicate-dependent edits until its server stream exists; enforce ownership, original-version checks and command idempotency.
 - [x] Retain acknowledged workflow versions on the device before retiring queue entries, so immediate reload cannot use a stale Firestore cache version. Preload navigation modules for offline return from a deep link.
-- [x] Remove the fabricated £48 recommendation. Require a seller-entered GBP asking price before approval; do not imply it is a valuation.
-- [ ] Implement market-backed recommendation, comparable groups, source dates and links, sale ranges and supported estimates. The earlier checked-off sample views did not deliver these capabilities.
+- [x] Remove the fabricated £48 recommendation. Require an explicitly chosen GBP asking price before approval; accept manual entry or the real comparable-based suggestion.
+- [x] Integrate Soldgraph sold evidence and Vertex AI comparable selection, an explained closest-comparable recommendation with a bounded neighboring observed-price adjustment, observed price range and the glass evidence sheet with real links and dates. Run background research independently of editing; preserve manual prices and flag stale item details.
+- [x] Preserve Soldgraph listing photos and compare them with pinned seller photos in both relevance assessment and anchor selection. Require a close visual match, show the chosen image, record image digests, reject text-only cached decisions, and withhold prices when photos or close matches are unavailable.
+- [ ] Validate predictive sale ranges and other outcome estimates before displaying them.
 - [ ] Complete a real-phone review of feedback, Save draft, Edit listing and Duplicate listing in both appearances, including offline recovery. Automated browser/transaction checks do not replace this gate.
 
 ## 7. Market pricing and provider evaluation
 
-- [ ] Agree pilot market/currency and usable market sources. GBP is the currently supported manual entry currency, not an inferred market selection.
-- [ ] Implement market retrieval with provenance, freshness, relevance and deduplication. Distinguish asking, sold and modelled values.
+- [x] Connect the UK/GBP Soldgraph prototype to the live Firebase PR preview. Keep one page per research operation and persist its query, provider job ID and idempotency key across retries.
+- [ ] Validate UK/GBP source coverage on representative personal-use items before treating this as a dependable pricing tool.
+- [x] Retrieve and deduplicate one page of recently sold listings, filter dates/prices/hidden offers, validate AI-selected evidence IDs, and preserve source/model provenance. Distinguish displayed sold prices from verified payments or modeled sale outcomes.
+- [x] Surface actual retrieval terms and condition on insufficient evidence. Assess each eligible listing independently against explicit item attributes, show overlapping exclusion counts and marginal restoration counts, and let the seller relax matching using saved evidence without another search charge. Preserve chosen prices, pin refinements to the current owner/item/research, and queue intent locally. Changed retrieval terms start a separately disclosed one-credit search; unseen per-keyword exclusions remain unknown.
+- [ ] Set a retention/deletion policy for cloud market evidence, evaluate matching quality, and measure latency and consumption beyond smoke tests.
 - [ ] Validate estimates before rendering sale probability, expected revenue or time to sale. Genuine missing evidence stays unavailable; fixed estimates are prohibited.
 - [ ] Evaluate real multimodal proposals and language revisions on representative items, ambiguous labels, adversarial context, conflicting feedback and missing information.
 - [ ] Define operational spend limits, latency/quality targets and monitoring for the pilot.
@@ -233,3 +238,10 @@ Live smoke checks are a separate verification lane from deterministic emulator E
 ## Next implementation sequence
 
 Review the photo-first real generation and language-feedback journey on live Firebase. Next implement evidence-backed pricing and complete representative provider evaluation, then the remaining device and operational gates.
+
+
+### Review fixes: persistent filters, progress and iPhone photos
+
+- Refreshing price evidence preserves the seller’s matching choices and search terms. The choices are pinned in the server operation and survive an insufficient result and reload. Plain refresh requests also inherit the last committed choices for unchanged item details.
+- Uploads report real byte percentages across original and preview. Preparation, offline waiting, decoding, syncing, generation, wording revision, image loading and account requests have accessible busy indicators. Price research reports its current stage and completed/total photo assessments. None of these indicators blocks navigation or editing; unknown durations use a spinner rather than invented percentages.
+- iPhone HEIC/HEIF is accepted directly, with content sniffing, native browser decoding when available and a maintained worker decoder otherwise. Original files are retained; JPEG display previews are capped at 1600 pixels. Client, Firestore and Storage allow 50 MB originals; browser/server decoding allow 60 megapixels, including 48 MP photos. Analysis functions have 2 GiB memory. The old browser decoder was removed.
