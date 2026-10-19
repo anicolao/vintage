@@ -382,3 +382,7 @@ we tried to import HEIC and they failed with a wrong/unhelpful error message
 Prompt 88: Publish HEIC fix
 
 Restarteed your session, you should be able to publish to the PR
+
+Prompt 89: Investigate pricing evidence
+
+we tried to upload a listing for gucci shoes and it said 'not enough price data'. WTF? we think there should be info for a product like that. Do we have an adequate log of tehe API calls and responses that you can analyze to explain this outcome?
