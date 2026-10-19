@@ -178,7 +178,7 @@ export class PipelineService {
     });
   }
   queueMarket(tx,op,market,target,state,uid,workspace,request,checkpoint) {
-    const input={copy:state.copy,proposalId:state.proposalId,baseVersion:state.input.baseVersion,...(request.refinement?{enabledCriteria:request.refinement.enabledCriteria}:{})};
+    const input={copy:state.copy,photos:state.input.photos,proposalId:state.proposalId,baseVersion:state.input.baseVersion,...(request.refinement?{enabledCriteria:request.refinement.enabledCriteria}:{})};
     tx.create(op,{uid,workspace,request,requestHash:hash(request),input,...(checkpoint?{marketCheckpoint:checkpoint}:{}),status:'queued',stage:0,attempts:0,target:target.path,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
     tx.set(market,{id:op.id,status:'pending',sourceCopy:state.copy,proposalId:state.proposalId,baseVersion:state.input.baseVersion,startedAt:new Date().toISOString()});
   }
@@ -186,7 +186,12 @@ export class PipelineService {
     const target=this.db.doc(op.target);const market=target.parent.doc('market');
     const prior=(await market.get()).data();
     if(prior?.id!==opRef.id || prior.status!=='pending'){await opRef.update({status:'superseded',leaseUntil:0});return;}
-    const result=op.result || await this.market.research(op.input,opRef.id,op.marketCheckpoint || {},value=>opRef.update({marketCheckpoint:value}));
+    let images=[];
+    if(!op.result)for(const photo of op.input.photos || []) {
+      const derivative=await ensureDerivative(this.bucket,photo);
+      images.push((await this.bucket.file(derivative.path).download())[0]);
+    }
+    const result=op.result || await this.market.research(op.input,opRef.id,op.marketCheckpoint || {},value=>opRef.update({marketCheckpoint:value}),images);
     if(!op.result)await opRef.update({result});
     await this.db.runTransaction(async tx=>{
       const current=(await tx.get(market)).data();

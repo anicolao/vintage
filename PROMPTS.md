@@ -450,3 +450,11 @@ we think that choosign the median price of a bunch of similar listings isn't goo
 Prompt 105: Correct pricing verification
 
 we think that choosign the median price of a bunch of similar listings isn't good enough. instead, let's find the closest comparable and then choose a price near to that in the distribution, and provide an explanation of why it is the closest comparable and why we went above or below its price
+
+Prompt 106: Correct comparable evidence
+
+the comparable selected is not a close match at all. it's a patent leather shoe in a burgundy with a high gloss finish and a totally different style. the justification claims it is a black leather shoe. why? fix it
+
+Prompt 107: Require photo comparison
+
+in particular it needs the *PHOTO*

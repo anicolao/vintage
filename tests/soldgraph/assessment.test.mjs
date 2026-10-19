@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {validateAssessments,assessSelection} from '../../functions/market-assessment.mjs';
 const criteria=[{id:'material',value:'Python print'},{id:'colour',value:'Brown'}];
 const rows=[{evidenceId:'a'},{evidenceId:'b'},{evidenceId:'c'}];
-const assessments=[{evidenceId:'a',failedCriteria:['material'],unsafe:false},{evidenceId:'b',failedCriteria:['material','colour'],unsafe:false},{evidenceId:'c',failedCriteria:[],unsafe:true}];
+const assessments=[{evidenceId:'a',failedCriteria:['material'],unsafe:false,visualScore:4,visualReason:'Visible shape matches.'},{evidenceId:'b',failedCriteria:['material','colour'],unsafe:false,visualScore:4,visualReason:'Visible shape matches.'},{evidenceId:'c',failedCriteria:[],unsafe:true,visualScore:0,visualReason:'Not an item.'}];
 test('overlapping exclusions and marginal restoration are computed from per-item assessments',()=>{
  const selected=assessSelection(criteria,assessments);
  assert.equal(selected.criteria[0].excludedCount,2);assert.equal(selected.criteria[0].restoredCount,1);

@@ -52,3 +52,8 @@ Live market retrieval is now connected to review. Source coverage, matching qual
 ## Market research integration
 
 New generation queues independent background market research. Existing reviews can request it explicitly. The query and one-credit idempotency key survive retries; completed searches are reused for model retries. Results are stored in an owner-readable, server-authored market document, separately from editable workflow versions. Late completion cannot overwrite copy, price or approval. Refresh intents persist on the device; stale item details disable adopting an old recommendation. A failed or insufficient search leaves manual pricing and navigation available. API credentials are held in Secret Manager and used only by the worker. Test HTTP responses remain confined to the guarded emulator test server.
+
+
+### Photo-grounded comparable selection
+
+Corrected a production failure where text-only matching invented black leather attributes for a burgundy glossy slingback. Soldgraph image URLs now survive normalization; production downloads and validates images and sends actual seller/comparable photos to both assessment and anchor selection. The selected photo is visible in review. Missing photos and low visual resemblance cannot produce an anchor, and the model may abstain even with three qualifying prices. Versioned caches and image digests prevent reuse of the superseded text-only decision path. Visual judgments remain fallible, particularly with small provider thumbnails and hidden wear; missing detail must remain unknown. This does not establish authenticity or verified paid prices.

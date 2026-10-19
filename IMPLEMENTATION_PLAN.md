@@ -178,6 +178,7 @@ The seller reaches generation directly from photos. Example ingestion, a learned
 - [x] Retain acknowledged workflow versions on the device before retiring queue entries, so immediate reload cannot use a stale Firestore cache version. Preload navigation modules for offline return from a deep link.
 - [x] Remove the fabricated £48 recommendation. Require an explicitly chosen GBP asking price before approval; accept manual entry or the real comparable-based suggestion.
 - [x] Integrate Soldgraph sold evidence and Vertex AI comparable selection, an explained closest-comparable recommendation with a bounded neighboring observed-price adjustment, observed price range and the glass evidence sheet with real links and dates. Run background research independently of editing; preserve manual prices and flag stale item details.
+- [x] Preserve Soldgraph listing photos and compare them with pinned seller photos in both relevance assessment and anchor selection. Require a close visual match, show the chosen image, record image digests, reject text-only cached decisions, and withhold prices when photos or close matches are unavailable.
 - [ ] Validate predictive sale ranges and other outcome estimates before displaying them.
 - [ ] Complete a real-phone review of feedback, Save draft, Edit listing and Duplicate listing in both appearances, including offline recovery. Automated browser/transaction checks do not replace this gate.
 

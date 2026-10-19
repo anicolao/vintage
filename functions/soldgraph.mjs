@@ -1,3 +1,4 @@
+import {marketImageUrl} from './market-images.mjs';
 import { randomUUID } from 'node:crypto';
 export const searchConditions = ['new', 'open_box', 'refurbished', 'used', 'for_parts'];
 const origin = 'https://api.soldgraph.com';
@@ -15,7 +16,7 @@ export function normalize(row, window) {
   let sourceUrl = null;
   try { const u = new URL(row.link); if (u.protocol === 'https:' && !u.username && !u.password) sourceUrl = u.href; } catch {}
   return {
-    evidenceId: row.id, title: text(row.title), sourceUrl, condition: text(row.condition),
+    imageUrl: marketImageUrl(row.image), evidenceId: row.id, title: text(row.title), sourceUrl, condition: text(row.condition),
     format: text(row.format), soldDate: date, displayedPrice: price, displayedShipping: money(row.displayed_shipping),
     bestOfferAccepted: typeof row.best_offer_accepted === 'boolean' ? row.best_offer_accepted : null,
     paymentVerified: false,

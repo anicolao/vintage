@@ -11,7 +11,7 @@
   type CriterionId='brand'|'category'|'material'|'colour'|'size'|'condition';
   type Condition='new'|'open_box'|'refurbished'|'used'|'for_parts';
   interface Criterion {id:CriterionId;value:string;enabled:boolean;excludedCount:number;restoredCount:number}
-  interface Research {anchor?:{evidenceId:string;title:string;sourceUrl:string;price:Money;reason:string}|null;pricing?:{direction:'above'|'below'|'same';adjustmentMinor:number;reason:string;distribution:{count:number;below:number;equal:number;above:number}}|null;assessmentFailures?:{failedCriteria:CriterionId[];unsafe:boolean}[];criteria?:Criterion[];condition?:Condition|null;eligibleCount?:number;matchingCount?:number;unsafeCount?:number;id:string;status:string;sourceCopy:Copy;baseVersion:number;startedAt:string;collectedAt?:string;query?:string;matches?:Match[];suggestedPrice?:Money|null;comparableRange?:{low:number;high:number}|null;caution?:string;error?:string;fetchedCount?:number;excludedCount?:number}
+  interface Research {visualComparisonVersion?:string;visualCaution?:string;missingPhotoCount?:number;anchor?:{evidenceId:string;title:string;sourceUrl:string;imageUrl?:string;price:Money;reason:string}|null;pricing?:{direction:'above'|'below'|'same';adjustmentMinor:number;reason:string;distribution:{count:number;below:number;equal:number;above:number}}|null;assessmentFailures?:{failedCriteria:CriterionId[];unsafe:boolean}[];criteria?:Criterion[];condition?:Condition|null;eligibleCount?:number;matchingCount?:number;unsafeCount?:number;id:string;status:string;sourceCopy:Copy;baseVersion:number;startedAt:string;collectedAt?:string;query?:string;matches?:Match[];suggestedPrice?:Money|null;comparableRange?:{low:number;high:number}|null;caution?:string;error?:string;fetchedCount?:number;excludedCount?:number}
   let research:Research|null=null;let error='';let sheet:HTMLDialogElement;
   let editorId='';let searchWords:string[]=[];let selectedWords:string[]=[];let selectedCriteria:CriterionId[]=[];let keepCondition=true;
   $: if(research && editorId!==research.id && research.status!=='pending'){editorId=research.id;searchWords=[...new Set((research.query||'').split(/\s+/).filter(Boolean))];selectedWords=[...searchWords];selectedCriteria=(research.criteria||[]).filter(c=>c.enabled).map(c=>c.id);keepCondition=true;}
@@ -29,7 +29,7 @@
   $: queued=$pipelineIntents.some(i=>i.request.kind==='market'&&i.request.listingId===id);
   $: pending=queued||research?.status==='pending';
   $: stale=!!research&&(listingFields.some(f=>research!.sourceCopy[f]!==current.copy?.[f])||research.baseVersion!==baseVersion);
-  $: ready=research?.status==='ready'&&!!research.anchor&&!!research.pricing&&!stale&&!queued;
+  $: ready=research?.status==='ready'&&research.visualComparisonVersion==='photo-comparison-v1'&&!!research.anchor&&!!research.pricing&&!stale&&!queued;
   const pounds=(minor:number)=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(minor/100);
   onMount(()=>onSnapshot(doc(getBackend().db,`${accountPath(uid)}/listings/${id}/pipeline/market`),snapshot=>{research=(snapshot.data() as Research)||null;error='';},()=>error='Price evidence could not be opened. Try reloading.'));
   async function refresh() {
@@ -40,11 +40,13 @@
 <div class="market-research">
   {#if pending}<p role="status">{$connection?'Comparing sold listings…':'Price research saved on this phone. Will start when connected.'} You can keep editing.</p>
   {:else if stale}<p role="status">Item details changed. Refresh price evidence for the current item.</p>
+  {:else if research&&['ready','insufficient'].includes(research.status)&&research.visualComparisonVersion!=='photo-comparison-v1'}<p role="status">Refresh price evidence to compare the actual photos.</p>
   {:else if ready&&research?.suggestedPrice}
     <p class="recommendation-label">Recommended listing price</p><p class="recommendation-price">{pounds(research.suggestedPrice.minor)}</p>
     <p class="supporting">Based on {research.pricing?.distribution.count||research.matches?.length} comparable sold listings. Their displayed prices range from {pounds(research.comparableRange!.low)} to {pounds(research.comparableRange!.high)}, excluding shipping.</p>
     {#if research.anchor&&research.pricing}
       <p class="supporting">Closest comparable: <a href={research.anchor.sourceUrl} target="_blank" rel="noopener noreferrer">{research.anchor.title}</a> · {pounds(research.anchor.price.minor)}</p>
+      {#if research.anchor.imageUrl}<img class="anchor-photo" src={research.anchor.imageUrl} alt="Selected comparable" referrerpolicy="no-referrer" />{/if}
       <p>{research.anchor.reason}</p>
       <p class="supporting">{research.pricing.direction==='same'?'Same price as the closest comparable':`${pounds(Math.abs(research.pricing.adjustmentMinor))} ${research.pricing.direction} the closest comparable`}.</p>
       <p>{research.pricing.reason}</p>
@@ -53,6 +55,8 @@
   {:else if research?.status==='insufficient'}<p role="status">Not enough comparable sales to recommend a price. You can enter your own.</p>
     <section class="broaden-search" aria-label="Broaden price comparison">
       <h3>Broaden the comparison</h3>
+      {#if research.visualCaution}<p>{research.visualCaution}</p>{/if}
+      {#if research.missingPhotoCount}<p class="supporting">{research.missingPhotoCount} listings have no usable comparison photo.</p>{/if}
       <p class="supporting">Searched “{research.query}”{research.condition?` · ${research.condition.replace('_',' ')}`:''}. Found {research.fetchedCount} listings; {research.eligibleCount} have usable prices.</p>
       {#if research.criteria}
         <fieldset><legend>Search words</legend>
@@ -70,12 +74,11 @@
       {:else}<p class="supporting">Refresh price evidence to assess which details exclude matches.</p>{/if}
       {#if research.caution}<p class="supporting">{research.caution}</p>{/if}
     </section>
-  {:else if research?.status==='ready'}<p role="status">Refresh price evidence for a closest-comparable recommendation.</p>
   {:else if research?.status==='failed'}<p role="status">{research.error}</p>
   {:else}<p class="supporting">Find comparable sold listings to help choose your asking price.</p>{/if}
-  {#if research?.matches?.length}<button class="evidence-row" onclick={()=>sheet.showModal()}><span>See price evidence<small>{stale?'Previous item details':'Comparable sold listings and uncertainty'}</small></span><Icon name="next"/></button>{/if}
+  {#if research?.visualComparisonVersion==='photo-comparison-v1'&&research?.matches?.length}<button class="evidence-row" onclick={()=>sheet.showModal()}><span>See price evidence<small>{stale?'Previous item details':'Comparable sold listings and uncertainty'}</small></span><Icon name="next"/></button>{/if}
   {#if ready&&research?.criteria?.some(c=>!c.enabled)}<p class="supporting">{research.caution}</p>{/if}
-  {#if ready}<p class="supporting">A starting point, not a predicted sale price. Accepted offers with hidden prices are excluded.</p>{/if}
+  {#if ready}<p class="supporting">{research?.visualCaution}</p><p class="supporting">A starting point, not a predicted sale price. Accepted offers with hidden prices are excluded.</p>{/if}
   {#if !pending}<button class="secondary" onclick={refresh}>{research?'Refresh price evidence':'Research price'}</button>{/if}
   {#if error}<p role="alert">{error}</p>{/if}
 </div>
@@ -91,6 +94,7 @@
 </dialog>
 
 <style>
+  .anchor-photo { width: 100%; max-width: 220px; max-height: 220px; object-fit: contain; border-radius: 1rem; }
   .broaden-search { margin-block: 1rem; }
   fieldset { border: 0; padding: 0; margin: 1rem 0; min-width: 0; }
   legend { font-weight: 600; margin-bottom: .5rem; }
