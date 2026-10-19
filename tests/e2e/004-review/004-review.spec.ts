@@ -119,8 +119,6 @@ test('save unfinished drafts, edit approvals and duplicate offline without chang
   await expect(page.getByRole('heading',{name:'Your listings',exact:true})).toBeVisible();
   await page.getByRole('link').filter({hasText:'Draft · 1 photo'}).click();
   await expect(page.getByLabel('Title',{exact:true})).toHaveValue('');
-  await expect(page.getByText('Closest test comparable in type and condition.',{exact:true}).first()).toBeVisible();
-  await expect(page.getByText('No supported difference justifies changing the comparable price.',{exact:true}).first()).toBeVisible();
   await expect(page.getByLabel('Listing price in GBP')).toHaveValue('');
   await context.setOffline(false);
   await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync','synced');
@@ -176,6 +174,8 @@ test('sold evidence recommends a price without overwriting the seller and surviv
   await page.getByRole('button',{name:'Create my draft'}).click();
   await expect(page.getByRole('heading',{name:'Listing proposal',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Use £25.00',exact:true})).toBeVisible();
+  await expect(page.getByText('Closest test comparable in type and condition.',{exact:true}).first()).toBeVisible();
+  await expect(page.getByText('No supported difference justifies changing the comparable price.',{exact:true}).first()).toBeVisible();
   await expect(page.getByLabel('Listing price in GBP')).toHaveValue('');
   await page.getByRole('button',{name:'Use £25.00',exact:true}).click();
   await expect(page.getByLabel('Listing price in GBP')).toHaveValue('25.00');

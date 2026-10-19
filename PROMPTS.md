@@ -446,3 +446,7 @@ maybe the UI needs to surface the search terms used so the user can uncheck 'pyt
 Prompt 104: Anchor price recommendations
 
 we think that choosign the median price of a bunch of similar listings isn't good enough. instead, let's find the closest comparable and then choose a price near to that in the distribution, and provide an explanation of why it is the closest comparable and why we went above or below its price
+
+Prompt 105: Correct pricing verification
+
+we think that choosign the median price of a bunch of similar listings isn't good enough. instead, let's find the closest comparable and then choose a price near to that in the distribution, and provide an explanation of why it is the closest comparable and why we went above or below its price
