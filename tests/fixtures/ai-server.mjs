@@ -11,7 +11,7 @@ export function startAiServer() {
     const request=JSON.parse(body);const input=JSON.parse(request.contents[0].parts[0].text);
     let result;
     if(input.evidence)result={matches:input.evidence.map(e=>({evidenceId:e.evidenceId,reason:'Test comparable condition and type.'})),caution:'Test evidence only.'};
-    else if(input.item)result={query:'test garment'};
+    else if(input.item)result={query:'test garment',condition:'unknown'};
     else if(input.copy)result={title:input.copy.title,description:`Revised wording: ${input.copy.description}`};
     else {
       const copy={title:'Test garment',description:input.languageInstructions.length?'Draft with remembered feedback.':'Draft from test photo.',category:'Clothing',brand:'',size:'',colour:'',material:'',condition:''};

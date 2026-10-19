@@ -77,3 +77,15 @@ test('default 180-day eligibility includes the Gucci sale and enforces inclusive
   assert.equal(r.results.find(r=>r.evidenceId==='gucci').excludedReason,days===30?'missing_invalid_or_out_of_window_date':null);
  }
 });
+
+test('condition is a separate validated provider filter and is recorded for diagnosis',async()=>{
+ for(const condition of ['new','open_box','refurbished','used','for_parts',null]) {
+  let requested;
+  const r=await collect({...config,condition},'test-secret',{now,transport:async url=>{requested=new URL(url);return response(complete());}});
+  assert.equal(requested.searchParams.get('condition'),condition);
+  assert.equal(requested.searchParams.get('q'),'iphone 13');assert.equal(r.condition,condition);
+ }
+ assert.equal(options(['--query','x','--condition','used']).condition,'used');
+ assert.throws(()=>options(['--query','x','--condition','vintage']));
+ await assert.rejects(collect({...config,condition:'vintage'},'test-secret',{transport:async()=>{assert.fail('Invalid filter must not call provider');}}),/invalid_condition/);
+});

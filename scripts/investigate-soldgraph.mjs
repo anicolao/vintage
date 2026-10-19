@@ -1,27 +1,28 @@
 #!/usr/bin/env node
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
-import { collect } from '../functions/soldgraph.mjs';
+import { collect, searchConditions } from '../functions/soldgraph.mjs';
 export { collect, normalize, statistics } from '../functions/soldgraph.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs, parseEnv } from 'node:util';
 
-const help = `Usage: npm run investigate:soldgraph -- --query "iphone 13" [--country uk] [--days 180]
+const help = `Usage: npm run investigate:soldgraph -- --query "iphone 13" [--country uk] [--days 180] [--condition used]
 Fetches one page of up to 200 sold listings across all sale formats.
 Reads SOLDGRAPH_API_KEY from .env. Each completed search costs one credit.
-Optional --request-id ID resumes polling without starting a new search; keep the original query/country.
+Optional --request-id ID resumes polling without starting a new search; keep the original query/country/condition.
 Writes a local analysis bundle; does not call an LLM. Exit 0 complete, 1 API failure, 2 setup failure.
 `;
 export function options(args) {
   const { values } = parseArgs({ args, options: {
-    query: { type: 'string' }, country: { type: 'string', default: 'uk' },
+    query: { type: 'string' }, condition: { type: 'string' }, country: { type: 'string', default: 'uk' },
     days: { type: 'string', default: '180' }, 'request-id': { type: 'string' }, help: { type: 'boolean' }
   } });
   if (values.help) return { help: true };
   if (!values.query?.trim() || values.query.length > 200) throw new Error('Supply --query (1–200 characters).');
   if (!['us','uk','ca','au','de','fr','it','es'].includes(values.country)) throw new Error('Unsupported --country.');
   if (!/^\d+$/.test(values.days) || +values.days < 1 || +values.days > 180) throw new Error('--days must be 1–180.');
+  if (values.condition && !searchConditions.includes(values.condition)) throw new Error('Unsupported --condition.');
   if (values['request-id'] && !/^[a-zA-Z0-9_-]{1,128}$/.test(values['request-id'])) throw new Error('Invalid request ID.');
-  return { query: values.query.trim(), country: values.country, days: +values.days, requestId: values['request-id'] ?? null };
+  return { query: values.query.trim(), condition: values.condition || null, country: values.country, days: +values.days, requestId: values['request-id'] ?? null };
 }
 export async function main(args = process.argv.slice(2)) {
   const config = options(args); if (config.help) { console.log(help); return; }

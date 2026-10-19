@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+export const searchConditions = ['new', 'open_box', 'refurbished', 'used', 'for_parts'];
 const origin = 'https://api.soldgraph.com';
 const text = value => typeof value === 'string' ? value.slice(0, 2000) : null;
 function money(value) {
@@ -45,7 +46,8 @@ export function statistics(rows) {
   });
 }
 export async function collect(config, key, { transport = fetch, now = new Date(), pause = ms => new Promise(r => setTimeout(r, ms)), checkpoint = async () => {}, maxPolls = 15 } = {}) {
-  const report = { source: 'soldgraph-ebay', query: config.query, country: config.country,
+  if (config.condition && !searchConditions.includes(config.condition)) throw new Error('invalid_condition');
+  const report = { condition: config.condition || null, source: 'soldgraph-ebay', query: config.query, country: config.country,
     window: { from: new Date(now.getTime()-(config.days-1)*86400000).toISOString().slice(0,10), to: now.toISOString().slice(0,10) },
     status: 'running', requestId: config.requestId, idempotencyKey: config.idempotencyKey || randomUUID(), requests: [], results: [] };
   const sanitize = () => JSON.parse(JSON.stringify(report).split(JSON.stringify(key).slice(1,-1)).join('[REDACTED]'));
@@ -74,6 +76,7 @@ export async function collect(config, key, { transport = fetch, now = new Date()
     await save();
     const url = new URL('/v1/ebay/sold', origin);
     url.search = new URLSearchParams({ q: config.query, country: config.country, page: '1', count: '200', sort: 'recently_sold' });
+    if (config.condition) url.searchParams.set('condition', config.condition);
     let reply = await request(config.requestId ? `${origin}/v1/jobs/${config.requestId}?wait=20` : url.href, !config.requestId);
     for (let polls = 0; ; polls++) {
       const { data, delay } = reply;

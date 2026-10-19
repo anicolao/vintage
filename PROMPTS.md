@@ -422,3 +422,7 @@ ok let's refine the code to use 200 results and choose brand+category searches t
 Prompt 98: Consider condition searches
 
 maybe '/new/used/vintage/' would be an important part of hte query to get comparables?
+
+Prompt 99: Add condition filtering
+
+let's add condition before we do more manual testing

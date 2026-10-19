@@ -178,3 +178,14 @@ A live test used the saved seller-reviewed Gucci item, actual Vertex AI query ge
 Twelve collector/recommendation tests pass, including a 200-row end-to-end service test selecting evidence from the end of the page, query provenance persistence, and retry reuse without another credit.
 
 Condition is a useful next refinement: [Soldgraph supports structured condition filters](https://soldgraph.com/docs/api/sold), including `new` and `used`. Prefer a supported filter when seller-reviewed condition is unambiguous. Vintage is not a supported condition group and is not synonymous with used; consider a separate vintage query when age is established and initial evidence is insufficient. Condition filtering and extra queries are not implemented in this change.
+
+
+## Condition-aware retrieval — 19 October 2026
+
+Fresh product searches now return a separate structured condition alongside the brand/category query. The model maps seller-reviewed condition to `new`, `open_box`, `refurbished`, `used`, or `for_parts`. Missing, ambiguous or conflicting condition returns `unknown`, which the server stores as null and omits from the API request. Vintage alone must not imply used. The server validates the enum before starting a paid search; condition is never appended to the query keywords.
+
+The selected condition is checkpointed with the query and model provenance (`brand-category-condition-v1`), sent as Soldgraph's `condition` parameter, and included in the normalized report and final pricing result. Retries preserve the existing search parameters/job, rather than changing an in-flight request or spending another credit. Actual item condition still participates in AI comparable selection; a broad provider condition group does not guarantee comparable wear.
+
+The CLI supports `--condition new|open_box|refurbished|used|for_parts`; omit it for unfiltered research. When resuming a job, retain its original query, country and condition. For example: `npm run investigate:soldgraph -- --query "Gucci heels" --condition used --days 180`. No additional manual/live searches were run after the request to add condition; the next live evaluation should use a fresh research operation.
+
+Fourteen collector/recommendation tests pass, covering all supported condition filters, rejecting unsupported filters before transport, unknown condition without a filter, condition provenance in results, and resuming a condition-filtered job without another query-generation call. The browser test provider was updated for the structured response contract.
