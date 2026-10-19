@@ -5,7 +5,7 @@ export { collect, normalize, statistics } from '../functions/soldgraph.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs, parseEnv } from 'node:util';
 
-const help = `Usage: npm run investigate:soldgraph -- --query "iphone 13" [--country uk] [--days 30]
+const help = `Usage: npm run investigate:soldgraph -- --query "iphone 13" [--country uk] [--days 180]
 Fetches one page of up to 40 sold listings across all sale formats.
 Reads SOLDGRAPH_API_KEY from .env. Each completed search costs one credit.
 Optional --request-id ID resumes polling without starting a new search; keep the original query/country.
@@ -14,12 +14,12 @@ Writes a local analysis bundle; does not call an LLM. Exit 0 complete, 1 API fai
 export function options(args) {
   const { values } = parseArgs({ args, options: {
     query: { type: 'string' }, country: { type: 'string', default: 'uk' },
-    days: { type: 'string', default: '30' }, 'request-id': { type: 'string' }, help: { type: 'boolean' }
+    days: { type: 'string', default: '180' }, 'request-id': { type: 'string' }, help: { type: 'boolean' }
   } });
   if (values.help) return { help: true };
   if (!values.query?.trim() || values.query.length > 200) throw new Error('Supply --query (1–200 characters).');
   if (!['us','uk','ca','au','de','fr','it','es'].includes(values.country)) throw new Error('Unsupported --country.');
-  if (!/^\d+$/.test(values.days) || +values.days < 1 || +values.days > 90) throw new Error('--days must be 1–90.');
+  if (!/^\d+$/.test(values.days) || +values.days < 1 || +values.days > 180) throw new Error('--days must be 1–180.');
   if (values['request-id'] && !/^[a-zA-Z0-9_-]{1,128}$/.test(values['request-id'])) throw new Error('Invalid request ID.');
   return { query: values.query.trim(), country: values.country, days: +values.days, requestId: values['request-id'] ?? null };
 }

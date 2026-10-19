@@ -38,7 +38,7 @@ export class MarketResearch {
     let report=saved.report;
     if(report?.status!=='complete') {
       const key=this.key();if(!key)throw new Error('Market provider unavailable');
-      report=await collect({query,country:'uk',days:30,requestId:saved.requestId || null,idempotencyKey:id},key,{
+      report=await collect({query,country:'uk',days:180,requestId:saved.requestId || null,idempotencyKey:id},key,{
         transport:this.transport,maxPolls:5,
         checkpoint:async report=>{saved={...saved,requestId:report.requestId,report};await checkpoint(saved);}
       });

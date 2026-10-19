@@ -54,3 +54,19 @@ The operator setup command `nix develop --command node scripts/configure-soldgra
 Research persists its query, job ID, search result and stable idempotency key in owner-scoped operations. A retry resumes the same search or reuses completed evidence, with at most three worker attempts. New explicit refreshes each consume another search credit. Current results live at the listing's `pipeline/market` document. Those cloud records are not covered by the local eBay deletion watcher; a broader retention/deletion policy remains to be implemented before extending use beyond this personal prototype.
 
 Live product-worker smoke on 5 October 2026: an isolated manually entered iPhone 13 review queued a real Firestore operation. Deployed Vertex AI built the query, Soldgraph supplied evidence, and Vertex AI selected 12 comparables. The worker persisted a ready recommendation (£154.39) while preserving the existing £99.99 manual price and workflow version. Temporary records were deleted. This verifies live worker/secret/provider integration; automated browser tests exercise the authenticated callable and evidence UI. Google sign-in and matching quality on your actual items still need review in the preview.
+
+## Gucci window comparison — 19 October 2026
+
+The CLI and product worker now default to **180 days**. The CLI accepts `--days` from 1 to 180. This window is a local eligibility filter; the provider request remains a single page sorted by recently sold, without a date parameter. It does not increase provider coverage.
+
+Live rerun: `npm run investigate:soldgraph -- --query "Gucci snakeskin pumps" --days 180`. HTTP 202 followed by HTTP 200, uncached, one credit, request ID `c305f35c-8d97-4af6-8807-823a76f96e32`. Soldgraph returned one result and no next page. The same returned evidence was evaluated against all three windows, avoiding redundant paid searches.
+
+| Window | Inclusive start | Returned | Eligible prices |
+| --- | --- | --- | --- |
+| 30 days | 2026-09-20 | 1 | 0 |
+| 90 days | 2026-07-22 | 1 | 1 |
+| 180 days | 2026-04-23 | 1 | 1 |
+
+All windows end on October 19. The result was eBay item `198615648151`, “GUCCI Snakeskin Crystal GG Axel Pumps Multicolor Shoes NEW $1290”, sold September 16, displayed price £371.43 plus £64.21 shipping, brand new, fixed price, no accepted offer flagged. Neither expanded window reaches the three-comparable minimum, so neither would produce a recommendation. Eligibility is not a relevance judgment; no LLM comparison was run in this manual test.
+
+Local evidence: `.cache/soldgraph/run-tyCK4b/`, including `window-comparison.json`. Existing saved research is unchanged; the product's new default applies to fresh searches. Broader queries remain the next coverage experiment.

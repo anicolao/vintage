@@ -62,3 +62,18 @@ test('polling is bounded and keeps the request ID for resume',async()=>{
 test('invalid CLI arguments fail before any request',()=>{
  for (const args of [[],['--query','x','--days','0'],['--query','x','--country','zz'],['--query','x','--request-id','../oops']]) assert.throws(()=>options(args));
 });
+
+test('default 180-day eligibility includes the Gucci sale and enforces inclusive date boundaries',async()=>{
+ assert.equal(config.days,180);
+ assert.equal(options(['--query','x','--days','90']).days,90);
+ assert.throws(()=>options(['--query','x','--days','181']));
+ const date=new Date('2026-10-19T12:00:00Z');
+ const rows=[row('gucci',371.43,{sold_date:'2026-09-16'}),row('boundary',20,{sold_date:'2026-04-23'}),row('older',20,{sold_date:'2026-04-22'}),row('future',20,{sold_date:'2026-10-20'})];
+ const report=await collect(config,'test-secret',{now:date,transport:async()=>response(complete(rows))});
+ assert.deepEqual(report.window,{from:'2026-04-23',to:'2026-10-19'});
+ assert.deepEqual(report.results.filter(r=>!r.excludedReason).map(r=>r.evidenceId),['gucci','boundary']);
+ for(const days of [30,90]) {
+  const r=await collect({...config,days},'test-secret',{now:date,transport:async()=>response(complete(rows))});
+  assert.equal(r.results.find(r=>r.evidenceId==='gucci').excludedReason,days===30?'missing_invalid_or_out_of_window_date':null);
+ }
+});
