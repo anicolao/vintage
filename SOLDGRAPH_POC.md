@@ -70,3 +70,36 @@ Live rerun: `npm run investigate:soldgraph -- --query "Gucci snakeskin pumps" --
 All windows end on October 19. The result was eBay item `198615648151`, “GUCCI Snakeskin Crystal GG Axel Pumps Multicolor Shoes NEW $1290”, sold September 16, displayed price £371.43 plus £64.21 shipping, brand new, fixed price, no accepted offer flagged. Neither expanded window reaches the three-comparable minimum, so neither would produce a recommendation. Eligibility is not a relevance judgment; no LLM comparison was run in this manual test.
 
 Local evidence: `.cache/soldgraph/run-tyCK4b/`, including `window-comparison.json`. Existing saved research is unchanged; the product's new default applies to fresh searches. Broader queries remain the next coverage experiment.
+
+## Broader Gucci search comparison — 19 October 2026
+
+Four fresh live searches used country `uk`, a 180-day local eligibility window, and one page of at most 40 recently sold results each. All completed successfully (HTTP 202 then HTTP 200), uncached, one credit each: **four credits total**. No additional pages or model calls were made. The original query is included below as the previously collected baseline.
+
+| Query | Returned | Usable GBP prices before relevance selection | More pages available? | Assessment from returned titles |
+| --- | ---: | ---: | --- | --- |
+| Gucci snakeskin pumps (baseline) | 1 | 1 | No | One brand-new crystal GG Axel pair, not established as comparable to the vintage item |
+| Gucci shoes | 40 | 30 | Yes | Very broad: trainers, men's loafers, boots, dust bags and even a single shoe |
+| Gucci heels | 40 | 23 | Yes | Better category coverage, including vintage heels, but mixed materials, models, sandals, mules and clogs |
+| Gucci court shoes | 19 | 13 | No | Useful additional candidates with several vintage/closed-shoe titles; still mixed materials and some unrelated results |
+| Gucci snakeskin shoes | 9 | 6 | No | Three usable trainer listings, one men's loafer, one ballet flat, and the original crystal pumps |
+
+The four new searches returned 106 distinct evidence IDs after deduplication, with 71 distinct eligible GBP prices. Every excluded row was excluded for accepted or unknown offer status. All returned dates fell within 90 days as well as 180, so those two windows produce identical eligibility counts in this sample. The broadest searches filled page 1 with sales from October 17–19; one page does not sample the whole 180-day period.
+
+“Usable price” means it passed date, offer and price validation, not that it is a suitable comparable. These title-based observations are an exploratory review, not a model-selected valuation. For example, the court-shoe results include pre-owned vintage interlocking-GG block heels at £56 and vintage GG monogram horsebit heels at £75.77; those amounts are displayed prices, excluding shipping, and do not establish a price for the seller's snakeskin shoes. No aggregate across these mixed styles should be offered as the item's recommendation.
+
+This demonstrates that changing query wording materially improves retrieval. It does not isolate a UK-versus-US language effect: both specificity and wording changed, and no separate `Gucci pumps` control was run. Search results also include titles using “pumps” and non-English titles despite `country=uk`.
+
+Recommended product experiment: combine a small, budgeted set of category synonyms such as `Gucci heels` and `Gucci court shoes` with the material-specific query, deduplicate by evidence ID, then assess similarity to the actual seller-reviewed item. Keep material/shape/condition distinctions in the selection stage and expose when only broader-category evidence is available. Avoid starting with `Gucci shoes` alone: its first page is dominated by unrelated categories. Automated query expansion is not implemented by this documentation change.
+
+### Reproduction and traceability
+
+Run `npm run investigate:soldgraph -- --query "QUERY" --country uk --days 180` for any query above. Each invocation can consume another credit.
+
+| Query | Provider request ID | Local evidence directory |
+| --- | --- | --- |
+| Gucci shoes | `d5cfcb72-27c2-40da-af7c-1568eeb9eec2` | `.cache/soldgraph/run-Czsdm2/` |
+| Gucci heels | `61a7f6aa-c778-4e23-b737-9ec46e5da188` | `.cache/soldgraph/run-G3mVt4/` |
+| Gucci court shoes | `026acf9c-7538-438f-ab3f-470e208db3bc` | `.cache/soldgraph/run-EtRMYR/` |
+| Gucci snakeskin shoes | `63b1924a-2c8a-406d-9b78-7149c9bbf4af` | `.cache/soldgraph/run-Ma5Zyk/` |
+
+Each directory contains the normalized evidence, API outcome summary and analysis bundle. Local aggregate counts are saved in `.cache/soldgraph/gucci-query-comparison.json`; credentials and cached result files are not committed.

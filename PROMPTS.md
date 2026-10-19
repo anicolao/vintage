@@ -390,3 +390,7 @@ we tried to upload a listing for gucci shoes and it said 'not enough price data'
 Prompt 90: Extend pricing window
 
 let's try using a default window of at least 90 days, maybe even as much as 180 days. let's run that query by hand now to get a sense of whta that would have produced for this example
+
+Prompt 91: Compare broader searches
+
+even the word 'pumps' might not be right for the UK market. let's try a selection of broader searches and compare them
