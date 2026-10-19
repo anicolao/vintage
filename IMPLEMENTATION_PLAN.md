@@ -177,7 +177,7 @@ The seller reaches generation directly from photos. Example ingestion, a learned
 - [x] Persist reopen/duplicate/save intent locally and project it immediately. Queue duplicate-dependent edits until its server stream exists; enforce ownership, original-version checks and command idempotency.
 - [x] Retain acknowledged workflow versions on the device before retiring queue entries, so immediate reload cannot use a stale Firestore cache version. Preload navigation modules for offline return from a deep link.
 - [x] Remove the fabricated £48 recommendation. Require an explicitly chosen GBP asking price before approval; accept manual entry or the real comparable-based suggestion.
-- [x] Integrate Soldgraph sold evidence and Vertex AI comparable selection, a median-based recommendation, observed price range and the glass evidence sheet with real links and dates. Run background research independently of editing; preserve manual prices and flag stale item details.
+- [x] Integrate Soldgraph sold evidence and Vertex AI comparable selection, an explained closest-comparable recommendation with a bounded neighboring observed-price adjustment, observed price range and the glass evidence sheet with real links and dates. Run background research independently of editing; preserve manual prices and flag stale item details.
 - [ ] Validate predictive sale ranges and other outcome estimates before displaying them.
 - [ ] Complete a real-phone review of feedback, Save draft, Edit listing and Duplicate listing in both appearances, including offline recovery. Automated browser/transaction checks do not replace this gate.
 

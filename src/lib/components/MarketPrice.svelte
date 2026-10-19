@@ -11,7 +11,7 @@
   type CriterionId='brand'|'category'|'material'|'colour'|'size'|'condition';
   type Condition='new'|'open_box'|'refurbished'|'used'|'for_parts';
   interface Criterion {id:CriterionId;value:string;enabled:boolean;excludedCount:number;restoredCount:number}
-  interface Research {assessmentFailures?:{failedCriteria:CriterionId[];unsafe:boolean}[];criteria?:Criterion[];condition?:Condition|null;eligibleCount?:number;matchingCount?:number;unsafeCount?:number;id:string;status:string;sourceCopy:Copy;baseVersion:number;startedAt:string;collectedAt?:string;query?:string;matches?:Match[];suggestedPrice?:Money|null;comparableRange?:{low:number;high:number}|null;caution?:string;error?:string;fetchedCount?:number;excludedCount?:number}
+  interface Research {anchor?:{evidenceId:string;title:string;sourceUrl:string;price:Money;reason:string}|null;pricing?:{direction:'above'|'below'|'same';adjustmentMinor:number;reason:string;distribution:{count:number;below:number;equal:number;above:number}}|null;assessmentFailures?:{failedCriteria:CriterionId[];unsafe:boolean}[];criteria?:Criterion[];condition?:Condition|null;eligibleCount?:number;matchingCount?:number;unsafeCount?:number;id:string;status:string;sourceCopy:Copy;baseVersion:number;startedAt:string;collectedAt?:string;query?:string;matches?:Match[];suggestedPrice?:Money|null;comparableRange?:{low:number;high:number}|null;caution?:string;error?:string;fetchedCount?:number;excludedCount?:number}
   let research:Research|null=null;let error='';let sheet:HTMLDialogElement;
   let editorId='';let searchWords:string[]=[];let selectedWords:string[]=[];let selectedCriteria:CriterionId[]=[];let keepCondition=true;
   $: if(research && editorId!==research.id && research.status!=='pending'){editorId=research.id;searchWords=[...new Set((research.query||'').split(/\s+/).filter(Boolean))];selectedWords=[...searchWords];selectedCriteria=(research.criteria||[]).filter(c=>c.enabled).map(c=>c.id);keepCondition=true;}
@@ -29,7 +29,7 @@
   $: queued=$pipelineIntents.some(i=>i.request.kind==='market'&&i.request.listingId===id);
   $: pending=queued||research?.status==='pending';
   $: stale=!!research&&(listingFields.some(f=>research!.sourceCopy[f]!==current.copy?.[f])||research.baseVersion!==baseVersion);
-  $: ready=research?.status==='ready'&&!stale&&!queued;
+  $: ready=research?.status==='ready'&&!!research.anchor&&!!research.pricing&&!stale&&!queued;
   const pounds=(minor:number)=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(minor/100);
   onMount(()=>onSnapshot(doc(getBackend().db,`${accountPath(uid)}/listings/${id}/pipeline/market`),snapshot=>{research=(snapshot.data() as Research)||null;error='';},()=>error='Price evidence could not be opened. Try reloading.'));
   async function refresh() {
@@ -42,7 +42,13 @@
   {:else if stale}<p role="status">Item details changed. Refresh price evidence for the current item.</p>
   {:else if ready&&research?.suggestedPrice}
     <p class="recommendation-label">Recommended listing price</p><p class="recommendation-price">{pounds(research.suggestedPrice.minor)}</p>
-    <p class="supporting">Based on {research.matches?.length} comparable sold listings. Their displayed prices range from {pounds(research.comparableRange!.low)} to {pounds(research.comparableRange!.high)}, excluding shipping.</p>
+    <p class="supporting">Based on {research.pricing?.distribution.count||research.matches?.length} comparable sold listings. Their displayed prices range from {pounds(research.comparableRange!.low)} to {pounds(research.comparableRange!.high)}, excluding shipping.</p>
+    {#if research.anchor&&research.pricing}
+      <p class="supporting">Closest comparable: <a href={research.anchor.sourceUrl} target="_blank" rel="noopener noreferrer">{research.anchor.title}</a> · {pounds(research.anchor.price.minor)}</p>
+      <p>{research.anchor.reason}</p>
+      <p class="supporting">{research.pricing.direction==='same'?'Same price as the closest comparable':`${pounds(Math.abs(research.pricing.adjustmentMinor))} ${research.pricing.direction} the closest comparable`}.</p>
+      <p>{research.pricing.reason}</p>
+    {/if}
     <button class="secondary" onclick={()=>usePrice(research!.suggestedPrice!)}>Use {pounds(research.suggestedPrice.minor)}</button>
   {:else if research?.status==='insufficient'}<p role="status">Not enough comparable sales to recommend a price. You can enter your own.</p>
     <section class="broaden-search" aria-label="Broaden price comparison">
@@ -64,6 +70,7 @@
       {:else}<p class="supporting">Refresh price evidence to assess which details exclude matches.</p>{/if}
       {#if research.caution}<p class="supporting">{research.caution}</p>{/if}
     </section>
+  {:else if research?.status==='ready'}<p role="status">Refresh price evidence for a closest-comparable recommendation.</p>
   {:else if research?.status==='failed'}<p role="status">{research.error}</p>
   {:else}<p class="supporting">Find comparable sold listings to help choose your asking price.</p>{/if}
   {#if research?.matches?.length}<button class="evidence-row" onclick={()=>sheet.showModal()}><span>See price evidence<small>{stale?'Previous item details':'Comparable sold listings and uncertainty'}</small></span><Icon name="next"/></button>{/if}
@@ -75,8 +82,9 @@
 <dialog class="evidence-sheet glass" bind:this={sheet} aria-labelledby="price-evidence-title">
   <div class="sheet-handle" aria-hidden="true"></div><header class="sheet-header"><h2 id="price-evidence-title">{research?.suggestedPrice?`Why ${pounds(research.suggestedPrice.minor)}?`:'Price evidence'}</h2><button class="icon-button secondary" aria-label="Close price evidence" onclick={()=>sheet.close()}><Icon name="close"/></button></header>
   {#if stale}<p role="status">This evidence relates to previous item details.</p>{/if}
-  <p class="supporting">Median displayed price of comparable eBay sold listings found through Soldgraph. These are not verified paid prices. Shipping is separate.</p>
+  <p class="supporting">Anchored to the closest AI-assessed comparable among eBay sold listings found through Soldgraph. These are not verified paid prices. Shipping is separate.</p>
   {#if research?.collectedAt}<p class="supporting">Observed {new Date(research.collectedAt).toLocaleDateString('en-GB')}. Search: {research.query}. One page of {research.fetchedCount} listings; {research.excludedCount} excluded before relevance analysis.</p>{/if}
+  {#if research?.anchor&&research.pricing}<h3>Closest comparable</h3><a href={research.anchor.sourceUrl} target="_blank" rel="noopener noreferrer">{research.anchor.title}</a><p>{research.anchor.reason}</p><h3>Why this price?</h3><p>{research.pricing.reason}</p><p class="supporting">In the comparison set, {research.pricing.distribution.below} prices are lower, {research.pricing.distribution.equal} are equal, and {research.pricing.distribution.above} are higher than the recommendation. Adjustments use a neighboring observed price within 20% of the closest comparable; otherwise its own price is retained.</p>{/if}
   {#each research?.matches||[] as match}<article class="comparable-row"><p class="comparable-price">Sold · {pounds(match.price.minor)}</p><a href={match.sourceUrl} target="_blank" rel="noopener noreferrer">{match.title}</a><p class="supporting">{match.condition||'Condition unavailable'} · {match.format==='auction'?'Auction':match.format==='fixed_price'?'Fixed price':'Format unavailable'} · Sold {match.soldDate}</p><p>{match.reason}</p><p class="supporting">Shipping: {match.displayedShipping?`${match.displayedShipping.amount} ${match.displayedShipping.currency}`:'unavailable'}</p></article>{/each}
   {#if research?.caution}<p class="supporting">{research.caution}</p>{/if}
   <p class="supporting">AI matching may be wrong. Check the source listings. Expected sale range, sale probability and time to sale are unavailable.</p>

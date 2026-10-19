@@ -442,3 +442,7 @@ maybe the UI needs to surface the search terms used so the user can uncheck 'pyt
 Prompt 103: Preserve unchanged queries
 
 maybe the UI needs to surface the search terms used so the user can uncheck 'python print' and get more matches. let's try surfacing all search keywords in the failure mode so that the user can broaden the search, showing how many each excludes so that hte user can uncheck the impactful terms
+
+Prompt 104: Anchor price recommendations
+
+we think that choosign the median price of a bunch of similar listings isn't good enough. instead, let's find the closest comparable and then choose a price near to that in the distribution, and provide an explanation of why it is the closest comparable and why we went above or below its price

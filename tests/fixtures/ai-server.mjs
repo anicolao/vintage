@@ -10,7 +10,8 @@ export function startAiServer() {
     let body='';for await(const chunk of req)body+=chunk;
     const request=JSON.parse(body);const input=JSON.parse(request.contents[0].parts[0].text);
     let result;
-    if(input.evidence)result={assessments:input.evidence.map(e=>({evidenceId:e.evidenceId,failedCriteria:input.criteria.filter(c=>c.value==='Python print').map(c=>c.id),unsafe:false}))};
+    if(input.candidates) {const row=input.candidates.find(r=>r.price.minor===2500)||input.candidates[0];result={anchorId:row.evidenceId,priceId:row.evidenceId,anchorReason:'Closest test comparable in type and condition.',priceReason:'No supported difference justifies changing the comparable price.'};}
+    else if(input.evidence)result={assessments:input.evidence.map(e=>({evidenceId:e.evidenceId,failedCriteria:input.criteria.filter(c=>c.value==='Python print').map(c=>c.id),unsafe:false}))};
     else if(input.item)result={query:'test garment',condition:'unknown'};
     else if(input.copy)result={title:input.copy.title,description:`Revised wording: ${input.copy.description}`};
     else {
