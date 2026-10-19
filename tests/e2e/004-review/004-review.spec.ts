@@ -191,3 +191,29 @@ test('sold evidence recommends a price without overwriting the seller and surviv
   await expect(page.getByText('Item details changed. Refresh price evidence for the current item.',{exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Use £25.00',exact:true})).toHaveCount(0);
 });
+
+test('insufficient pricing exposes measured exclusions and relaxes material without editing the item',async({page,context,request})=>{
+ await resetAuth(request);await page.goto('/');await signIn(page,context);
+ await page.getByRole('link',{name:'New listing',exact:true}).click();
+ await page.getByLabel('Choose item photos').setInputFiles('static/images/wardrobe.png');
+ await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync','synced');
+ await page.getByRole('button',{name:'Create my draft'}).click();
+ await expect(page.getByRole('button',{name:'Use £25.00',exact:true})).toBeVisible();
+ await page.getByLabel('Material',{exact:true}).fill('Python print');await page.getByLabel('Material',{exact:true}).blur();
+ await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync','synced');
+ await page.getByRole('button',{name:'Refresh price evidence',exact:true}).click();
+ const panel=page.getByRole('region',{name:'Broaden price comparison'});
+ await expect(panel).toBeVisible();
+ await expect(panel.getByText('material · excludes 3 · unchecking adds 3',{exact:true})).toBeVisible();
+ await test.info().attach('broaden-comparison',{body:await panel.screenshot(),contentType:'image/png'});
+ await panel.getByRole('checkbox',{name:/Python print/}).uncheck();
+ await expect(panel.getByText('3 listings match these choices. Reuses these results. No additional search credit.',{exact:true})).toBeVisible();
+ await context.setOffline(true);
+ await panel.getByRole('button',{name:'Compare with these choices',exact:true}).click();
+ await expect(page.getByText(/Price research saved on this phone/)).toBeVisible();
+ await expect(page.getByLabel('Material',{exact:true})).toHaveValue('Python print');
+ await context.setOffline(false);
+ await expect(page.getByRole('button',{name:'Use £25.00',exact:true})).toBeVisible();
+ await page.reload();await expect(page.getByRole('button',{name:'Use £25.00',exact:true})).toBeVisible();
+ await expect(page.getByLabel('Material',{exact:true})).toHaveValue('Python print');
+});

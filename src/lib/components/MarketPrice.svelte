@@ -8,8 +8,24 @@
   export let uid:string;export let id:string;export let current:Workflow;export let baseVersion:number;
   export let usePrice:(price:Money)=>Promise<void>;
   interface Match {evidenceId:string;title:string;sourceUrl:string;reason:string;soldDate:string;price:Money;condition:string|null;format:string|null;displayedShipping:{amount:string;currency:string}|null}
-  interface Research {id:string;status:string;sourceCopy:Copy;baseVersion:number;startedAt:string;collectedAt?:string;query?:string;matches?:Match[];suggestedPrice?:Money|null;comparableRange?:{low:number;high:number}|null;caution?:string;error?:string;fetchedCount?:number;excludedCount?:number}
+  type CriterionId='brand'|'category'|'material'|'colour'|'size'|'condition';
+  type Condition='new'|'open_box'|'refurbished'|'used'|'for_parts';
+  interface Criterion {id:CriterionId;value:string;enabled:boolean;excludedCount:number;restoredCount:number}
+  interface Research {assessmentFailures?:{failedCriteria:CriterionId[];unsafe:boolean}[];criteria?:Criterion[];condition?:Condition|null;eligibleCount?:number;matchingCount?:number;unsafeCount?:number;id:string;status:string;sourceCopy:Copy;baseVersion:number;startedAt:string;collectedAt?:string;query?:string;matches?:Match[];suggestedPrice?:Money|null;comparableRange?:{low:number;high:number}|null;caution?:string;error?:string;fetchedCount?:number;excludedCount?:number}
   let research:Research|null=null;let error='';let sheet:HTMLDialogElement;
+  let editorId='';let searchWords:string[]=[];let selectedWords:string[]=[];let selectedCriteria:CriterionId[]=[];let keepCondition=true;
+  $: if(research && editorId!==research.id && research.status!=='pending'){editorId=research.id;searchWords=[...new Set((research.query||'').split(/\s+/).filter(Boolean))];selectedWords=[...searchWords];selectedCriteria=(research.criteria||[]).filter(c=>c.enabled).map(c=>c.id);keepCondition=true;}
+  $: retrievalChanged=!!research&&(selectedWords.join(' ')!==searchWords.join(' ')||(!keepCondition&&!!research.condition));
+  $: criteriaChanged=!!research?.criteria&&research.criteria.some(c=>c.enabled!==selectedCriteria.includes(c.id));
+  function restoredCount(id:CriterionId){return (research?.assessmentFailures||[]).filter(r=>!r.unsafe&&r.failedCriteria.includes(id)&&r.failedCriteria.every(f=>f===id||!selectedCriteria.includes(f))).length;}
+  $: previewMatches=(research?.assessmentFailures||[]).filter(r=>!r.unsafe&&!r.failedCriteria.some(f=>selectedCriteria.includes(f))).length;
+  function toggleCriterion(id:CriterionId){selectedCriteria=selectedCriteria.includes(id)?selectedCriteria.filter(v=>v!==id):[...selectedCriteria,id];}
+  function toggleWord(word:string){selectedWords=selectedWords.includes(word)?selectedWords.filter(v=>v!==word):searchWords.filter(v=>v===word||selectedWords.includes(v));}
+  async function broaden(){
+    if(!research||!selectedWords.length)return;
+    try {await locallyPersisted();await enqueue({kind:'market',listingId:id,expectedVersion:current.version,copy:structuredClone(current.copy!),refinement:{sourceId:research.id,query:selectedWords.join(' '),condition:keepCondition?(research.condition||null):null,enabledCriteria:[...selectedCriteria]}});error='';}
+    catch {error='Broader comparison could not be saved on this phone. Try again.';}
+  }
   $: queued=$pipelineIntents.some(i=>i.request.kind==='market'&&i.request.listingId===id);
   $: pending=queued||research?.status==='pending';
   $: stale=!!research&&(listingFields.some(f=>research!.sourceCopy[f]!==current.copy?.[f])||research.baseVersion!==baseVersion);
@@ -29,9 +45,29 @@
     <p class="supporting">Based on {research.matches?.length} comparable sold listings. Their displayed prices range from {pounds(research.comparableRange!.low)} to {pounds(research.comparableRange!.high)}, excluding shipping.</p>
     <button class="secondary" onclick={()=>usePrice(research!.suggestedPrice!)}>Use {pounds(research.suggestedPrice.minor)}</button>
   {:else if research?.status==='insufficient'}<p role="status">Not enough comparable sales to recommend a price. You can enter your own.</p>
+    <section class="broaden-search" aria-label="Broaden price comparison">
+      <h3>Broaden the comparison</h3>
+      <p class="supporting">Searched “{research.query}”{research.condition?` · ${research.condition.replace('_',' ')}`:''}. Found {research.fetchedCount} listings; {research.eligibleCount} have usable prices.</p>
+      {#if research.criteria}
+        <fieldset><legend>Search words</legend>
+          {#each searchWords as word}<label><input type="checkbox" checked={selectedWords.includes(word)} onchange={()=>toggleWord(word)}/><span>{word}</span></label>{/each}
+          {#if research.condition}<label><input type="checkbox" bind:checked={keepCondition}/><span>Condition: {research.condition.replace('_',' ')}</span></label>{/if}
+        </fieldset>
+        <p class="supporting">Changing these starts a new search. Exclusions outside the returned page are unknown.</p>
+        <fieldset><legend>Details to match</legend>
+          {#each research.criteria as criterion}<label><input type="checkbox" checked={selectedCriteria.includes(criterion.id)} onchange={()=>toggleCriterion(criterion.id)}/><span>{criterion.value}<small>{criterion.id} · excludes {criterion.excludedCount}{selectedCriteria.includes(criterion.id)?` · unchecking adds ${restoredCount(criterion.id)}`:''}</small></span></label>{/each}
+        </fieldset>
+        <p class="supporting">AI-assessed counts from this page. A listing can fail several details, so counts overlap. “Adds” uses your current checkbox choices. Unchecking a detail leaves your listing unchanged.</p>
+        <p class="supporting">{research.excludedCount} listings lack usable prices; {research.unsafeCount||0} are unsuitable items. These exclusions cannot be relaxed.</p>
+        {#if retrievalChanged}<p class="supporting">A new search uses one search credit. Current counts will be recalculated.</p>{:else}<p class="supporting">{previewMatches} listings match these choices. Reuses these results. No additional search credit.</p>{/if}
+        <button class="secondary" disabled={!selectedWords.length||(!retrievalChanged&&!criteriaChanged)} onclick={broaden}>{retrievalChanged?'Search with these choices':'Compare with these choices'}</button>
+      {:else}<p class="supporting">Refresh price evidence to assess which details exclude matches.</p>{/if}
+      {#if research.caution}<p class="supporting">{research.caution}</p>{/if}
+    </section>
   {:else if research?.status==='failed'}<p role="status">{research.error}</p>
   {:else}<p class="supporting">Find comparable sold listings to help choose your asking price.</p>{/if}
   {#if research?.matches?.length}<button class="evidence-row" onclick={()=>sheet.showModal()}><span>See price evidence<small>{stale?'Previous item details':'Comparable sold listings and uncertainty'}</small></span><Icon name="next"/></button>{/if}
+  {#if ready&&research?.criteria?.some(c=>!c.enabled)}<p class="supporting">{research.caution}</p>{/if}
   {#if ready}<p class="supporting">A starting point, not a predicted sale price. Accepted offers with hidden prices are excluded.</p>{/if}
   {#if !pending}<button class="secondary" onclick={refresh}>{research?'Refresh price evidence':'Research price'}</button>{/if}
   {#if error}<p role="alert">{error}</p>{/if}
@@ -45,3 +81,12 @@
   {#if research?.caution}<p class="supporting">{research.caution}</p>{/if}
   <p class="supporting">AI matching may be wrong. Check the source listings. Expected sale range, sale probability and time to sale are unavailable.</p>
 </dialog>
+
+<style>
+  .broaden-search { margin-block: 1rem; }
+  fieldset { border: 0; padding: 0; margin: 1rem 0; min-width: 0; }
+  legend { font-weight: 600; margin-bottom: .5rem; }
+  label { display: flex; align-items: center; gap: .75rem; min-height: 48px; padding-block: .35rem; cursor: pointer; }
+  input[type=checkbox] { width: 1.25rem; height: 1.25rem; flex: 0 0 auto; accent-color: var(--accent); }
+  .broaden-search small { display: block; font-size: .8rem; line-height: 1.4; }
+</style>

@@ -430,3 +430,7 @@ let's add condition before we do more manual testing
 Prompt 100: Investigate insufficient comparables
 
 we tried again but got 'not enough comparables'. What happened?
+
+Prompt 101: Expose matching controls
+
+maybe the UI needs to surface the search terms used so the user can uncheck 'python print' and get more matches. let's try surfacing all search keywords in the failure mode so that the user can broaden the search, showing how many each excludes so that hte user can uncheck the impactful terms

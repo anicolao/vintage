@@ -1,3 +1,4 @@
+import { criterionFields } from './market-assessment.mjs';
 import { MarketResearch } from './market.mjs';
 import { createHash } from 'node:crypto';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -14,7 +15,7 @@ const requestSchema = z.discriminatedUnion('kind', [
   z.object({ kind:z.literal('forget'), listingId:id, expectedVersion:version, instructionId:id }),
   z.object({ kind:z.literal('edit'), listingId:id, expectedVersion:version, field:z.enum(fields), value:z.string().max(5000), previousValue:z.string().max(5000) }),
   z.object({ kind:z.literal('price'), listingId:id, expectedVersion:version, price:moneySchema.nullable() }),
-  z.object({ kind:z.literal('market'), listingId:id, expectedVersion:version, copy:copySchema }),
+  z.object({ kind:z.literal('market'), listingId:id, expectedVersion:version, copy:copySchema, refinement:z.object({sourceId:id,query:z.string().trim().min(1).max(200),condition:z.enum(['new','open_box','refurbished','used','for_parts']).nullable(),enabledCriteria:z.array(z.enum(criterionFields)).max(6)}).optional() }),
   z.object({ kind:z.literal('save'), listingId:id, expectedVersion:version }),
   z.object({ kind:z.literal('reopen'), listingId:id, expectedVersion:version }),
   z.object({ kind:z.literal('duplicate'), listingId:z.string().uuid(), expectedVersion:z.literal(0), sourceListingId:id, sourceVersion:version }),
@@ -49,7 +50,19 @@ export class PipelineService {
         const market=listing.collection('pipeline').doc('market');
         const prior=(await tx.get(market)).data();
         if(prior?.status==='pending')throw new Conflict('Price research is already running.');
-        this.queueMarket(tx,op,market,target,state,uid,workspace,request);
+        let checkpoint;
+        if(request.refinement) {
+          if(prior?.id!==request.refinement.sourceId || canonical(prior.sourceCopy)!==canonical(state.copy) || prior.baseVersion!==state.input.baseVersion)throw new Conflict('Price evidence changed. Reopen it before broadening.');
+          const previous=(await tx.get(account.collection('operations').doc(prior.id))).data();
+          if(previous?.target!==target.path || previous.status!=='completed' || !previous.marketCheckpoint?.report)throw new Conflict('Research this item again before broadening.');
+          const source=previous.marketCheckpoint;
+          if(!source.criteria || request.refinement.enabledCriteria.some(id=>!source.criteria.some(c=>c.id===id)) || new Set(request.refinement.enabledCriteria).size!==request.refinement.enabledCriteria.length)throw new Conflict('Check the matching criteria.');
+          checkpoint={...source};
+          if(source.query!==request.refinement.query || (source.condition || null)!==request.refinement.condition) {
+            checkpoint={query:request.refinement.query,condition:request.refinement.condition,criteria:source.criteria,queryModel:{provider:'seller',promptVersion:'manual-refinement'}};
+          }
+        }
+        this.queueMarket(tx,op,market,target,state,uid,workspace,request,checkpoint);
         return {state,operation:{status:'queued',stage:0}};
       }
       if (state.version !== request.expectedVersion) throw new Conflict('This item changed elsewhere. Review the latest version before continuing.');
@@ -164,9 +177,9 @@ export class PipelineService {
       return {state,operation};
     });
   }
-  queueMarket(tx,op,market,target,state,uid,workspace,request) {
-    const input={copy:state.copy,proposalId:state.proposalId,baseVersion:state.input.baseVersion};
-    tx.create(op,{uid,workspace,request,requestHash:hash(request),input,status:'queued',stage:0,attempts:0,target:target.path,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
+  queueMarket(tx,op,market,target,state,uid,workspace,request,checkpoint) {
+    const input={copy:state.copy,proposalId:state.proposalId,baseVersion:state.input.baseVersion,...(request.refinement?{enabledCriteria:request.refinement.enabledCriteria}:{})};
+    tx.create(op,{uid,workspace,request,requestHash:hash(request),input,...(checkpoint?{marketCheckpoint:checkpoint}:{}),status:'queued',stage:0,attempts:0,target:target.path,createdAt:FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()});
     tx.set(market,{id:op.id,status:'pending',sourceCopy:state.copy,proposalId:state.proposalId,baseVersion:state.input.baseVersion,startedAt:new Date().toISOString()});
   }
   async executeMarket(opRef,op) {

@@ -198,3 +198,19 @@ test('failed market research leaves review usable; explicit retries pin current 
   await service.execute(account.collection('operations').doc(retry));
   assert.equal((await market.get()).data().status,'ready');
 });
+
+test('price refinements pin owner, source and item; reuse reports only for unchanged retrieval',async()=>{
+ const {uid,account,listingId,target,commandId}=await listing();
+ const original=account.collection('operations').doc(`${commandId}-market`);await service.execute(original);
+ const state=(await target.get()).data();const prior=(await original.get()).data();
+ const request={kind:'market',listingId,expectedVersion:state.version,copy:state.copy,refinement:{sourceId:original.id,query:prior.marketCheckpoint.query,condition:prior.marketCheckpoint.condition||null,enabledCriteria:[]}};
+ await assert.rejects(()=>submit('another-owner',request));
+ await assert.rejects(()=>submit(uid,{...request,refinement:{...request.refinement,sourceId:'wrong-source'}}));
+ const refined=randomUUID();await submit(uid,request,refined);
+ const ref=account.collection('operations').doc(refined);assert.deepEqual((await ref.get()).data().marketCheckpoint.report,prior.marketCheckpoint.report);
+ await service.execute(ref);assert.deepEqual((await target.get()).data(),state);
+ await assert.rejects(()=>submit(uid,request));
+ const changed=randomUUID();await submit(uid,{...request,refinement:{...request.refinement,sourceId:refined,query:'broader garment'}},changed);
+ const checkpoint=(await account.collection('operations').doc(changed).get()).data().marketCheckpoint;
+ assert.equal(checkpoint.query,'broader garment');assert.equal(checkpoint.report,undefined);assert.equal(checkpoint.assessments,undefined);
+});
