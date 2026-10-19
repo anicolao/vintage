@@ -394,3 +394,11 @@ let's try using a default window of at least 90 days, maybe even as much as 180 
 Prompt 91: Compare broader searches
 
 even the word 'pumps' might not be right for the UK market. let's try a selection of broader searches and compare them
+
+Prompt 92: Quantify search overlap
+
+for these result sets can you qantify the overlap? Shouldn't the 40 shoes or heels include all the others? Yet they seem not to - only 23/40 usable heels, but 30/40 usable shoes?
+
+Prompt 93: Explain pagination limit
+
+why are we paging/using limit 40?

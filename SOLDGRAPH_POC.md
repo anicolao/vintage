@@ -11,7 +11,7 @@ nix develop
 npm run investigate:soldgraph -- --query "iphone 13" --country uk
 ```
 
-Defaults: UK, one page of 40 rows, recently sold first, all sale formats, and a local filter covering today plus the preceding 29 UTC calendar dates. `--days 1..90` changes that filter. Supported countries: `us`, `uk`, `ca`, `au`, `de`, `fr`, `it`, `es`.
+Defaults: UK, one page of 40 rows, recently sold first, all sale formats, and a local filter covering today plus the preceding 179 UTC calendar dates. `--days 1..180` changes that filter. Supported countries: `us`, `uk`, `ca`, `au`, `de`, `fr`, `it`, `es`.
 
 Every new invocation starts one search and can consume one credit, including empty or cached results. It never follows `next_page` or automatically retries a search. Polling uses the job endpoint and is free. Soldgraph currently advertises a free allowance of 100 requests per rolling 30 days; check the account dashboard before larger experiments. No subscription or billing changes are made by this script. See [usage and billing](https://soldgraph.com/docs/api/usage).
 
@@ -103,3 +103,25 @@ Run `npm run investigate:soldgraph -- --query "QUERY" --country uk --days 180` f
 | Gucci snakeskin shoes | `63b1924a-2c8a-406d-9b78-7149c9bbf4af` | `.cache/soldgraph/run-Ma5Zyk/` |
 
 Each directory contains the normalized evidence, API outcome summary and analysis bundle. Local aggregate counts are saved in `.cache/soldgraph/gucci-query-comparison.json`; credentials and cached result files are not committed.
+
+## Exact overlap and the page cap
+
+Listing-ID intersections of the saved sets (not title matching):
+
+| Query | Shoes | Heels | Court shoes | Snakeskin shoes | Snakeskin pumps |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Shoes | 40 | 2 | 0 | 0 | 0 |
+| Heels | 2 | 40 | 0 | 0 | 0 |
+| Court shoes | 0 | 0 | 19 | 0 | 0 |
+| Snakeskin shoes | 0 | 0 | 0 | 9 | 1 |
+| Snakeskin pumps | 0 | 0 | 0 | 1 | 1 |
+
+The two shoes/heels shared IDs are `277493830407` (blue vintage one-inch heels, eligible) and `358519031716` (suede Marmont fringe heels, excluded for accepted/unknown offer status). Intersection is 5% of each 40-row set; Jaccard overlap is 2/78, approximately 2.6%. The original snakeskin-pumps result, `198615648151`, also appears in snakeskin shoes. No other pairs intersect. Across all five saved sets, there are still 106 unique listings and 71 eligible prices; the baseline adds no new ID.
+
+The 30/40 usable shoes versus 23/40 usable heels counts measure price eligibility, not relevance or containment. Ten shoe rows and seventeen heel rows were excluded for accepted/unknown offer status. The shared listings have consistent eligibility in both searches.
+
+`functions/soldgraph.mjs` explicitly requests `page=1`, `count=40`, and `sort=recently_sold`. This is the prototype's chosen one-page cost/response-size bound, carried into the product; it is not evidence that the provider has only 40 results or that 40 is its maximum supported page size. We currently do not paginate, even when `nextPage` is present. The collector also validates responses against page 1, so proper pagination requires changes beyond simply looping over the existing function.
+
+A broader complete result set might include a narrower set, but its first 40 results need not. The shoes page contains October 18–19 sales; heels covers October 17–19; court shoes spans July 31–October 11. All court-shoe results are older than either broad page's oldest date. Most snakeskin results are also older; the one October 18 result shares a date with the broad page boundary, and date-only records cannot establish its ranking within that day. Provider search matching may also differ by query; these saved pages do not prove strict set containment of complete searches.
+
+Recommended change: make retrieval an explicit bounded process, with pagination and query variation, stopping when enough relevant evidence is found, the date window is exhausted, no further page exists, or the request budget is reached. Surface truncation and exclusions in the result. Verify provider pagination limits and billing before selecting the budget; do not assume a larger requested count is supported or free. No additional API requests or pagination implementation were made for this overlap analysis.
