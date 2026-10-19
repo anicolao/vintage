@@ -414,3 +414,11 @@ can we order by recency
 Prompt 96: Compare query specificity
 
 let's compare 'gucci shoes' to 'gucci heels'. we think 'shoes' is too broad, but are unsure if that's better filtered after or baked into the query
+
+Prompt 97: Refine pricing retrieval
+
+ok let's refine the code to use 200 results and choose brand+category searches to get pricing and see if that helps. what is the prompt currently for determining the query?
+
+Prompt 98: Consider condition searches
+
+maybe '/new/used/vintage/' would be an important part of hte query to get comparables?

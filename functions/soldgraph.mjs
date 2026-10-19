@@ -73,7 +73,7 @@ export async function collect(config, key, { transport = fetch, now = new Date()
   try {
     await save();
     const url = new URL('/v1/ebay/sold', origin);
-    url.search = new URLSearchParams({ q: config.query, country: config.country, page: '1', count: '40', sort: 'recently_sold' });
+    url.search = new URLSearchParams({ q: config.query, country: config.country, page: '1', count: '200', sort: 'recently_sold' });
     let reply = await request(config.requestId ? `${origin}/v1/jobs/${config.requestId}?wait=20` : url.href, !config.requestId);
     for (let polls = 0; ; polls++) {
       const { data, delay } = reply;

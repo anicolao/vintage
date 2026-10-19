@@ -17,3 +17,21 @@ test('durable completed search is reused for model retry without another credit'
  const r=await market.research({copy:{title:'coat'}},'operation',{query:'coat',report:{...report,status:'complete'}});
  assert.equal(calls,1);assert.equal(r.status,'ready');
 });
+
+test('fresh research keeps all 200 candidates for selection, persists query provenance, and respects selected evidence',async()=>{
+ let requests=0;const checkpoints=[];
+ const data=Array.from({length:200},(_,i)=>({id:String(i),title:'Gucci heels',link:`https://www.ebay.co.uk/itm/${i}`,sold_date:new Date().toISOString().slice(0,10),displayed_price:{amount:20+i,currency:'GBP'},best_offer_accepted:false}));
+ const generator={request:async(system,parts)=>{
+  const input=JSON.parse(parts[0].text);
+  if(!input.evidence)return {result:{query:'Gucci heels'},model:{provider:'vertex-ai',model:'test'}};
+  assert.equal(input.evidence.length,200);
+  return {result:{matches:['197','198','199'].map(evidenceId=>({evidenceId,reason:'Comparable item.'})),caution:''},model:{model:'test'}};
+ }};
+ const market=new MarketResearch(generator,{key:()=> 'test-secret',transport:async url=>{
+  requests++;const u=new URL(url);assert.equal(u.searchParams.get('q'),'Gucci heels');assert.equal(u.searchParams.get('count'),'200');
+  return new Response(JSON.stringify({status:'complete',request_id:'job-200',result:{provider:'ebay',country:'uk',query:'Gucci heels',page:1,schema_version:2,data,next_page:2}}));
+ }});
+ const result=await market.research({copy:{title:'Vintage Gucci Snakeskin Pumps'}},'operation',{},async v=>checkpoints.push(structuredClone(v)));
+ assert.equal(requests,1);assert.equal(result.fetchedCount,200);assert.equal(result.matches.length,3);assert.equal(result.suggestedPrice.minor,21800);
+ assert.equal(checkpoints[0].queryModel.promptVersion,'brand-category-v1');
+});

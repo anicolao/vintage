@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs, parseEnv } from 'node:util';
 
 const help = `Usage: npm run investigate:soldgraph -- --query "iphone 13" [--country uk] [--days 180]
-Fetches one page of up to 40 sold listings across all sale formats.
+Fetches one page of up to 200 sold listings across all sale formats.
 Reads SOLDGRAPH_API_KEY from .env. Each completed search costs one credit.
 Optional --request-id ID resumes polling without starting a new search; keep the original query/country.
 Writes a local analysis bundle; does not call an LLM. Exit 0 complete, 1 API failure, 2 setup failure.

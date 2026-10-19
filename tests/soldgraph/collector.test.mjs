@@ -16,7 +16,7 @@ test('polls safely, collects all formats, deduplicates and stops at one page',as
  }});
  assert.equal(report.status,'complete'); assert.equal(report.results.length,2); assert.equal(report.duplicateCount,1);
  assert.equal(calls.length,2); const u=new URL(calls[0].url);
- assert.equal(u.searchParams.get('sort'),'recently_sold'); assert.equal(u.searchParams.has('buying_format'),false);
+ assert.equal(u.searchParams.get('sort'),'recently_sold'); assert.equal(u.searchParams.get('count'),'200'); assert.equal(u.searchParams.has('buying_format'),false);
  assert.equal(calls[1].url,'https://api.soldgraph.com/v1/jobs/job-1?wait=20');
  assert.ok(calls[0].init.headers['Idempotency-Key']); assert.equal(report.nextPage,2);
 });

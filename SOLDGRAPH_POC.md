@@ -11,7 +11,7 @@ nix develop
 npm run investigate:soldgraph -- --query "iphone 13" --country uk
 ```
 
-Defaults: UK, one page of 40 rows, recently sold first, all sale formats, and a local filter covering today plus the preceding 179 UTC calendar dates. `--days 1..180` changes that filter. Supported countries: `us`, `uk`, `ca`, `au`, `de`, `fr`, `it`, `es`.
+Defaults: UK, one page of up to 200 rows, recently sold first, all sale formats, and a local filter covering today plus the preceding 179 UTC calendar dates. `--days 1..180` changes that filter. Supported countries: `us`, `uk`, `ca`, `au`, `de`, `fr`, `it`, `es`.
 
 Every new invocation starts one search and can consume one credit, including empty or cached results. It never follows `next_page` or automatically retries a search. Polling uses the job endpoint and is free. Soldgraph now documents 100 one-time free requests for new accounts; accounts created before October 9, 2026 retain 100 requests per rolling 30 days. Check the account dashboard for the actual allowance before larger experiments. No subscription or billing changes are made by this script. See [usage and billing](https://soldgraph.com/docs/api/usage).
 
@@ -166,3 +166,15 @@ Evidence is retained locally:
 - Heels: `.cache/soldgraph/compare-200-Gucci-heels-1792429743631/`; provider request `9d9f026a-472e-449d-9c22-37e50966372b`.
 
 Each directory contains `report.json` (normalized evidence and eligibility) and `calls.json` (credential-free actual URLs, HTTP/job statuses, credit costs and returned page size). The previous 40-row comparisons remain historical observations of smaller pages.
+
+## Product retrieval refinement — 19 October 2026
+
+The shared CLI/product collector now requests up to 200 results, newest sold first, for one search credit. It still fetches one page and uses a 180-day local eligibility window. Fresh product queries use the known brand plus a useful UK category, omitting model, material, colour, size, condition and age from retrieval keywords; these remain in the full seller-reviewed item supplied to the comparable selector. Unknown brands are omitted rather than invented. Query model provenance is checkpointed with prompt version `brand-category-v1`. Existing completed checkpoints remain reusable without another charge; use a fresh research request to evaluate the new strategy.
+
+The current query instruction is exported as `marketQueryPrompt` in `functions/market.mjs`. Its example maps vintage Gucci snakeskin pumps to `Gucci heels`. Brand/category selection remains model-generated, not a guarantee that every generated query follows the instruction.
+
+A live test used the saved seller-reviewed Gucci item, actual Vertex AI query generation and selection, and the real Soldgraph API. Generated query: `Gucci heels`; provider request `17fe0172-91db-46f5-b7f1-925150d92eaf`; 200 results, 130 eligible GBP prices, 70 excluded, one credit. The comparison model selected zero matches and explained that the candidates did not match snakeskin material. Therefore retrieval improved but this item still did not receive a recommendation. No price was fabricated or relevance rule weakened. Local checkpoint/result: `.cache/soldgraph/brand-category-live-1792429940328/`. The test did not mutate the user's saved listing.
+
+Twelve collector/recommendation tests pass, including a 200-row end-to-end service test selecting evidence from the end of the page, query provenance persistence, and retry reuse without another credit.
+
+Condition is a useful next refinement: [Soldgraph supports structured condition filters](https://soldgraph.com/docs/api/sold), including `new` and `used`. Prefer a supported filter when seller-reviewed condition is unambiguous. Vintage is not a supported condition group and is not synonymous with used; consider a separate vintage query when age is established and initial evidence is insufficient. Condition filtering and extra queries are not implemented in this change.
