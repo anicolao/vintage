@@ -406,3 +406,7 @@ why are we paging/using limit 40?
 Prompt 94: Explain search budget
 
 how does paging interact with the search budget? Ideally we'd want to do one broad search and then filter afterwards, if that minimizes API cost?
+
+Prompt 95: Confirm recency sorting
+
+can we order by recency
