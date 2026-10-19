@@ -161,3 +161,16 @@ test('offline sign-out explains retained work and keeps it recoverable', async (
   await context.setOffline(false);
   await expect(page.locator('main[data-sync]')).toHaveAttribute('data-sync','synced');
 });
+
+test('unreadable HEIC explains conversion failure without suggesting a connection retry',async({page,context,request})=>{
+  await resetAuth(request);await page.goto('/');await signIn(page,context);
+  await page.getByRole('link',{name:'New listing',exact:true}).click();
+  await page.getByLabel('Choose item photos').setInputFiles({name:'unreadable.heic',mimeType:'image/heic',buffer:Buffer.from('not a decodable HEIC image')});
+  await expect(page.getByRole('alert')).toContainText('This HEIC photo could not be converted.');
+  await expect(page.getByRole('alert')).toContainText('Export it as JPEG or PNG');
+  await expect(page.getByRole('alert')).not.toContainText('Check your connection');
+  await expect(page.getByRole('button',{name:'Try again',exact:true})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Choose another photo',exact:true})).toBeEnabled();
+  await page.getByRole('button',{name:'Remove',exact:true}).click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+});

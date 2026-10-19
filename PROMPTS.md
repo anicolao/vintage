@@ -370,3 +370,15 @@ it is in .env as SOLDGRAPH_API_KEY
 Prompt 85: Integrate preview pricing
 
 aat a glance, these results look good for prototyping. Let's integrate - or have we already integrated? - so that we can test in the PR preview of our actual product
+
+Prompt 86: Refresh live preview
+
+is the live preview still up? I think it probably expired/needs refreshing please
+
+Prompt 87: Fix HEIC errors
+
+we tried to import HEIC and they failed with a wrong/unhelpful error message
+
+Prompt 88: Publish HEIC fix
+
+Restarteed your session, you should be able to publish to the PR

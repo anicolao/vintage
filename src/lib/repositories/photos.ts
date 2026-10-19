@@ -1,3 +1,4 @@
+import { PhotoImportError, photoType, heicPreview } from '../photos/import';
 import { getBlob, getMetadata, ref, uploadBytesResumable } from 'firebase/storage';
 import { getBackend, settings } from '../firebase';
 import type { Photo } from '../events/contracts';
@@ -33,29 +34,27 @@ async function put(path: string, blob: Blob, digest: string, progress: (n: numbe
   const target = ref(getBackend().storage, path);
   try {
     const existing = await getMetadata(target);
-    if (existing.customMetadata?.digest !== digest || existing.size !== blob.size) throw new Error('This photo has conflicting upload data. Remove it and select it again.');
+    if (existing.customMetadata?.digest !== digest || existing.size !== blob.size) throw new PhotoImportError('This photo has conflicting upload data. Remove it and select it again.');
     progress(100); return;
   } catch (cause) { if ((cause as {code?: string}).code !== 'storage/object-not-found') throw cause; }
   const upload = uploadBytesResumable(target, blob, { contentType: blob.type, customMetadata: { digest } });
   await new Promise<void>((resolve, reject) => upload.on('state_changed', s => progress(Math.round(s.bytesTransferred / s.totalBytes * 100)), reject, () => resolve()));
 }
 export async function uploadPhoto(pending: PendingPhoto, progress: (n: number) => void): Promise<Photo> {
-  if (getBackend().auth.currentUser?.uid !== pending.uid) throw new Error('Sign in to upload this photo.');
+  if (getBackend().auth.currentUser?.uid !== pending.uid) throw new PhotoImportError('Sign in to upload this photo.', true);
   const file = pending.file;
-  const type = /\.hei[cf]$/i.test(file.name) ? 'image/heic' : file.type;
-  if (!['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'].includes(type)) throw new Error('Choose a JPEG, PNG, WebP or HEIC photo.');
-  if (!file.size || file.size > 10485760) throw new Error('Choose a photo smaller than 10 MB.');
+  const type = await photoType(file);
+  if (!['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'].includes(type)) throw new PhotoImportError('Choose a JPEG, PNG, WebP or HEIC photo.');
+  if (!file.size || file.size > 10485760) throw new PhotoImportError('Choose a photo smaller than 10 MB.');
   const original = file.type === type ? file : new Blob([file], { type });
   let preview: Blob = original;
   if (/hei[cf]/.test(type)) {
-    const { default: convert } = await import('heic2any');
-    const result = await convert({ blob: original, toType: 'image/jpeg', quality: .85 });
-    preview = Array.isArray(result) ? result[0] : result;
+    preview = await heicPreview(original);
   }
   let dimensions: ImageBitmap;
-  try { dimensions = await createImageBitmap(preview); } catch { throw new Error('This photo could not be read. Choose another photo.'); }
+  try { dimensions = await createImageBitmap(preview); } catch { throw new PhotoImportError(/hei[cf]/.test(type) ? 'The converted HEIC preview could not be read. Export the original as JPEG or PNG and select that copy.' : 'This photo could not be read. It may be damaged or use an unsupported format. Select another photo.'); }
   const width = dimensions.width; const height = dimensions.height; dimensions.close();
-  if (width > 20000 || height > 20000 || width * height > 60000000 || preview.size > 10485760) throw new Error('This photo is too large. Choose a smaller image.');
+  if (width > 20000 || height > 20000 || width * height > 60000000 || preview.size > 10485760) throw new PhotoImportError('This photo is too large. Choose a smaller image.');
   const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', await original.arrayBuffer()))].map(b => b.toString(16).padStart(2, '0')).join('');
   const path = `workspaces/${settings.workspace}/accounts/${pending.uid}/listings/${pending.listingId}/photos/${pending.id}/original`;
   const previewPath = preview === original ? path : path.replace(/original$/, 'preview');
@@ -74,7 +73,7 @@ async function cachePreview(path: string, blob: Blob) {
 }
 export async function photoUrl(photo: Photo) {
   const uid = getBackend().auth.currentUser?.uid;
-  if (!uid || !photo.previewPath.startsWith(`workspaces/${settings.workspace}/accounts/${uid}/`)) throw new Error('Sign in to view this photo.');
+  if (!uid || !photo.previewPath.startsWith(`workspaces/${settings.workspace}/accounts/${uid}/`)) throw new PhotoImportError('Sign in to view this photo.');
   const db = await open();
   const cached = await new Promise<Blob | undefined>((resolve, reject) => {
     const r = db.transaction('previews').objectStore('previews').get(photo.previewPath);

@@ -1,3 +1,4 @@
+import { PhotoImportError, photoFailure } from '../photos/import';
 import { writable, get } from 'svelte/store';
 import { app, dispatch } from './app';
 import { settings } from '../firebase';
@@ -36,16 +37,16 @@ export async function processPhotos() {
       try {
         const photo = await uploadPhoto(job.photo, progress => { job.progress = progress; update(); });
         if (!get(photoJobs).includes(job)) continue;
-        if (get(app).user?.uid !== uid) throw new Error('Sign in to finish uploading this photo.');
+        if (get(app).user?.uid !== uid) throw new PhotoImportError('Sign in to finish uploading this photo.', true);
         await dispatch(job.replace
           ? { type: 'photo/replaced', payload: { photo, photoId: job.replace } }
           : { type: 'photo/uploaded', payload: { photo } }, job.photo.listingId);
         await retain(job.photo, true); URL.revokeObjectURL(job.url);
         photoJobs.update(jobs => jobs.filter(j => j !== job));
       } catch (cause) {
-        const message = cause instanceof Error ? cause.message : '';
-        job.retryable = !/Choose |could not be read|too large|conflicting upload/.test(message);
-        job.error = job.retryable ? 'Photo could not sync. Check your connection and try again.' : message;
+        const failure = photoFailure(cause);
+        job.retryable = failure.retryable;
+        job.error = failure.message;
       }
       finally { job.running = false; update(); }
     }
